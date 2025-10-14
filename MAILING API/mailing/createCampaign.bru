@@ -1,0 +1,22 @@
+meta {
+  name: createCampaign
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{backendUrl}}/mailing/createCampaign
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "email": "user2@o.pl",
+    "password":"111"
+  }
+}

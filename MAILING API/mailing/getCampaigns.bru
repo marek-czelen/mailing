@@ -1,0 +1,22 @@
+meta {
+  name: getCampaigns
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{backendUrl}}/mailing/getCampaigns
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "email": "user2@o.pl",
+    "password":"111"
+  }
+}

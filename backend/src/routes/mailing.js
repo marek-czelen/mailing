@@ -1,0 +1,31 @@
+import express from 'express';
+import {
+    getCampaigns,
+    getCampaignById,
+    createCampaign,
+    updateCampaign,
+    deleteCampaign,
+    generateMailContent,
+    listModels
+} from '../controller/mailing.js';
+
+const router = express.Router();
+
+// Pobierz wszystkie kampanie
+router.get('/getCampaigns', getCampaigns);
+
+// Pobierz kampanię po ID
+router.get('/getCampaignById/:id', getCampaignById);
+
+// Utwórz nową kampanię
+router.post('/createCampaign', createCampaign);
+
+// Aktualizuj kampanię po ID
+router.put('/updateCampaign/:id', updateCampaign);
+
+// Usuń kampanię po ID
+router.delete('/deleteCampaign/:id', deleteCampaign);
+router.get('/listModels', listModels);
+router.post('/generateMailContent', generateMailContent);
+
+export default router;

@@ -1,0 +1,21 @@
+meta {
+  name: generateMailContent
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{backendUrl}}/mailing/generateMailContent
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "prompt": "Napisz profesjonalny mail marketingowy promujący produkty: Tablica interaktywna Avtek TT-BOARD 80 dla klientów typu: publiczne szkoły podstawowe w polsce."
+  }
+}
