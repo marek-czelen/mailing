@@ -37,6 +37,7 @@ export async function getCampaignById(req, res) {
 export async function createCampaign(req, res) {
     try {
         let data = req.body;
+        console.log(data);
         data.active = data.active ? true : false;
         data.progress = data.progress ? data.progress : 0;
         data.customerId = data.customerId ? data.customerId : 1;

@@ -22,10 +22,10 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-          <v-text-field v-model="newCampaignModel.name" label="Nazwa kampanii" required />
-          <v-text-field v-model="newCampaignModel.date" label="Data wysyłki" type="date" required />
+          <v-text-field v-model="campaignModel.name" label="Nazwa kampanii" required />
+          <v-text-field v-model="campaignModel.date" label="Data wysyłki" type="date" required />
           <v-autocomplete
-            v-model="newCampaignModel.address"
+            v-model="campaignModel.address"
             :items="addressList"
             label="Adres zwrotny"
             required
@@ -50,7 +50,7 @@
 
           <FileDrop ref="fileDropRef" @file-uploaded="onFileUploaded" />
           <v-btn
-            v-if="newCampaignModel.value && newCampaignModel.value.file"
+            v-if="campaignModel.value && campaignModel.value.file"
             color="error"
             @click="removeFile"
           >
@@ -94,27 +94,33 @@ import axios from 'axios';
 
 const props = defineProps({
   dialog: Boolean,
-  newCampaign: Object
+  campaignData: Object
 });
-const emit = defineEmits(['update:dialog', 'update:newCampaign', 'submit']);
+const emit = defineEmits(['update:dialog', 'update:campaign-data', 'submit']);
 
 const dialogModel = computed({
   get: () => props.dialog,
   set: val => emit('update:dialog', val)
 });
-const newCampaignModel = computed({
-  get: () => props.newCampaign,
-  set: val => emit('update:newCampaign', val)
+
+const campaignModel = computed({
+  get: () => props.campaignData ?? { name: '', date: '', address: '', mailContent: '', file: null },
+  set: val => emit('update:campaign-data', val)
 });
 
-const mailContent = ref("");
+const mailContent = computed({
+  get: () => campaignModel.value.mailContent || '',
+  set: (val) => {
+    campaignModel.value= { ...campaignModel.value, mailContent: val };
+  }
+});
 const quillRef = ref(null);
 const fileDropRef = ref(null);
 const addressList = ref(['test@test.pl']);
 
 function onFileUploaded(path) {
-  const updated = { ...newCampaignModel.value, file: path };
-  emit('update:newCampaign', updated);
+  console.log('Plik załadowany:', path);
+  campaignModel.value = { ...campaignModel.value, file: path };
 }
 
 function onBlur() {
@@ -128,8 +134,8 @@ function onBlur() {
   const html = quill.root.innerHTML;
 
   // aktualizacja kampanii
-  const updated = { ...newCampaignModel.value, mailContent: html };
-  emit('update:newCampaign', updated);
+  campaignModel.value = { ...campaignModel.value, mailContent: html };
+
 }
 
 async function removeFile() {
@@ -140,13 +146,12 @@ async function removeFile() {
   } catch (err) {
     alert('Błąd usuwania pliku: ' + (err?.response?.data?.message || err.message));
   }
-  const updated = { ...newCampaignModel.value, file: null };
-  emit('update:newCampaign', updated);
+  campaignModel.value = { ...campaignModel.value, file: null };
   if (fileDropRef?.value?.reset) fileDropRef.value.reset();
 }
 
 function submitCampaign() {
-  emit('submit', newCampaignModel.value);
+  emit('submit', campaignModel.value);
 }
 </script>
 

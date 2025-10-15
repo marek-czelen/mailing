@@ -2,11 +2,9 @@
 body, .v-application, .v-app, * {
   font-family: 'Roboto', Arial, sans-serif !important;
 }
-#app{
-  min-width: 99vw ;
-  position: absolute;
-  left:0;
-  top:0;
+#app {
+  min-width: 100vw;
+  position: relative;
   padding: 0;
 }
 a {
@@ -36,9 +34,21 @@ a {
           <v-btn icon>
             <v-icon>mdi-bell</v-icon>
           </v-btn>
-          <v-btn icon>
-            <v-icon>mdi-account-circle</v-icon>
-          </v-btn>
+          <v-menu offset-y>
+            <template #activator="{ props }">
+              <v-btn icon v-bind="props">
+                <v-icon>mdi-account-circle</v-icon>
+              </v-btn>
+            </template>
+            <v-list>
+              <v-list-item @click="goToSettings">
+                <v-list-item-title>Ustawienia</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="logout">
+                <v-list-item-title>Wyloguj</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
         </v-app-bar>
 
       <v-navigation-drawer app v-model="drawer" :permanent="false" :temporary="true">
@@ -57,10 +67,8 @@ a {
         </v-list>
       </v-navigation-drawer>
 
-    <v-main class="d-flex align-center justify-center" height="300">
-      <v-container>
+    <v-main class="d-flex align-center justify-center">
         <router-view />
-      </v-container>
     </v-main>
   </v-layout>
 
@@ -70,12 +78,24 @@ a {
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 
 axios.defaults.baseURL = 'http://localhost:3000'
 
 const route = useRoute()
+const router = useRouter()
 const showToolbar = computed(() => route.path !== '/login')
 const drawer = ref(true)
+
+function goToSettings() {
+  router.push('/settings')
+}
+
+function logout() {
+  // Tutaj możesz dodać logikę wylogowania, np. czyszczenie tokena, przekierowanie
+  // Przykład:
+  localStorage.removeItem('token')
+  router.push('/login')
+}
 </script>

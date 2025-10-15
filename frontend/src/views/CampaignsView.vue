@@ -86,6 +86,7 @@ const newCampaign = ref({
 });
 
 function handleNewCampaignUpdate(val) {
+  console.log('Aktualizacja kampanii:', val);
   newCampaign.value = {
     name: val.name || '',
     date: val.date || '',
@@ -121,9 +122,9 @@ function addCampaign() {
   dialog.value = true;
 }
 
-function submitCampaign() {
+function submitCampaign(campaignData) {
+  newCampaign.value = campaignData;
   // Wyślij kampanię do backendu jako JSON (plik = ścieżka)
-  console.log('Submitting campaign:', newCampaign.value);
   const payload = {
     name: newCampaign.value.name,
     date: newCampaign.value.date,

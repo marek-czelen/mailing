@@ -14,9 +14,9 @@ export class Auth {
     static generateToken(data){
         if (!data) return null
         if (Array.isArray(data)) return null
-        data.validUntil = (new Date().getSeconds())+24*60*60;
+        data.validUntil = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // ważny 24h
         let token= jwt.sign(
-            {exp: Math.floor(Date.now() / 1000) + (60*60), data: data}, Auth.privateKey); //30sek.
+            {exp: data.validUntil, data: data}, Auth.privateKey); //30sek.
         return token
     }
 

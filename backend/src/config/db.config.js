@@ -1,7 +1,7 @@
 export const dbConfig={
     Host: "localhost",
     Database: "mailing",
-    User: "root",
+    User: "mcl",
     Password: ""
 }
 
