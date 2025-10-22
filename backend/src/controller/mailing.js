@@ -42,6 +42,7 @@ export async function createCampaign(req, res) {
         data.progress = data.progress ? data.progress : 0;
         data.customerId = data.customerId ? data.customerId : 1;
 
+
         // Utwórz kampanię
         const newCampaign = await MarketingCampanies.create(data);
 
@@ -59,7 +60,14 @@ export async function createCampaign(req, res) {
                 try{
                     if (row.email) {
                         // Dodaj adres e-mail do bazy
-                        const newMailRecord = await MailAddress.create({ mailAddress: row.email, customerId: 1 }, { transaction: t });
+                        const newMailRecord = await MailAddress.create(
+                            { 
+                                mailAddress: row.email, 
+                                miasto: row.miasto || null,
+                                rodzaj: row.rodzaj || null,
+                                active: 1,
+                                customerId: 1 
+                            }, { transaction: t });
 
                         const record = await MarketingCampaniesMailing.create({
                             marketingCampaniesId: newCampaign.id,
