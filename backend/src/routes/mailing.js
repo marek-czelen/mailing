@@ -6,6 +6,7 @@ import {
     updateCampaign,
     deleteCampaign,
     generateMailContent,
+    computeSpamRating,
     listModels
 } from '../controller/mailing.js';
 
@@ -27,5 +28,7 @@ router.put('/updateCampaign/:id', updateCampaign);
 router.delete('/deleteCampaign/:id', deleteCampaign);
 router.get('/listModels', listModels);
 router.post('/generateMailContent', generateMailContent);
+// Oblicz ocenę SPAM dla treści mailingu
+router.post('/computeSpamRating', computeSpamRating);
 
 export default router;

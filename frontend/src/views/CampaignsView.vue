@@ -1,13 +1,12 @@
-
 <template>
   <v-container fluid>
     <v-row>
-      <template v-if="isEditing">
+      <template v-if="isEditing || isCreating">
         <v-col cols="12">
           <CampaignEdit 
-            :campaign="selectedCampaign"
-            @save="handleEditSave"
-            @cancel="isEditing = false"
+            :campaign="isCreating ? {} : selectedCampaign"
+            @save="isCreating ? submitCampaign() : handleEditSave()"
+            @cancel="isCreating ? cancelCreate() : (isEditing = false)"
           />
         </v-col>
       </template>
@@ -63,14 +62,6 @@
       </template>
     </v-row>
 
-    <!-- Dialog do dodawania/edycji kampanii -->
-    <CampaignDialog
-      v-model:dialog="dialog"
-      :campaign-data="newCampaign"
-      @update:campaign-data="handleNewCampaignUpdate"
-      @submit="submitCampaign"
-    />
-
     <!-- Dialog potwierdzenia usunięcia -->
     <v-dialog v-model="deleteDialog" max-width="500">
       <v-card>
@@ -103,37 +94,17 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import CampaignDetails from '../components/CampaignSummary.vue';
-import CampaignDialog from '../components/CampaignDialog.vue';
 import CampaignEdit from '../components/CampaignEdit.vue';
 import { Campaigns } from '../services/campaigns.js';
-
-const dialog = ref(false);
-const newCampaign = ref({
-  name: '',
-  date: '',
-  address: '',
-  mailContent: '',
-  file: null
-});
-
-function handleNewCampaignUpdate(val) {
-  console.log('Aktualizacja kampanii:', val);
-  newCampaign.value = {
-    name: val.name || '',
-    date: val.date || '',
-    address: val.address || '',
-    mailContent: val.mailContent || '',
-    file: val.file || null
-  };
-}
 
 const campaigns = ref([]);
 const search = ref('');
 const selectedCampaign = ref(null);
+const isEditing = ref(false);
+const isCreating = ref(false);
 
 const deleteDialog = ref(false);
 const campaignToDelete = ref(null);
-const isEditing = ref(false);
 
 onMounted(async () => {
   campaigns.value = await Campaigns.fetchAll();
@@ -160,24 +131,27 @@ function selectCampaign(campaign) {
 }
 
 function addCampaign() {
-  dialog.value = true;
+  isCreating.value = true;
+}
+
+function cancelCreate() {
+  isCreating.value = false;
 }
 
 function submitCampaign(campaignData) {
-  newCampaign.value = campaignData;
   // Wyślij kampanię do backendu jako JSON (plik = ścieżka)
   const payload = {
-    name: newCampaign.value.name,
-    date: newCampaign.value.date,
-    address: newCampaign.value.address,
-    mailContent: newCampaign.value.mailContent,
-    file: newCampaign.value.file
+    name: campaignData.name,
+    date: campaignData.date,
+    address: campaignData.address,
+    mailContent: campaignData.mailContent,
+    file: campaignData.file
   };
+  
   Campaigns.create(payload)
     .then(async () => {
       campaigns.value = await Campaigns.fetchAll();
-      dialog.value = false;
-      newCampaign.value = { name: '', date: '', file: null };
+      isCreating.value = false;
       // Wybierz nowo dodaną kampanię
       if (campaigns.value.length > 0) {
         selectedCampaign.value = campaigns.value[0];

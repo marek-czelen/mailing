@@ -4,6 +4,7 @@ import path  from 'path';
 import cookieParser from 'cookie-parser';
 import Auth from './include/auth.js';
 import {unauthorized} from './include/errors.js';
+import MailingTask from './tasks/mailingTask.js';
 
 import authRouter from './routes/auth.js';
 import usersRouter from './routes/users.js';
@@ -67,5 +68,7 @@ app.use(function(err, req, res, next) {
   res.send('error');
 });
 
+// Uruchomienie zadania cyklicznego
+MailingTask.run();
 
 export default app;
