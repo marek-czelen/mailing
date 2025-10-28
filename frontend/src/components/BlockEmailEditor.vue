@@ -143,15 +143,28 @@
                 <div class="blocks-container">
                 <!-- 
                   WRAPPER BLOKU - Każdy blok zawiera:
-                  1. Przycisk plus na górze (dodanie bloku powyżej)
-                  2. Główny blok z zawartością
-                  3. Przycisk plus na dole (dodanie bloku poniżej)
+                  1. Strefa upuszczania na górze (wizualizacja podczas drag & drop)
+                  2. Przycisk plus na górze (dodanie bloku powyżej)
+                  3. Główny blok z zawartością
+                  4. Przycisk plus na dole (dodanie bloku poniżej)
                 -->
                 <div 
                   v-for="(block, index) in emailBlocks" 
                   :key="block.id"
                   class="block-wrapper"
                 >
+                  <!-- STREFA UPUSZCZANIA GÓRNA - Wizualizacja gdzie blok zostanie upuszczony -->
+                  <div 
+                    v-if="isDragging && dropZoneIndex === index"
+                    class="drop-zone drop-zone-active"
+                    @dragover.prevent="handleDragOver(index)"
+                    @drop="onBlockDrop($event, index)"
+                  >
+                    <div class="drop-zone-indicator">
+                      <v-icon color="primary">mdi-arrow-down</v-icon>
+                      <span>Upuść tutaj</span>
+                    </div>
+                  </div>
                   <!-- PRZYCISK PLUS GÓRA - Dodaje nowy blok powyżej aktualnego -->
                   <div 
                     class="add-block-button add-block-top"
@@ -175,11 +188,17 @@
                     - Marginesy zastosowane jako padding (ramka obejmuje marginesy)
                   -->
                   <div 
-                    :class="['email-block', { 'selected': selectedBlockId === block.id }]"
+                    :class="['email-block', { 
+                      'selected': selectedBlockId === block.id,
+                      'drag-over': isDragging && dropZoneIndex === index,
+                      'being-dragged': isDragging && draggedBlockIndex === index
+                    }]"
                     @click="selectBlock(block.id)"
                     draggable="true"
                     @dragstart="onBlockDragStart($event, index)"
-                    @dragover.prevent
+                    @dragover.prevent="handleDragOver(index)"
+                    @dragenter.prevent="handleDragEnter(index)"
+                    @dragend="onDragEnd"
                     @drop="onBlockDrop($event, index)"
                   >
                     <div class="block-controls">
@@ -240,6 +259,19 @@
                     >
                       <v-icon>mdi-plus</v-icon>
                     </v-btn>
+                  </div>
+                </div>
+                
+                <!-- STREFA UPUSZCZANIA NA KOŃCU - Po ostatnim bloku -->
+                <div 
+                  v-if="isDragging && dropZoneIndex === emailBlocks.length"
+                  class="drop-zone drop-zone-active drop-zone-end"
+                  @dragover.prevent="handleDragOver(emailBlocks.length)"
+                  @drop="onBlockDrop($event, emailBlocks.length)"
+                >
+                  <div class="drop-zone-indicator">
+                    <v-icon color="primary">mdi-arrow-down</v-icon>
+                    <span>Upuść na końcu</span>
                   </div>
                 </div>
               </div>
@@ -568,6 +600,8 @@ export default {
       emailBlocks: [],                // Tablica wszystkich bloków w e-mailu
       nextBlockId: 1,                 // Licznik do generowania unikalnych ID bloków
       draggedBlockIndex: null,        // Indeks przeciąganego bloku (dla drag & drop)
+      isDragging: false,              // Czy aktualnie przeciągamy blok
+      dropZoneIndex: null,            // Indeks strefy upuszczania (wizualizacja)
       
       // === TRYBY WYŚWIETLANIA ===
       canvasMode: 'desktop',          // Tryb canvas: 'desktop' (600px) lub 'mobile' (375px)
@@ -773,19 +807,59 @@ export default {
 
     onBlockDragStart(event, index) {
       this.draggedBlockIndex = index;
+      this.isDragging = true;
+      this.dropZoneIndex = null;
+      
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', ''); // Dla kompatybilności
       
       // Dodaj klasę CSS do przeciąganego elementu
       event.target.classList.add('dragging');
+      
+      // Wyłącz hover efekty podczas przeciągania
+      document.body.classList.add('is-dragging');
+    },
+
+    handleDragOver(index) {
+      if (this.isDragging && this.draggedBlockIndex !== null) {
+        // Pokaż drop zone w odpowiednim miejscu
+        this.dropZoneIndex = index;
+      }
+    },
+
+    handleDragEnter(index) {
+      if (this.isDragging && this.draggedBlockIndex !== null) {
+        this.dropZoneIndex = index;
+      }
+    },
+
+    onDragEnd() {
+      // Cleanup po zakończeniu przeciągania
+      this.isDragging = false;
+      this.dropZoneIndex = null;
+      this.draggedBlockIndex = null;
+      
+      // Usuń klasy CSS
+      const draggingElements = document.querySelectorAll('.dragging');
+      draggingElements.forEach(el => el.classList.remove('dragging'));
+      
+      // Przywróć hover efekty
+      document.body.classList.remove('is-dragging');
     },
 
     onBlockDrop(event, targetIndex) {
       event.preventDefault();
       
+      // Resetuj stan przeciągania
+      this.isDragging = false;
+      this.dropZoneIndex = null;
+      
       // Usuń klasę CSS
       const draggingElements = document.querySelectorAll('.dragging');
       draggingElements.forEach(el => el.classList.remove('dragging'));
+      
+      // Przywróć hover efekty
+      document.body.classList.remove('is-dragging');
       
       if (this.draggedBlockIndex !== null && this.draggedBlockIndex !== targetIndex) {
         // Przenieś blok z draggedBlockIndex do targetIndex
@@ -1424,6 +1498,64 @@ export default {
 .email-block.dragging {
   opacity: 0.5;
   transform: scale(0.95);
+}
+
+/* Wizualizacja przeciąganego bloku */
+.email-block.being-dragged {
+  opacity: 0.4;
+  transform: scale(0.98);
+  border: 2px dashed #ccc !important;
+}
+
+/* Blok nad którym się unosi przeciągany element */
+.email-block.drag-over {
+  border: 2px solid #2196F3 !important;
+  background-color: rgba(33, 150, 243, 0.05) !important;
+}
+
+/* Strefa upuszczania */
+.drop-zone {
+  height: 0;
+  opacity: 0;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.drop-zone-active {
+  height: 60px;
+  opacity: 1;
+  margin: 8px 0;
+  border: 2px dashed #2196F3;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05));
+  position: relative;
+}
+
+.drop-zone-end {
+  margin-top: 16px;
+}
+
+.drop-zone-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #2196F3;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* Wyłącz hover efekty podczas przeciągania */
+.is-dragging .email-block:hover {
+  border-color: transparent !important;
+  background-color: transparent !important;
+}
+
+.is-dragging .add-block-button:hover {
+  opacity: 0.7 !important;
 }
 
 /* Styles dla dialogu szablonów */
