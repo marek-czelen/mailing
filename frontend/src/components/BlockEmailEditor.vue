@@ -1,11 +1,29 @@
 <template>
+  <!-- 
+    GŁÓWNY KOMPONENT EDYTORA E-MAILI
+    
+    Ten komponent implementuje edytor e-maili z interfejsem drag-and-drop opartym na blokach.
+    
+    STRUKTURA:
+    - Panel bloków (lewy) - lista dostępnych typów bloków do dodania
+    - Canvas (środkowy) - obszar konstrukcji e-maila z podglądem Desktop/Mobile
+    - Panel właściwości (prawy) - edycja wybranego bloku
+    
+    FUNKCJONALNOŚCI:
+    - Dodawanie bloków przez przeciągnięcie lub kliknięcie ikon plus
+    - Edycja właściwości bloków (tekst, style, marginesy itp.)
+    - Podgląd responsive (Desktop/Mobile)
+    - Zapisywanie i ładowanie szablonów
+    - Generowanie HTML do eksportu
+    - Drag & drop do zmiany kolejności bloków
+  -->
   <div class="block-email-editor">
     <v-container fluid class="pa-0">
       <v-row no-gutters>
-        <!-- Panel blokow do dodawania -->
+        <!-- PANEL BLOKÓW - Lewy panel z dostępnymi typami bloków -->
         <v-col cols="2" class="blocks-panel">
           <v-card class="pa-3 h-100">
-            <!-- Sekcja szablonów -->
+            <!-- Sekcja szablonów - przyciski do ładowania gotowych szablonów -->
             <h4 class="mb-3">Szablony</h4>
             <v-btn 
               color="primary" 
@@ -20,9 +38,11 @@
             </v-btn>
             <v-divider class="mb-3"></v-divider>
             
+            <!-- Sekcja bloków - lista dostępnych typów bloków do dodania -->
             <h4 class="mb-3">Bloki</h4>
             <v-divider class="mb-3"></v-divider>
             
+            <!-- Każdy blok można dodać przez kliknięcie lub przeciągnięcie -->
             <div class="block-item" 
                  v-for="blockType in availableBlocks" 
                  :key="blockType.type"
@@ -36,13 +56,13 @@
           </v-card>
         </v-col>
 
-        <!-- Canvas - obszar konstrukcji emaila -->
+        <!-- CANVAS - Środkowy panel z obszarem konstrukcji e-maila -->
         <v-col cols="6" class="canvas-panel">
           <v-card class="pa-4 h-100">
-            <div class="d-flex justify-space-between align-center mb-4">
-              <h4>Szablon e-maila</h4>
+            <!-- Nagłówek z przełącznikami i akcjami -->
+            <div class="d-flex justify-space-between align-center mb-4">  
               <div class="d-flex align-center gap-2">
-                <!-- Przełącznik Desktop/Mobile -->
+                <!-- Przełącznik Desktop/Mobile - zmienia szerokość podglądu (600px vs 375px) -->
                 <v-btn-toggle 
                   v-model="canvasMode" 
                   mandatory 
@@ -82,7 +102,14 @@
               </div>
             </div>
 
+            <!-- Wrapper z przewijaniem dla długich szablonów -->
             <div class="canvas-wrapper">
+              <!-- 
+                GŁÓWNY CANVAS E-MAILA
+                - Responsywny (desktop: 600px, mobile: 375px)
+                - Obsługuje drag & drop bloków
+                - Automatyczne rozszerzanie wysokości
+              -->
               <div 
                 :class="[
                   'email-canvas',
@@ -93,59 +120,127 @@
                 @dragenter.prevent
               >
                 
+                <!-- Widok pustego canvas - zachęta do dodania pierwszego bloku -->
                 <div v-if="emailBlocks.length === 0" class="empty-canvas">
                   <v-icon size="64" color="grey-lighten-1">mdi-email-plus-outline</v-icon>
                   <p class="text-grey mt-2">Przeciągnij bloki tutaj lub kliknij aby dodać</p>
                   <p class="text-caption text-grey">
                     Tryb: {{ canvasMode === 'mobile' ? 'Mobile (375px)' : 'Desktop (600px)' }}
                   </p>
+                  <!-- Przycisk do dodania pierwszego bloku -->
+                  <v-btn 
+                    color="primary"
+                    size="large"
+                    class="mt-4"
+                    @click="showAddBlockMenu($event, 0)"
+                  >
+                    <v-icon left>mdi-plus</v-icon>
+                    Dodaj pierwszy blok
+                  </v-btn>
                 </div>
 
+                <!-- KONTENER BLOKÓW - Lista wszystkich dodanych bloków -->
                 <div class="blocks-container">
+                <!-- 
+                  WRAPPER BLOKU - Każdy blok zawiera:
+                  1. Przycisk plus na górze (dodanie bloku powyżej)
+                  2. Główny blok z zawartością
+                  3. Przycisk plus na dole (dodanie bloku poniżej)
+                -->
                 <div 
                   v-for="(block, index) in emailBlocks" 
                   :key="block.id"
-                  :class="['email-block', { 'selected': selectedBlockId === block.id }]"
-                  @click="selectBlock(block.id)"
-                  draggable="true"
-                  @dragstart="onBlockDragStart($event, index)"
-                  @dragover.prevent
-                  @drop="onBlockDrop($event, index)"
+                  class="block-wrapper"
                 >
-                  <div class="block-controls">
+                  <!-- PRZYCISK PLUS GÓRA - Dodaje nowy blok powyżej aktualnego -->
+                  <div 
+                    class="add-block-button add-block-top"
+                    @click="showAddBlockMenu($event, index)"
+                  >
                     <v-btn 
                       icon 
-                      size="x-small" 
-                      color="error" 
-                      @click.stop="removeBlock(index)"
+                      size="small" 
+                      color="primary"
+                      variant="outlined"
                     >
-                      <v-icon>mdi-close</v-icon>
-                    </v-btn>
-                    <v-btn 
-                      icon 
-                      size="x-small" 
-                      color="primary" 
-                      @click.stop="duplicateBlock(index)"
-                    >
-                      <v-icon>mdi-content-copy</v-icon>
-                    </v-btn>
-                    <v-btn 
-                      icon 
-                      size="x-small" 
-                      color="grey" 
-                      style="cursor: grab;"
-                      @mousedown.stop
-                    >
-                      <v-icon>mdi-drag-vertical</v-icon>
+                      <v-icon>mdi-plus</v-icon>
                     </v-btn>
                   </div>
 
-                  <!-- Renderowanie bloku w zależności od typu -->
-                  <component 
-                    :is="getBlockComponent(block.type)" 
-                    :block="block"
-                    @update="updateBlock"
-                  />
+                  <!-- 
+                    GŁÓWNY BLOK - Zawiera:
+                    - Ramkę z hover/select stanami
+                    - Kontrolki akcji (usuń, duplikuj, przeciągnij)
+                    - Właściwą zawartość bloku (TextBlock, ButtonBlock itp.)
+                    - Marginesy zastosowane jako padding (ramka obejmuje marginesy)
+                  -->
+                  <div 
+                    :class="['email-block', { 'selected': selectedBlockId === block.id }]"
+                    @click="selectBlock(block.id)"
+                    draggable="true"
+                    @dragstart="onBlockDragStart($event, index)"
+                    @dragover.prevent
+                    @drop="onBlockDrop($event, index)"
+                  >
+                    <div class="block-controls">
+                      <v-btn 
+                        icon 
+                        size="x-small" 
+                        color="error" 
+                        @click.stop="removeBlock(index)"
+                      >
+                        <v-icon>mdi-close</v-icon>
+                      </v-btn>
+                      <v-btn 
+                        icon 
+                        size="x-small" 
+                        color="primary" 
+                        @click.stop="duplicateBlock(index)"
+                      >
+                        <v-icon>mdi-content-copy</v-icon>
+                      </v-btn>
+                      <v-btn 
+                        icon 
+                        size="x-small" 
+                        color="grey" 
+                        style="cursor: grab;"
+                        @mousedown.stop
+                      >
+                        <v-icon>mdi-drag-vertical</v-icon>
+                      </v-btn>
+                    </div>
+
+                    <!-- Kontener z marginesami wewnątrz ramki -->
+                    <div 
+                      class="block-content-wrapper"
+                      :style="{
+                        paddingTop: block.style.marginTop + 'px',
+                        paddingBottom: block.style.marginBottom + 'px'
+                      }"
+                    >
+                      <!-- Renderowanie bloku w zależności od typu -->
+                      <component 
+                        :is="getBlockComponent(block.type)" 
+                        :block="block"
+                        @update="updateBlock"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Przycisk dodania bloku poniżej -->
+                  <div 
+                    class="add-block-button add-block-bottom"
+                    @click="showAddBlockMenu($event, index + 1)"
+                  >
+                    <v-btn 
+                      icon 
+                      size="small" 
+                      color="primary"
+                      variant="outlined"
+                    >
+                      <v-icon>mdi-plus</v-icon>
+                    </v-btn>
+                  </div>
                 </div>
               </div>
             </div>
@@ -153,62 +248,73 @@
           </v-card>
         </v-col>
 
-        <!-- Panel właściwości wybranego bloku -->
+        <!-- PANEL WŁAŚCIWOŚCI - Prawy panel do edycji wybranego bloku -->
         <v-col cols="4" class="properties-panel">
-          <v-card class="pa-4 h-100">
-            <h4 class="mb-3">Właściwości</h4>
-            <v-divider class="mb-3"></v-divider>
-
-            <div v-if="selectedBlock">
-              <h5 class="mb-3">{{ getBlockTypeName(selectedBlock.type) }}</h5>
-              
-              <!-- Właściwości wspólne dla wszystkich bloków -->
-              <div class="mb-4">
-                <h6 class="text-caption mb-2">OGÓLNE</h6>
-                
-                <v-text-field
-                  v-model="selectedBlock.style.marginTop"
-                  label="Margines góra (px)"
-                  type="number"
-                  variant="outlined"
-                  density="compact"
-                  class="mb-2"
-                  @input="updateSelectedBlock"
-                ></v-text-field>
-
-                <v-text-field
-                  v-model="selectedBlock.style.marginBottom"
-                  label="Margines dół (px)"
-                  type="number"
-                  variant="outlined"
-                  density="compact"
-                  class="mb-2"
-                  @input="updateSelectedBlock"
-                ></v-text-field>
-
-                <v-select
-                  v-model="selectedBlock.style.textAlign"
-                  :items="alignOptions"
-                  label="Wyrównanie"
-                  variant="outlined"
-                  density="compact"
-                  class="mb-2"
-                  @update:model-value="updateSelectedBlock"
-                ></v-select>
-              </div>
-
-              <!-- Właściwości specyficzne dla typu bloku -->
-              <component 
-                :is="getPropertiesComponent(selectedBlock.type)" 
-                :block="selectedBlock"
-                @update="updateSelectedBlock"
-              />
-
+          <v-card class="h-100 d-flex flex-column">
+            <!-- Stały nagłówek sekcji - nie przewija się -->
+            <div class="properties-header pa-4 pb-2">
+              <h4 class="mb-3">Właściwości</h4>
+              <v-divider></v-divider>
             </div>
 
-            <div v-else class="text-center text-grey">
-              <v-icon size="48" class="mb-2">mdi-cursor-default-click</v-icon>
-              <p>Kliknij na blok aby edytować jego właściwości</p>
+            <!-- 
+              PRZEWIJALNA ZAWARTOŚĆ WŁAŚCIWOŚCI
+              - Automatyczne przewijanie gdy właściwości się nie mieszczą
+              - Dzieli się na sekcję ogólną i specyficzną dla typu bloku
+            -->
+            <div class="properties-content flex-1-1 overflow-y-auto pa-4 pt-2">
+              <!-- Gdy blok jest wybrany - pokazujemy jego właściwości -->
+              <div v-if="selectedBlock">
+                <h5 class="mb-3">{{ getBlockTypeName(selectedBlock.type) }}</h5>
+                
+                <!-- WŁAŚCIWOŚCI OGÓLNE - wspólne dla wszystkich bloków (marginesy, wyrównanie) -->
+                <div class="mb-4">
+                  <h6 class="text-caption mb-2">OGÓLNE</h6>
+                  
+                  <v-text-field
+                    v-model="selectedBlock.style.marginTop"
+                    label="Margines góra (px)"
+                    type="number"
+                    variant="outlined"
+                    density="compact"
+                    class="mb-2"
+                    @update:model-value="updateSelectedBlock"
+                  ></v-text-field>
+
+                  <v-text-field
+                    v-model="selectedBlock.style.marginBottom"
+                    label="Margines dół (px)"
+                    type="number"
+                    variant="outlined"
+                    density="compact"
+                    class="mb-2"
+                    @update:model-value="updateSelectedBlock"
+                  ></v-text-field>
+
+                  <v-select
+                    v-model="selectedBlock.style.textAlign"
+                    :items="alignOptions"
+                    label="Wyrównanie"
+                    variant="outlined"
+                    density="compact"
+                    class="mb-2"
+                    @update:model-value="updateSelectedBlock"
+                  ></v-select>
+                </div>
+
+                <!-- Właściwości specyficzne dla typu bloku -->
+                <component 
+                  :is="getPropertiesComponent(selectedBlock.type)" 
+                  :block="selectedBlock"
+                  @update="updateSelectedBlock"
+                />
+
+              </div>
+
+              <div v-else class="text-center text-grey">
+                <v-icon size="48" class="mb-2">mdi-cursor-default-click</v-icon>
+                <p>Kliknij na blok aby edytować jego właściwości</p>
+              </div>
             </div>
           </v-card>
         </v-col>
@@ -238,7 +344,7 @@
               previewMode === 'mobile' ? 'mobile-preview' : 'desktop-preview'
             ]"
           >
-            <div v-html="generatedHtml"></div>
+            <div class="html-content-preview" v-html="generatedHtml"></div>
           </div>
         </v-card-text>
         <v-card-actions>
@@ -401,6 +507,27 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Menu wyboru typu bloku -->
+    <v-menu
+      v-model="addBlockMenuVisible"
+      :activator="addBlockMenuActivator"
+      offset-y
+      close-on-content-click
+    >
+      <v-list>
+        <v-list-item
+          v-for="blockType in availableBlocks"
+          :key="blockType.type"
+          @click="addBlockAtPosition(blockType.type, addBlockPosition)"
+        >
+          <template v-slot:prepend>
+            <v-icon class="mr-3">{{ blockType.icon }}</v-icon>
+          </template>
+          <v-list-item-title>{{ blockType.name }}</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
   </div>
 </template>
 
@@ -434,15 +561,20 @@ export default {
   },
   data() {
     return {
-      selectedBlockId: null,
-      previewDialog: false,
-      generatedHtml: '',
-      emailBlocks: [],
-      nextBlockId: 1,
-      draggedBlockIndex: null,
-      canvasMode: 'desktop', // 'desktop' lub 'mobile'
-      previewMode: 'desktop', // Tryb dla dialogu podglądu
+      // === STAN EDYTORA ===
+      selectedBlockId: null,          // ID aktualnie wybranego bloku (do edycji właściwości)
+      previewDialog: false,           // Czy dialog podglądu HTML jest otwarty
+      generatedHtml: '',              // Wygenerowany kod HTML e-maila
+      emailBlocks: [],                // Tablica wszystkich bloków w e-mailu
+      nextBlockId: 1,                 // Licznik do generowania unikalnych ID bloków
+      draggedBlockIndex: null,        // Indeks przeciąganego bloku (dla drag & drop)
       
+      // === TRYBY WYŚWIETLANIA ===
+      canvasMode: 'desktop',          // Tryb canvas: 'desktop' (600px) lub 'mobile' (375px)
+      previewMode: 'desktop',         // Tryb dla dialogu podglądu HTML
+      
+      // === DOSTĘPNE TYPY BLOKÓW ===
+      // Definiuje jakie bloki można dodać do e-maila
       availableBlocks: [
         { type: 'text', name: 'Tekst', icon: 'mdi-format-text' },
         { type: 'button', name: 'Przycisk', icon: 'mdi-button-cursor' },
@@ -477,7 +609,12 @@ export default {
         'Wydarzenie',
         'Transakcyjny',
         'Inne'
-      ]
+      ],
+
+      // Menu dodawania bloków
+      addBlockMenuVisible: false,
+      addBlockMenuActivator: null,
+      addBlockPosition: 0
     };
   },
 
@@ -494,13 +631,26 @@ export default {
       this.selectBlock(newBlock.id);
     },
 
+    showAddBlockMenu(event, position) {
+      this.addBlockPosition = position;
+      this.addBlockMenuActivator = event.target;
+      this.addBlockMenuVisible = true;
+    },
+
+    addBlockAtPosition(type, position) {
+      const newBlock = this.createBlock(type);
+      this.emailBlocks.splice(position, 0, newBlock);
+      this.selectBlock(newBlock.id);
+      this.addBlockMenuVisible = false;
+    },
+
     createBlock(type) {
       const baseBlock = {
         id: this.nextBlockId++,
         type,
         style: {
-          marginTop: 16,
-          marginBottom: 16,
+          marginTop: 0,
+          marginBottom: 0,
           textAlign: 'left'
         }
       };
@@ -514,7 +664,8 @@ export default {
               fontSize: 16,
               color: '#333333',
               fontWeight: 'normal',
-              fontStyle: 'normal'
+              fontStyle: 'normal',
+              fontFamily: 'Arial, sans-serif'
             }
           };
 
@@ -576,8 +727,15 @@ export default {
     },
 
     updateSelectedBlock() {
-      // Wymusza reaktywność przy zmianie właściwości
-      this.$forceUpdate();
+      if (this.selectedBlock) {
+        // Znajdź indeks wybranego bloku i zastąp go nowym obiektem
+        const blockIndex = this.emailBlocks.findIndex(b => b.id === this.selectedBlockId);
+        if (blockIndex !== -1) {
+          // Tworzymy głęboką kopię aby wywołać reaktywność Vue
+          const updatedBlock = JSON.parse(JSON.stringify(this.selectedBlock));
+          this.emailBlocks.splice(blockIndex, 1, updatedBlock);
+        }
+      }
     },
 
     removeBlock(index) {
@@ -732,7 +890,7 @@ export default {
         case 'text':
           return `
             <div class="mobile-padding" style="padding: 0 20px; ${style}">
-              <p class="mobile-text" style="font-size: ${block.content.fontSize}px; color: ${block.content.color}; font-weight: ${block.content.fontWeight}; font-style: ${block.content.fontStyle}; margin: 0; line-height: 1.5;">
+              <p class="mobile-text" style="font-size: ${block.content.fontSize}px; color: ${block.content.color}; font-weight: ${block.content.fontWeight}; font-style: ${block.content.fontStyle}; font-family: ${block.content.fontFamily || 'Arial, sans-serif'}; margin: 0; line-height: 1.5;">
                 ${block.content.text}
               </p>
             </div>
@@ -1038,12 +1196,41 @@ export default {
 .canvas-panel,
 .properties-panel {
   height: 100vh;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 .canvas-panel {
   display: flex;
   flex-direction: column;
+}
+
+.properties-header {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.properties-content {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 120px);
+}
+
+.properties-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.properties-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.properties-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.properties-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .canvas-panel .v-card {
@@ -1070,16 +1257,13 @@ export default {
 }
 
 .canvas-wrapper {
-  display: flex;
   justify-content: center;
   width: 100%;
   background: #f8f9fa;
   border-radius: 8px;
   padding: 20px;
-  min-height: 500px;
-  max-height: calc(100vh - 200px);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: auto;
+
 }
 
 .email-canvas {
@@ -1133,14 +1317,57 @@ export default {
   position: relative;
 }
 
+.block-wrapper {
+  position: relative;
+  margin-bottom: 0;
+}
+
+.add-block-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  height: 16px;
+  position: relative;
+  z-index: 5;
+}
+
+.add-block-top {
+  margin-bottom: -8px;
+}
+
+.add-block-bottom {
+  margin-top: -8px;
+}
+
+.block-wrapper:hover .add-block-button,
+.add-block-button:hover {
+  opacity: 1;
+}
+
+.add-block-button .v-btn {
+  background-color: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.add-block-button .v-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
 .email-block {
   border: 2px solid transparent;
   border-radius: 4px;
-  margin-bottom: 8px;
-  padding: 8px;
+  padding: 4px;
   position: relative;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+}
+
+.block-content-wrapper {
+  width: 100%;
+  position: relative;
 }
 
 .email-block:hover {
@@ -1291,6 +1518,57 @@ export default {
 }
 
 .canvas-wrapper.scrollable::before {
-  display: block;
+  display: none;
+}
+
+/* Nadpisanie stylów Vuetify dla bloków e-maila */
+.email-canvas .text-block p {
+  font-family: Arial, sans-serif !important;
+  font-weight: var(--font-weight) !important;
+  font-style: var(--font-style) !important;
+}
+
+/* Resetowanie stylów Vuetify w kontekście edytora */
+.block-email-editor .v-application__wrap .text-block p {
+  font-family: Arial, sans-serif !important;
+}
+
+/* Style dla podglądu HTML - nadpisanie Vuetify */
+.html-content-preview {
+  font-family: initial !important;
+}
+
+.html-content-preview * {
+  font-family: unset !important;
+}
+
+.html-content-preview p {
+  font-family: unset !important;
+  font-weight: unset !important;
+  font-style: unset !important;
+}
+
+.html-content-preview .mobile-text {
+  font-family: unset !important;
+}
+
+/* Bardzo agresywne nadpisanie Vuetify */
+.v-application .v-dialog .html-content-preview p {
+  font-family: unset !important;
+}
+
+.v-application .html-content-preview * {
+  font-family: unset !important;
+}
+
+.v-app .html-content-preview p {
+  font-family: unset !important;
+}
+
+/* Reset dla wszystkich możliwych selektorów Vuetify */
+.v-application .html-content-preview p,
+.v-application .html-content-preview span,
+.v-application .html-content-preview div {
+  font-family: unset !important;
 }
 </style>

@@ -1,5 +1,27 @@
 <template>
+  <!-- 
+    KOMPONENT BLOKU OBRAZKA
+    
+    Renderuje obrazek z responsywnym zachowaniem i konfigurowalnymi wymiarami.
+    Obsługuje zaokrąglone rogi i automatyczne dopasowanie rozmiaru.
+    
+    WŁAŚCIWOŚCI BLOKU:
+    - block.content.src - URL źródła obrazka
+    - block.content.alt - tekst alternatywny (dostępność)
+    - block.content.width - szerokość w pikselach
+    - block.content.height - wysokość w pikselach
+    - block.content.borderRadius - zaokrąglenie rogów (opcjonalne)
+    
+    RESPONSYWNOŚĆ:
+    - maxWidth: 100% zapewnia responsywność
+    - objectFit: cover zachowuje proporcje przy przycinaniu
+  -->
   <div class="image-block">
+    <!-- 
+      OBRAZEK Z DYNAMICZNYMI STYLAMI
+      objectFit: cover - przycina obrazek zachowując proporcje
+      maxWidth: 100% - responsywność na mniejszych ekranach
+    -->
     <img 
       :src="block.content.src"
       :alt="block.content.alt"
@@ -18,6 +40,7 @@
 export default {
   name: 'ImageBlock',
   props: {
+    // Obiekt bloku z konfiguracją obrazka i źródłem
     block: {
       type: Object,
       required: true
