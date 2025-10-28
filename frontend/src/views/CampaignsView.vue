@@ -4,7 +4,7 @@
       <template v-if="isEditing || isCreating">
         <v-col cols="12">
           <CampaignEdit 
-            :campaign="isCreating ? {} : selectedCampaign"
+            :campaign-id="isCreating ? null : selectedCampaign?.id"
             @save="isCreating ? submitCampaign() : handleEditSave()"
             @cancel="isCreating ? cancelCreate() : (isEditing = false)"
           />
@@ -91,8 +91,11 @@
     color: #555 !important; /* ciemniejsza szarość dla daty */
   }
   </style>
+
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+const router = useRouter();
 import CampaignDetails from '../components/CampaignSummary.vue';
 import CampaignEdit from '../components/CampaignEdit.vue';
 import { Campaigns } from '../services/campaigns.js';
@@ -107,7 +110,7 @@ const deleteDialog = ref(false);
 const campaignToDelete = ref(null);
 
 onMounted(async () => {
-  campaigns.value = await Campaigns.fetchAll();
+  campaigns.value = await Campaigns.getList();
   if (campaigns.value.length > 0) {
     selectedCampaign.value = campaigns.value[0];
   }
@@ -131,7 +134,7 @@ function selectCampaign(campaign) {
 }
 
 function addCampaign() {
-  isCreating.value = true;
+  router.push({ name: 'EmailEditor' });
 }
 
 function cancelCreate() {
@@ -150,7 +153,7 @@ function submitCampaign(campaignData) {
   
   Campaigns.create(payload)
     .then(async () => {
-      campaigns.value = await Campaigns.fetchAll();
+      campaigns.value = await Campaigns.getList();
       isCreating.value = false;
       // Wybierz nowo dodaną kampanię
       if (campaigns.value.length > 0) {
@@ -171,7 +174,7 @@ async function deleteCampaign() {
   if (!campaignToDelete.value) return;
   try {
     await Campaigns.delete(campaignToDelete.value.id);
-    campaigns.value = await Campaigns.fetchAll();
+    campaigns.value = await Campaigns.getList();
     if (selectedCampaign.value?.id === campaignToDelete.value.id) {
       selectedCampaign.value = null;
     }
@@ -182,18 +185,29 @@ async function deleteCampaign() {
   campaignToDelete.value = null;
 }
 
-function startEditing() {
-  isEditing.value = true;
-}
-
 async function handleEditSave(updatedCampaign) {
   try {
-    await Campaigns.update(updatedCampaign.id, updatedCampaign);
-    campaigns.value = await Campaigns.fetchAll();
-    selectedCampaign.value = updatedCampaign;
-    isEditing.value = false;
+  await Campaigns.update(updatedCampaign.id, updatedCampaign);
+  campaigns.value = await Campaigns.getList();
+  selectedCampaign.value = updatedCampaign;
+  isEditing.value = false;
   } catch (err) {
     alert('Wystąpił błąd podczas zapisywania zmian: ' + (err?.response?.data?.message || err.message));
   }
 }
-</script>
+  </script>
+
+<style>
+  .selected-campaign {
+    background-color: #e0e0e0 !important; /* jasnoszare tło */
+    color: #222 !important; /* ciemny tekst dla kontrastu */
+  }
+
+  .selected-campaign .text-subtitle-1 {
+    color: #222 !important;
+  }
+
+  .selected-campaign .text-caption {
+    color: #555 !important; /* ciemniejsza szarość dla daty */
+  }
+</style>

@@ -1,0 +1,1296 @@
+<template>
+  <div class="block-email-editor">
+    <v-container fluid class="pa-0">
+      <v-row no-gutters>
+        <!-- Panel blokow do dodawania -->
+        <v-col cols="2" class="blocks-panel">
+          <v-card class="pa-3 h-100">
+            <!-- Sekcja szablonów -->
+            <h4 class="mb-3">Szablony</h4>
+            <v-btn 
+              color="primary" 
+              variant="outlined" 
+              size="small" 
+              block 
+              class="mb-3"
+              @click="showTemplateDialog = true"
+            >
+              <v-icon class="mr-2">mdi-file-document-multiple</v-icon>
+              Wybierz szablon
+            </v-btn>
+            <v-divider class="mb-3"></v-divider>
+            
+            <h4 class="mb-3">Bloki</h4>
+            <v-divider class="mb-3"></v-divider>
+            
+            <div class="block-item" 
+                 v-for="blockType in availableBlocks" 
+                 :key="blockType.type"
+                 @click="addBlock(blockType.type)"
+                 draggable="true"
+                 @dragstart="onDragStart($event, blockType.type)"
+            >
+              <v-icon class="mr-2" size="small">{{ blockType.icon }}</v-icon>
+              {{ blockType.name }}
+            </div>
+          </v-card>
+        </v-col>
+
+        <!-- Canvas - obszar konstrukcji emaila -->
+        <v-col cols="6" class="canvas-panel">
+          <v-card class="pa-4 h-100">
+            <div class="d-flex justify-space-between align-center mb-4">
+              <h4>Szablon e-maila</h4>
+              <div class="d-flex align-center gap-2">
+                <!-- Przełącznik Desktop/Mobile -->
+                <v-btn-toggle 
+                  v-model="canvasMode" 
+                  mandatory 
+                  density="compact"
+                  class="mr-3"
+                >
+                  <v-btn value="desktop" size="small">
+                    <v-icon>mdi-monitor</v-icon>
+                    Desktop
+                  </v-btn>
+                  <v-btn value="mobile" size="small">
+                    <v-icon>mdi-cellphone</v-icon>
+                    Mobile
+                  </v-btn>
+                </v-btn-toggle>
+
+                <v-btn 
+                  @click="showSaveTemplateDialog = true" 
+                  color="success" 
+                  size="small"
+                  variant="outlined"
+                  :disabled="emailBlocks.length === 0"
+                  class="mr-2"
+                >
+                  <v-icon left>mdi-content-save</v-icon>
+                  Zapisz jako szablon
+                </v-btn>
+                
+                <v-btn @click="generatePreview" color="primary" size="small" class="mr-2">
+                  <v-icon left>mdi-eye</v-icon>
+                  Podgląd HTML
+                </v-btn>
+                <v-btn @click="clearAll" color="error" size="small" variant="outlined">
+                  <v-icon left>mdi-delete</v-icon>
+                  Wyczyść
+                </v-btn>
+              </div>
+            </div>
+
+            <div class="canvas-wrapper">
+              <div 
+                :class="[
+                  'email-canvas',
+                  canvasMode === 'mobile' ? 'mobile-canvas' : 'desktop-canvas'
+                ]" 
+                @drop="onCanvasDrop" 
+                @dragover.prevent 
+                @dragenter.prevent
+              >
+                
+                <div v-if="emailBlocks.length === 0" class="empty-canvas">
+                  <v-icon size="64" color="grey-lighten-1">mdi-email-plus-outline</v-icon>
+                  <p class="text-grey mt-2">Przeciągnij bloki tutaj lub kliknij aby dodać</p>
+                  <p class="text-caption text-grey">
+                    Tryb: {{ canvasMode === 'mobile' ? 'Mobile (375px)' : 'Desktop (600px)' }}
+                  </p>
+                </div>
+
+                <div class="blocks-container">
+                <div 
+                  v-for="(block, index) in emailBlocks" 
+                  :key="block.id"
+                  :class="['email-block', { 'selected': selectedBlockId === block.id }]"
+                  @click="selectBlock(block.id)"
+                  draggable="true"
+                  @dragstart="onBlockDragStart($event, index)"
+                  @dragover.prevent
+                  @drop="onBlockDrop($event, index)"
+                >
+                  <div class="block-controls">
+                    <v-btn 
+                      icon 
+                      size="x-small" 
+                      color="error" 
+                      @click.stop="removeBlock(index)"
+                    >
+                      <v-icon>mdi-close</v-icon>
+                    </v-btn>
+                    <v-btn 
+                      icon 
+                      size="x-small" 
+                      color="primary" 
+                      @click.stop="duplicateBlock(index)"
+                    >
+                      <v-icon>mdi-content-copy</v-icon>
+                    </v-btn>
+                    <v-btn 
+                      icon 
+                      size="x-small" 
+                      color="grey" 
+                      style="cursor: grab;"
+                      @mousedown.stop
+                    >
+                      <v-icon>mdi-drag-vertical</v-icon>
+                    </v-btn>
+                  </div>
+
+                  <!-- Renderowanie bloku w zależności od typu -->
+                  <component 
+                    :is="getBlockComponent(block.type)" 
+                    :block="block"
+                    @update="updateBlock"
+                  />
+                </div>
+              </div>
+            </div>
+            </div>
+          </v-card>
+        </v-col>
+
+        <!-- Panel właściwości wybranego bloku -->
+        <v-col cols="4" class="properties-panel">
+          <v-card class="pa-4 h-100">
+            <h4 class="mb-3">Właściwości</h4>
+            <v-divider class="mb-3"></v-divider>
+
+            <div v-if="selectedBlock">
+              <h5 class="mb-3">{{ getBlockTypeName(selectedBlock.type) }}</h5>
+              
+              <!-- Właściwości wspólne dla wszystkich bloków -->
+              <div class="mb-4">
+                <h6 class="text-caption mb-2">OGÓLNE</h6>
+                
+                <v-text-field
+                  v-model="selectedBlock.style.marginTop"
+                  label="Margines góra (px)"
+                  type="number"
+                  variant="outlined"
+                  density="compact"
+                  class="mb-2"
+                  @input="updateSelectedBlock"
+                ></v-text-field>
+
+                <v-text-field
+                  v-model="selectedBlock.style.marginBottom"
+                  label="Margines dół (px)"
+                  type="number"
+                  variant="outlined"
+                  density="compact"
+                  class="mb-2"
+                  @input="updateSelectedBlock"
+                ></v-text-field>
+
+                <v-select
+                  v-model="selectedBlock.style.textAlign"
+                  :items="alignOptions"
+                  label="Wyrównanie"
+                  variant="outlined"
+                  density="compact"
+                  class="mb-2"
+                  @update:model-value="updateSelectedBlock"
+                ></v-select>
+              </div>
+
+              <!-- Właściwości specyficzne dla typu bloku -->
+              <component 
+                :is="getPropertiesComponent(selectedBlock.type)" 
+                :block="selectedBlock"
+                @update="updateSelectedBlock"
+              />
+
+            </div>
+
+            <div v-else class="text-center text-grey">
+              <v-icon size="48" class="mb-2">mdi-cursor-default-click</v-icon>
+              <p>Kliknij na blok aby edytować jego właściwości</p>
+            </div>
+          </v-card>
+        </v-col>
+      </v-row>
+    </v-container>
+
+    <!-- Dialog podglądu -->
+    <v-dialog v-model="previewDialog" :max-width="previewMode === 'mobile' ? '450px' : '800px'">
+      <v-card>
+        <v-card-title class="d-flex justify-space-between align-center">
+          <span>Podgląd e-maila</span>
+          <v-btn-toggle v-model="previewMode" mandatory density="compact">
+            <v-btn value="desktop" size="small">
+              <v-icon>mdi-monitor</v-icon>
+              Desktop
+            </v-btn>
+            <v-btn value="mobile" size="small">
+              <v-icon>mdi-cellphone</v-icon>
+              Mobile
+            </v-btn>
+          </v-btn-toggle>
+        </v-card-title>
+        <v-card-text>
+          <div 
+            :class="[
+              'email-preview',
+              previewMode === 'mobile' ? 'mobile-preview' : 'desktop-preview'
+            ]"
+          >
+            <div v-html="generatedHtml"></div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn @click="copyHtml" color="primary">
+            <v-icon left>mdi-content-copy</v-icon>
+            Skopiuj HTML
+          </v-btn>
+          <v-btn @click="exportAsImage" color="secondary" class="ml-2">
+            <v-icon left>mdi-camera</v-icon>
+            Eksportuj jako obraz
+          </v-btn>
+          <v-spacer></v-spacer>
+          <v-btn @click="previewDialog = false">Zamknij</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Dialog wyboru szablonów -->
+    <v-dialog v-model="showTemplateDialog" max-width="900px" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-file-document-multiple</v-icon>
+          Wybierz szablon e-maila
+        </v-card-title>
+        <v-divider></v-divider>
+        
+        <v-card-text class="pa-4">
+          <v-row>
+            <v-col 
+              v-for="template in availableTemplates" 
+              :key="template.id"
+              cols="12" 
+              md="6" 
+              lg="4"
+            >
+              <v-card 
+                class="template-card" 
+                :class="{ 'template-selected': selectedTemplate === template.id }"
+                @click="selectTemplate(template)"
+                elevation="2"
+                hover
+              >
+                <v-img 
+                  :src="template.thumbnail" 
+                  height="200" 
+                  cover
+                  class="template-thumbnail"
+                >
+                  <div class="template-overlay">
+                    <v-icon 
+                      v-if="selectedTemplate === template.id"
+                      color="primary" 
+                      size="large"
+                    >
+                      mdi-check-circle
+                    </v-icon>
+                  </div>
+                </v-img>
+                
+                <v-card-title class="text-subtitle-1 pa-3">
+                  {{ template.name }}
+                </v-card-title>
+                
+                <v-card-subtitle class="px-3 pb-2">
+                  {{ template.description }}
+                </v-card-subtitle>
+                
+                <v-card-text class="px-3 pt-0">
+                  <v-chip 
+                    v-for="tag in template.tags" 
+                    :key="tag"
+                    size="small" 
+                    class="mr-1 mb-1"
+                    variant="outlined"
+                  >
+                    {{ tag }}
+                  </v-chip>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </v-card-text>
+        
+        <v-divider></v-divider>
+        <v-card-actions class="pa-4">
+          <v-btn 
+            color="primary" 
+            :disabled="!selectedTemplate"
+            @click="loadSelectedTemplate"
+          >
+            Użyj szablonu
+          </v-btn>
+          <v-spacer></v-spacer>
+          <v-btn @click="showTemplateDialog = false">Anuluj</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Dialog zapisywania szablonu -->
+    <v-dialog v-model="showSaveTemplateDialog" max-width="500px">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-content-save</v-icon>
+          Zapisz jako szablon
+        </v-card-title>
+        <v-divider></v-divider>
+        
+        <v-form ref="saveTemplateForm" v-model="saveTemplateValid">
+          <v-card-text class="pa-4">
+            <v-text-field
+              v-model="newTemplate.name"
+              label="Nazwa szablonu"
+              :rules="[v => !!v || 'Nazwa jest wymagana']"
+              required
+              variant="outlined"
+              class="mb-3"
+            ></v-text-field>
+            
+            <v-textarea
+              v-model="newTemplate.description"
+              label="Opis szablonu"
+              :rules="[v => !!v || 'Opis jest wymagany']"
+              required
+              variant="outlined"
+              rows="3"
+              class="mb-3"
+            ></v-textarea>
+            
+            <v-combobox
+              v-model="newTemplate.tags"
+              label="Tagi (naciśnij Enter, aby dodać)"
+              multiple
+              chips
+              variant="outlined"
+              class="mb-3"
+            ></v-combobox>
+            
+            <v-select
+              v-model="newTemplate.category"
+              label="Kategoria"
+              :items="templateCategories"
+              :rules="[v => !!v || 'Kategoria jest wymagana']"
+              required
+              variant="outlined"
+            ></v-select>
+          </v-card-text>
+        </v-form>
+        
+        <v-divider></v-divider>
+        <v-card-actions class="pa-4">
+          <v-btn 
+            color="primary" 
+            :disabled="!saveTemplateValid"
+            @click="saveAsTemplate"
+          >
+            Zapisz szablon
+          </v-btn>
+          <v-spacer></v-spacer>
+          <v-btn @click="closeSaveTemplateDialog">Anuluj</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </div>
+</template>
+
+<script>
+// Importy komponentów bloków
+import TextBlock from './blocks/TextBlock.vue';
+import ButtonBlock from './blocks/ButtonBlock.vue';
+import ImageBlock from './blocks/ImageBlock.vue';
+import SpacerBlock from './blocks/SpacerBlock.vue';
+
+// Importy komponentów właściwości
+import TextProperties from './properties/TextProperties.vue';
+import ButtonProperties from './properties/ButtonProperties.vue';
+import ImageProperties from './properties/ImageProperties.vue';
+import SpacerProperties from './properties/SpacerProperties.vue';
+
+// Import szablonów
+import templatesIndex from '@/templates/index.json';
+
+export default {
+  name: 'BlockEmailEditor',
+  components: {
+    TextBlock,
+    ButtonBlock,
+    ImageBlock,
+    SpacerBlock,
+    TextProperties,
+    ButtonProperties,
+    ImageProperties,
+    SpacerProperties
+  },
+  data() {
+    return {
+      selectedBlockId: null,
+      previewDialog: false,
+      generatedHtml: '',
+      emailBlocks: [],
+      nextBlockId: 1,
+      draggedBlockIndex: null,
+      canvasMode: 'desktop', // 'desktop' lub 'mobile'
+      previewMode: 'desktop', // Tryb dla dialogu podglądu
+      
+      availableBlocks: [
+        { type: 'text', name: 'Tekst', icon: 'mdi-format-text' },
+        { type: 'button', name: 'Przycisk', icon: 'mdi-button-cursor' },
+        { type: 'image', name: 'Obraz', icon: 'mdi-image' },
+        { type: 'spacer', name: 'Odstęp', icon: 'mdi-minus' }
+      ],
+
+      alignOptions: [
+        { title: 'Do lewej', value: 'left' },
+        { title: 'Do środka', value: 'center' },
+        { title: 'Do prawej', value: 'right' }
+      ],
+
+      // Szablony
+      showTemplateDialog: false,
+      selectedTemplate: null,
+      availableTemplates: [...templatesIndex],
+
+      // Zapisywanie szablonów
+      showSaveTemplateDialog: false,
+      saveTemplateValid: false,
+      newTemplate: {
+        name: '',
+        description: '',
+        category: '',
+        tags: []
+      },
+      templateCategories: [
+        'Newsletter',
+        'Promocja',
+        'Powiadomienie',
+        'Wydarzenie',
+        'Transakcyjny',
+        'Inne'
+      ]
+    };
+  },
+
+  computed: {
+    selectedBlock() {
+      return this.emailBlocks.find(block => block.id === this.selectedBlockId);
+    }
+  },
+
+  methods: {
+    addBlock(type) {
+      const newBlock = this.createBlock(type);
+      this.emailBlocks.push(newBlock);
+      this.selectBlock(newBlock.id);
+    },
+
+    createBlock(type) {
+      const baseBlock = {
+        id: this.nextBlockId++,
+        type,
+        style: {
+          marginTop: 16,
+          marginBottom: 16,
+          textAlign: 'left'
+        }
+      };
+
+      switch (type) {
+        case 'text':
+          return {
+            ...baseBlock,
+            content: {
+              text: 'Wprowadź swój tekst tutaj',
+              fontSize: 16,
+              color: '#333333',
+              fontWeight: 'normal',
+              fontStyle: 'normal'
+            }
+          };
+
+        case 'button':
+          return {
+            ...baseBlock,
+            content: {
+              text: 'Kliknij tutaj',
+              url: 'https://example.com',
+              backgroundColor: '#007bff',
+              textColor: '#ffffff',
+              borderRadius: 4,
+              padding: '12px 24px'
+            },
+            style: {
+              ...baseBlock.style,
+              textAlign: 'center'
+            }
+          };
+
+        case 'image':
+          return {
+            ...baseBlock,
+            content: {
+              src: 'https://via.placeholder.com/400x200?text=Obraz',
+              alt: 'Opis obrazu',
+              width: 400,
+              height: 200,
+              url: ''
+            },
+            style: {
+              ...baseBlock.style,
+              textAlign: 'center'
+            }
+          };
+
+        case 'spacer':
+          return {
+            ...baseBlock,
+            content: {
+              height: 40
+            }
+          };
+
+        default:
+          return baseBlock;
+      }
+    },
+
+    selectBlock(blockId) {
+      this.selectedBlockId = blockId;
+    },
+
+    updateBlock(blockId, updates) {
+      const blockIndex = this.emailBlocks.findIndex(b => b.id === blockId);
+      if (blockIndex !== -1) {
+        this.emailBlocks[blockIndex] = { ...this.emailBlocks[blockIndex], ...updates };
+      }
+    },
+
+    updateSelectedBlock() {
+      // Wymusza reaktywność przy zmianie właściwości
+      this.$forceUpdate();
+    },
+
+    removeBlock(index) {
+      this.emailBlocks.splice(index, 1);
+      if (this.emailBlocks.length === 0) {
+        this.selectedBlockId = null;
+      }
+    },
+
+    duplicateBlock(index) {
+      const block = this.emailBlocks[index];
+      const duplicated = {
+        ...JSON.parse(JSON.stringify(block)),
+        id: this.nextBlockId++
+      };
+      this.emailBlocks.splice(index + 1, 0, duplicated);
+    },
+
+    clearAll() {
+      this.emailBlocks = [];
+      this.selectedBlockId = null;
+    },
+
+    onDragStart(event, blockType) {
+      event.dataTransfer.setData('blockType', blockType);
+    },
+
+    onCanvasDrop(event) {
+      event.preventDefault();
+      const blockType = event.dataTransfer.getData('blockType');
+      if (blockType) {
+        this.addBlock(blockType);
+      }
+    },
+
+    onBlockDragStart(event, index) {
+      this.draggedBlockIndex = index;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', ''); // Dla kompatybilności
+      
+      // Dodaj klasę CSS do przeciąganego elementu
+      event.target.classList.add('dragging');
+    },
+
+    onBlockDrop(event, targetIndex) {
+      event.preventDefault();
+      
+      // Usuń klasę CSS
+      const draggingElements = document.querySelectorAll('.dragging');
+      draggingElements.forEach(el => el.classList.remove('dragging'));
+      
+      if (this.draggedBlockIndex !== null && this.draggedBlockIndex !== targetIndex) {
+        // Przenieś blok z draggedBlockIndex do targetIndex
+        const draggedBlock = this.emailBlocks[this.draggedBlockIndex];
+        
+        // Usuń z starej pozycji
+        this.emailBlocks.splice(this.draggedBlockIndex, 1);
+        
+        // Wstaw w nowej pozycji
+        const newIndex = this.draggedBlockIndex < targetIndex ? targetIndex - 1 : targetIndex;
+        this.emailBlocks.splice(newIndex, 0, draggedBlock);
+      }
+      
+      this.draggedBlockIndex = null;
+    },
+
+    getBlockComponent(type) {
+      const components = {
+        'text': 'TextBlock',
+        'button': 'ButtonBlock',
+        'image': 'ImageBlock',
+        'spacer': 'SpacerBlock'
+      };
+      return components[type] || 'TextBlock';
+    },
+
+    getPropertiesComponent(type) {
+      const components = {
+        'text': 'TextProperties',
+        'button': 'ButtonProperties',
+        'image': 'ImageProperties',
+        'spacer': 'SpacerProperties'
+      };
+      return components[type] || 'TextProperties';
+    },
+
+    getBlockTypeName(type) {
+      const names = {
+        'text': 'Blok tekstowy',
+        'button': 'Przycisk',
+        'image': 'Obraz',
+        'spacer': 'Odstęp'
+      };
+      return names[type] || 'Nieznany blok';
+    },
+
+    generatePreview() {
+      // Synchronizuj tryb podglądu z trybem canvas
+      this.previewMode = this.canvasMode;
+      this.generatedHtml = this.generateEmailHtml();
+      this.previewDialog = true;
+    },
+
+    generateEmailHtml() {
+      const containerWidth = this.previewMode === 'mobile' ? '375px' : '600px';
+      
+      let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Email Template Preview</title>
+          <style>
+            @media only screen and (max-width: 480px) {
+              .email-container {
+                width: 100% !important;
+                max-width: 100% !important;
+              }
+              .mobile-padding {
+                padding-left: 10px !important;
+                padding-right: 10px !important;
+              }
+              .mobile-text {
+                font-size: 14px !important;
+                line-height: 1.4 !important;
+              }
+            }
+          </style>
+        </head>
+        <body style="margin: 0; padding: 20px; background-color: #f5f5f5; font-family: Arial, sans-serif;">
+          <div class="email-container" style="max-width: ${containerWidth}; margin: 0 auto; background-color: white; border-radius: 8px; overflow: hidden;">
+      `;
+
+      this.emailBlocks.forEach(block => {
+        html += this.renderBlockToHtml(block);
+      });
+
+      html += `
+          </div>
+        </body>
+        </html>
+      `;
+
+      return html;
+    },
+
+    renderBlockToHtml(block) {
+      const style = `margin-top: ${block.style.marginTop}px; margin-bottom: ${block.style.marginBottom}px; text-align: ${block.style.textAlign};`;
+      
+      switch (block.type) {
+        case 'text':
+          return `
+            <div class="mobile-padding" style="padding: 0 20px; ${style}">
+              <p class="mobile-text" style="font-size: ${block.content.fontSize}px; color: ${block.content.color}; font-weight: ${block.content.fontWeight}; font-style: ${block.content.fontStyle}; margin: 0; line-height: 1.5;">
+                ${block.content.text}
+              </p>
+            </div>
+          `;
+
+        case 'button':
+          const buttonLink = block.content.url ? `href="${block.content.url}"` : '';
+          return `
+            <div class="mobile-padding" style="padding: 0 20px; ${style}">
+              <a ${buttonLink} style="display: inline-block; background-color: ${block.content.backgroundColor}; color: ${block.content.textColor}; padding: ${block.content.padding}; border-radius: ${block.content.borderRadius}px; text-decoration: none; font-weight: bold; font-size: 16px; border: none; cursor: pointer;">
+                ${block.content.text}
+              </a>
+            </div>
+          `;
+
+        case 'image':
+          const imageLink = block.content.url ? `<a href="${block.content.url}">` : '';
+          const imageLinkEnd = block.content.url ? `</a>` : '';
+          return `
+            <div class="mobile-padding" style="padding: 0 20px; ${style}">
+              ${imageLink}
+              <img src="${block.content.src}" alt="${block.content.alt}" style="width: ${block.content.width}px; height: ${block.content.height}px; max-width: 100%; height: auto; border-radius: ${block.content.borderRadius || 0}px; display: block;">
+              ${imageLinkEnd}
+            </div>
+          `;
+
+        case 'spacer':
+          const spacerBg = block.content.backgroundColor && block.content.backgroundColor !== 'transparent' 
+            ? `background-color: ${block.content.backgroundColor};` 
+            : '';
+          return `
+            <div style="height: ${block.content.height}px; ${spacerBg} border-radius: ${block.content.borderRadius || 0}px;"></div>
+          `;
+
+        default:
+          return '';
+      }
+    },
+
+    async copyHtml() {
+      try {
+        await navigator.clipboard.writeText(this.generatedHtml);
+        // Można dodać toast notification
+        console.log('HTML skopiowany do schowka');
+      } catch (error) {
+        console.error('Nie udało się skopiować HTML:', error);
+      }
+    },
+
+    exportAsImage() {
+      // Funkcja do eksportu jako obraz - do implementacji
+      console.log('Eksport jako obraz - funkcja do dodania');
+      alert('Funkcjonalność eksportu jako obraz będzie dostępna w przyszłej wersji');
+    },
+
+    // Metody obsługi szablonów
+    selectTemplate(template) {
+      this.selectedTemplate = template.id;
+    },
+
+    async loadSelectedTemplate() {
+      if (!this.selectedTemplate) return;
+      
+      try {
+        // Znajdź szablon w dostępnych szablonach
+        const template = this.availableTemplates.find(t => t.id === this.selectedTemplate);
+        if (!template) {
+          console.error('Szablon nie został znaleziony');
+          return;
+        }
+
+        let templateData;
+
+        // Sprawdź czy to szablon niestandardowy
+        if (template.isCustom) {
+          // Ładuj z localStorage
+          const customTemplates = JSON.parse(localStorage.getItem('customTemplates') || '{}');
+          const customTemplate = customTemplates[template.id];
+          if (!customTemplate) {
+            console.error('Niestandardowy szablon nie został znaleziony:', template.id);
+            return;
+          }
+          templateData = { default: customTemplate };
+        } else {
+          // Mapowanie plików szablonów - Vite wymaga statycznych ścieżek
+          const templateModules = {
+            'newsletter-basic.json': () => import('@/templates/newsletter-basic.json'),
+            'promo-sale.json': () => import('@/templates/promo-sale.json'),
+            'notification-welcome.json': () => import('@/templates/notification-welcome.json'),
+            'event-invitation.json': () => import('@/templates/event-invitation.json')
+          };
+
+          // Załaduj odpowiedni szablon
+          const loadTemplate = templateModules[template.file];
+          if (!loadTemplate) {
+            console.error('Plik szablonu nie został znaleziony:', template.file);
+            return;
+          }
+
+          templateData = await loadTemplate();
+        }
+        
+        // Wyczyść obecne bloki
+        this.emailBlocks = [];
+        this.selectedBlockId = null;
+        
+        // Załaduj bloki z szablonu
+        if (templateData.default && templateData.default.blocks) {
+          templateData.default.blocks.forEach((blockData, index) => {
+            const block = {
+              ...blockData,
+              id: this.nextBlockId++
+            };
+            this.emailBlocks.push(block);
+          });
+        }
+        
+        // Zamknij dialog
+        this.showTemplateDialog = false;
+        this.selectedTemplate = null;
+        
+        console.log('Szablon został załadowany pomyślnie');
+      } catch (error) {
+        console.error('Błąd podczas ładowania szablonu:', error);
+      }
+    },
+
+    closeSaveTemplateDialog() {
+      this.showSaveTemplateDialog = false;
+      this.newTemplate = {
+        name: '',
+        description: '',
+        category: '',
+        tags: []
+      };
+    },
+
+    saveAsTemplate() {
+      if (!this.saveTemplateValid || this.emailBlocks.length === 0) {
+        return;
+      }
+
+      try {
+        // Generuj ID dla nowego szablonu
+        const templateId = 'custom-' + Date.now();
+        
+        // Przygotuj dane szablonu
+        const templateData = {
+          name: this.newTemplate.name,
+          description: this.newTemplate.description,
+          category: this.newTemplate.category,
+          tags: this.newTemplate.tags,
+          author: "Użytkownik",
+          createdAt: new Date().toISOString(),
+          blocks: this.emailBlocks.map(block => {
+            // Usuwamy ID z bloku dla szablonu (będzie generowane na nowo przy ładowaniu)
+            const { id, ...blockWithoutId } = block;
+            return blockWithoutId;
+          })
+        };
+
+        // Generuj prosty podgląd (można rozszerzyć w przyszłości)
+        const thumbnailSvg = `data:image/svg+xml;base64,${btoa(`
+          <svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150">
+            <rect width="200" height="150" fill="#f5f5f5"/>
+            <text x="100" y="75" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">
+              ${this.newTemplate.name}
+            </text>
+            <text x="100" y="95" text-anchor="middle" font-family="Arial" font-size="10" fill="#999">
+              ${this.emailBlocks.length} blok(ów)
+            </text>
+          </svg>
+        `)}`;
+
+        // Dodaj do listy dostępnych szablonów
+        const newTemplate = {
+          id: templateId,
+          name: this.newTemplate.name,
+          description: this.newTemplate.description,
+          category: this.newTemplate.category,
+          tags: this.newTemplate.tags,
+          thumbnail: thumbnailSvg,
+          file: `${templateId}.json`, // W prawdziwej aplikacji byłoby zapisane na serwerze
+          author: "Użytkownik",
+          isCustom: true
+        };
+
+        this.availableTemplates.unshift(newTemplate);
+
+        // W prawdziwej aplikacji tutaj byłoby wywołanie API do zapisania szablonu
+        console.log('Szablon zapisany:', {
+          template: newTemplate,
+          data: templateData
+        });
+
+        // Symulacja zapisu do localStorage (dla celów demo)
+        const customTemplates = JSON.parse(localStorage.getItem('customTemplates') || '{}');
+        customTemplates[templateId] = templateData;
+        localStorage.setItem('customTemplates', JSON.stringify(customTemplates));
+
+        // Zamknij dialog i pokaż komunikat
+        this.closeSaveTemplateDialog();
+        
+        // W prawdziwej aplikacji można dodać toast/snackbar
+        console.log('Szablon został zapisany pomyślnie!');
+
+      } catch (error) {
+        console.error('Błąd podczas zapisywania szablonu:', error);
+      }
+    },
+
+    // Sprawdź czy potrzebne jest przewijanie i dodaj odpowiednie klasy
+    checkScrollable() {
+      this.$nextTick(() => {
+        const canvasWrapper = this.$el?.querySelector('.canvas-wrapper');
+        if (canvasWrapper) {
+          const isScrollable = canvasWrapper.scrollHeight > canvasWrapper.clientHeight;
+          
+          if (isScrollable) {
+            canvasWrapper.classList.add('scrollable');
+          } else {
+            canvasWrapper.classList.remove('scrollable');
+          }
+        }
+      });
+    }
+  },
+
+  watch: {
+    previewMode() {
+      // Regeneruj HTML gdy zmieni się tryb podglądu
+      if (this.previewDialog) {
+        this.generatedHtml = this.generateEmailHtml();
+      }
+    },
+
+    emailBlocks: {
+      handler() {
+        // Sprawdź przewijanie gdy zmieni się liczba bloków
+        this.checkScrollable();
+      },
+      deep: true
+    },
+
+    canvasMode() {
+      // Sprawdź przewijanie gdy zmieni się tryb canvas
+      this.checkScrollable();
+    }
+  },
+
+  mounted() {
+    // Ładuj niestandardowe szablony z localStorage
+    try {
+      const customTemplates = JSON.parse(localStorage.getItem('customTemplates') || '{}');
+      
+      Object.keys(customTemplates).forEach(templateId => {
+        const templateData = customTemplates[templateId];
+        
+        // Sprawdź czy szablon już nie istnieje na liście
+        const exists = this.availableTemplates.find(t => t.id === templateId);
+        if (!exists) {
+          const customTemplate = {
+            id: templateId,
+            name: templateData.name,
+            description: templateData.description,
+            category: templateData.category || 'Inne',
+            tags: templateData.tags || [],
+            thumbnail: `data:image/svg+xml;base64,${btoa(`
+              <svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150">
+                <rect width="200" height="150" fill="#f0f0f0"/>
+                <text x="100" y="75" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">
+                  ${templateData.name}
+                </text>
+                <text x="100" y="95" text-anchor="middle" font-family="Arial" font-size="10" fill="#999">
+                  Szablon użytkownika
+                </text>
+              </svg>
+            `)}`,
+            file: `${templateId}.json`,
+            author: templateData.author || "Użytkownik",
+            isCustom: true
+          };
+          
+          this.availableTemplates.unshift(customTemplate);
+        }
+      });
+    } catch (error) {
+      console.error('Błąd podczas ładowania niestandardowych szablonów:', error);
+    }
+
+    // Sprawdź przewijanie po załadowaniu komponentu
+    this.checkScrollable();
+  }
+};
+</script>
+
+<style scoped>
+.block-email-editor {
+  height: 100vh;
+}
+
+.blocks-panel,
+.canvas-panel,
+.properties-panel {
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.canvas-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-panel .v-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.block-item {
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.block-item:hover {
+  background-color: #f5f5f5;
+  border-color: #2196F3;
+}
+
+.canvas-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 500px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.email-canvas {
+  border: 2px dashed #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  position: relative;
+  background: white;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  min-height: 400px;
+  height: auto;
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.desktop-canvas {
+  width: 600px;
+  max-width: 600px;
+}
+
+.mobile-canvas {
+  width: 375px;
+  max-width: 375px;
+}
+
+.mobile-canvas .email-block {
+  font-size: 14px;
+}
+
+.mobile-canvas .email-block img {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.empty-canvas {
+  text-align: center;
+  padding: 60px 20px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.blocks-container {
+  min-height: 400px;
+  height: auto;
+  width: 100%;
+  position: relative;
+}
+
+.email-block {
+  border: 2px solid transparent;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  padding: 8px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.email-block:hover {
+  border-color: #2196F3;
+}
+
+.email-block.selected {
+  border-color: #2196F3;
+  background-color: #f3f9ff;
+}
+
+.block-controls {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: none;
+  gap: 4px;
+  z-index: 10;
+}
+
+.email-block:hover .block-controls,
+.email-block.selected .block-controls {
+  display: flex;
+}
+
+.email-preview {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 0 auto;
+  transition: all 0.3s ease;
+}
+
+.email-preview.desktop-preview {
+  max-width: 100%;
+  width: auto;
+}
+
+.email-preview.mobile-preview {
+  max-width: 375px;
+  width: 375px;
+}
+
+/* Drag and drop styling */
+.email-block[draggable="true"]:hover {
+  cursor: grab;
+}
+
+.email-block[draggable="true"]:active {
+  cursor: grabbing;
+  opacity: 0.7;
+}
+
+.email-block.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+/* Styles dla dialogu szablonów */
+.template-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  height: 100%;
+  position: relative;
+}
+
+.template-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+}
+
+.template-card.template-selected {
+  border: 2px solid rgb(var(--v-theme-primary));
+  box-shadow: 0 4px 16px rgba(var(--v-theme-primary), 0.3) !important;
+}
+
+.template-thumbnail {
+  position: relative;
+  border-radius: 4px 4px 0 0;
+}
+
+.template-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.template-card .v-card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.template-card .v-card-subtitle {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: rgba(0,0,0,0.6);
+}
+
+.template-card .v-chip {
+  font-size: 0.75rem;
+}
+
+/* Niestandardowe style dla suwaka */
+.canvas-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.canvas-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.canvas-wrapper::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.canvas-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Style dla Firefoksa */
+.canvas-wrapper {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+/* Wskaźnik przewijania dla długich szablonów */
+.canvas-wrapper::before {
+  content: '';
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.3) 50%, rgba(33, 150, 243, 0.1) 100%);
+  z-index: 5;
+  display: none;
+}
+
+.canvas-wrapper.scrollable::before {
+  display: block;
+}
+</style>

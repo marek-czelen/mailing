@@ -1,0 +1,175 @@
+{
+  "id": "event-invitation",
+  "name": "Zaproszenie na Wydarzenie",
+  "description": "Elegancki szablon zaproszenia na konferencję, webinar lub spotkanie",
+  "category": "wydarzenia",
+  "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjNjc0ZWE3IiByeD0iOCIvPjx0ZXh0IHg9IjEwMCIgeT0iMzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+WkFQUk9TWkVOSUU8L3RleHQ+PGNpcmNsZSBjeD0iNDAiIGN5PSI4NSIgcj0iMTUiIGZpbGw9IiNlNzRjM2MiLz48dGV4dCB4PSI0MCIgeT0iOTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjEwIj4xNTwvdGV4dD48dGV4dCB4PSI3MCIgeT0iNzgiIGZpbGw9IiMyYzNlNTAiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIj5LT05GRVJFTkNKQTwvdGV4dD48dGV4dCB4PSI3MCIgeT0iOTIiIGZpbGw9IiM3ZjhjOGQiIGZvbnQtc2l6ZT0iMTAiPjE1IExpc3RvcGFkYSAyMDI1PC90ZXh0PjxyZWN0IHg9IjcwIiB5PSIxMDUiIHdpZHRoPSI4MCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzI3YWU2MCIgcng9IjQiLz48dGV4dCB4PSIxMTAiIHk9IjExOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iMTAiPkRPTMSEQ1o8L3RleHQ+PC9zdmc+",
+  "blocks": [
+    {
+      "id": 1,
+      "type": "text",
+      "content": {
+        "text": "🎯 ZAPROSZENIE NA KONFERENCJĘ",
+        "fontSize": 26,
+        "color": "#674ea7",
+        "fontWeight": "bold",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 16,
+        "marginBottom": 24,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 2,
+      "type": "text",
+      "content": {
+        "text": "\"Przyszłość Technologii 2025\"",
+        "fontSize": 22,
+        "color": "#2c3e50",
+        "fontWeight": "bold",
+        "fontStyle": "italic"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 32,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 3,
+      "type": "image",
+      "content": {
+        "src": "https://via.placeholder.com/400x180/674ea7/ffffff?text=KONFERENCJA+2025",
+        "alt": "Konferencja Przyszłość Technologii 2025",
+        "width": 400,
+        "height": 180,
+        "url": "https://example.com/konferencja",
+        "borderRadius": 10
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 32,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 4,
+      "type": "text",
+      "content": {
+        "text": "📅 Data: 15 listopada 2025\n🕐 Godzina: 9:00 - 17:00\n📍 Miejsce: Centrum Konferencyjne, Warszawa\n🎟️ Wstęp: bezpłatny (wymagana rejestracja)",
+        "fontSize": 16,
+        "color": "#333333",
+        "fontWeight": "normal",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 24,
+        "textAlign": "left"
+      }
+    },
+    {
+      "id": 5,
+      "type": "text",
+      "content": {
+        "text": "Program obejmuje:",
+        "fontSize": 18,
+        "color": "#34495e",
+        "fontWeight": "bold",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 16,
+        "marginBottom": 12,
+        "textAlign": "left"
+      }
+    },
+    {
+      "id": 6,
+      "type": "text",
+      "content": {
+        "text": "🚀 Sztuczna inteligencja w biznesie\n💡 Innowacje w dziedzinie IoT\n🌐 Trendy w cyberbezpieczeństwie\n📊 Big Data i analityka predykcyjna\n🤖 Automatyzacja procesów biznesowych\n☕ Przerwy kawowe i networking",
+        "fontSize": 14,
+        "color": "#333333",
+        "fontWeight": "normal",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 32,
+        "textAlign": "left"
+      }
+    },
+    {
+      "id": 7,
+      "type": "button",
+      "content": {
+        "text": "ZAPISZ SIĘ TERAZ",
+        "url": "https://example.com/rejestracja-konferencja",
+        "backgroundColor": "#27ae60",
+        "textColor": "#ffffff",
+        "borderRadius": 8,
+        "padding": "16px 40px"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 24,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 8,
+      "type": "text",
+      "content": {
+        "text": "⚡ Liczba miejsc ograniczona - nie zwlekaj z rejestracją!",
+        "fontSize": 14,
+        "color": "#e74c3c",
+        "fontWeight": "bold",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 40,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 9,
+      "type": "spacer",
+      "content": {
+        "height": 1,
+        "backgroundColor": "#bdc3c7",
+        "borderRadius": 0
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 20,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 10,
+      "type": "text",
+      "content": {
+        "text": "Organizator: Tech Conferences Sp. z o.o.\nKontakt: events@techconf.pl | +48 22 123 45 67\n\nJeśli nie możesz uczestniczyć, przekaż zaproszenie dalej!\nRezygnacja z newslettera | Regulamin uczestnictwa",
+        "fontSize": 11,
+        "color": "#7f8c8d",
+        "fontWeight": "normal",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 0,
+        "textAlign": "center"
+      }
+    }
+  ],
+  "metadata": {
+    "createdAt": "2025-10-27",
+    "version": "1.0",
+    "author": "Block Email Editor",
+    "tags": ["wydarzenie", "konferencja", "zaproszenie", "networking"]
+  }
+}

@@ -11,12 +11,14 @@ import OPENAI_API_KEY from '../config/openai.config.js';
 import OpenAI from "openai";
 import fetch from "node-fetch";
 // Pobierz wszystkie kampanie
-export async function getCampaigns(req, res) {
+export async function getCampaignsList(req, res) {
     try {
-        const campaigns = await MarketingCampanies.findAll();
+        const campaigns = await MarketingCampanies.findAll({
+            attributes: { exclude: ['htmlContent', 'textContent', 'suggestions'] }
+        });
         res.send(new Response(campaigns, true, "Data received successfully."));
     } catch (error) {
-        res.send(new Response(null, false, `Failed to fetch campaigns. ${error.message}`, ));
+        res.send(new Response(null, false, `Failed to fetch campaigns. ${error.message}`));
     }
 }
 
@@ -85,6 +87,9 @@ export async function createCampaign(req, res) {
             await t.commit();
         }
 
+        // Automatycznie licz scoring i sugestie po utworzeniu kampanii
+        await computeSpamRating({ body: { id: newCampaign.id } }, { send: () => {} });
+        
         res.send(new Response(
             { campaign: newCampaign, importedAddresses },
             true,
@@ -105,6 +110,10 @@ export async function updateCampaign(req, res) {
             return res.send(new Response(null, false, "Campaign not found."));
         }
         const updatedCampaign = await MarketingCampanies.findByPk(req.params.id);
+        // Automatycznie licz scoring i sugestie po edycji kampanii
+
+        await computeSpamRating({ body: { id: updatedCampaign.id } }, { send: () => {} });
+
         res.send(new Response(updatedCampaign, true, "Campaign updated successfully."));
     } catch (error) {
         res.send(new Response(null, false, `Failed to update campaign. ${error.message}`));
@@ -206,153 +215,115 @@ export async function generateMailContent(req, res) {
  * computeSpamRating - oblicza ocenę SPAM dla treści mailingu
  *
  * Parametry (body JSON):
- * - subject: string - temat wiadomości
- * - html: string - treść w formacie HTML (opcjonalnie)
- * - text: string - treść w formacie tekstowym (opcjonalnie, używana gdy brak html)
- * - from: string - adres nadawcy (np. "noreply@example.com")
- * - links: array<string> | null - opcjonalna lista linków (opcjonalnie). Jeśli nie podane, lista linków i obrazów zostanie zawsze wyliczona z treści wiadomości.
- * - images: number | null - opcjonalna liczba obrazków (opcjonalnie). Jeśli nie podane, obrazki zostaną wyekstrahowane z HTML i zwrócone w details.imageList.
- * - unsubscribe: string|boolean|null - opcjonalny url lub flaga oznaczająca obecność linku wypisania
+ * - id: number - ID kampanii marketingowej
  *
  * Zwracana wartość (Response JSON - pole `data`):
  * {
  *   score: number,        // 0-100 - wyliczona punktacja spamowa (im wyższa, tym bardziej "spam")
  *   rating: 'low'|'medium'|'high',
  *   details: {            // szczegółowe składowe oceny
+ *     optimalSubjectLength?: boolean,
+ *     suboptimalSubjectLength?: boolean,
  *     subjectUppercase?: boolean,
  *     subjectExclaim?: number,
  *     foundSpamInSubject: string[],
- *     linkCount: number,
- *     imageCount: number,
- *     foundSpamInBody: Array<{word: string, count: number}>,
- *     hasUnsubscribe: boolean,
- *     fromPenalty: number,
+ *     personalization?: boolean,
+ *     noPersonalization?: boolean,
  *     textLength: number,
- *     positiveElements: {   // elementy obniżające scoring spam
- *       personalization?: boolean,    // użycie znaczników personalizacji (-10)
- *       optimalLength?: boolean,      // optymalna długość treści 100-2000 znaków (-5)
- *       hasFooter?: boolean,          // stopka z danymi kontaktowymi (-8)
- *       cleanHtml?: boolean,          // poprawne semantyczne HTML (-7)
- *       hasAltTexts?: boolean,        // alt teksty przy obrazkach (-5)
- *       validFromHeader?: boolean,     // poprawny spersonalizowany nadawca (-8)
- *       optimalSubjectLength?: boolean // optymalna długość tematu 20-60 znaków (-7)
- *     },
- *     positiveScore: number           // suma punktów za pozytywne elementy (max -50)
+ *     optimalLength?: boolean,
+ *     tooShort?: boolean,
+ *     tooLong?: boolean,
+ *     hasFooter?: boolean,
+ *     noFooter?: boolean,
+ *     cleanHtml?: boolean,
+ *     dirtyHtml?: boolean,
+ *     hasAltTexts?: boolean,
+ *     missingAltTexts?: boolean,
+ *     validFromHeader?: boolean,
+ *     freeProviderFrom?: boolean,
+ *     invalidFrom?: boolean,
+ *     missingFrom?: boolean,
+ *     linkCount: number,
+ *     linkList: string[],
+ *     linkValidation?: object,
+ *     imageCount: number,
+ *     imageList: string[],
+ *     foundSpamInBody: Array<{word: string, count: number}>,
+ *     hasUnsubscribe: boolean
  *   },
- *   suggestions: Array<{              // sugestie poprawy dla elementów zwiększających spam
- *     problem: string,                // opis problemu
+ *   suggestions: Array<{              // sugestie poprawy - każdy test może dodawać (+) lub odejmować (-) punkty
+ *     problem: string,                // opis problemu/cechy
  *     impact: string,                 // wpływ na wynik
- *     fix: string                     // sugerowane rozwiązanie
- *   }>,
- *   positiveElements: Array<{         // lista pozytywnych elementów
- *     feature: string,                // nazwa cechy
- *     impact: string,                 // wpływ na wynik
- *     details: string                 // szczegółowy opis
+ *     fix: string,                    // sugerowane rozwiązanie
+ *     scoreValue: number              // wartość punktowa (+dodatnia dla kar, -ujemna dla bonusów)
  *   }>
  * }
  *
- * Reguły negatywnego scoringu:
- * - duża proporcja wielkich liter w temacie -> +12
- * - nadmiar wykrzykników w temacie -> +6
- * - słowa kluczowe spamowe w temacie -> +8 za wystąpienie
- * - więcej niż 2 linki -> +(linkCount-2)*6 (maks. +30)
- * - dużo obrazków (>5) -> +6
- * - słowa spamowe w treści -> +3 za wystąpienie (maks. +30)
- * - brak linku wypisania -> +22
- * - podejrzany nagłówek from -> +4..+8
- * - bardzo krótka treść (<50 znaków) -> +10
- *
- * Reguły pozytywnego scoringu (maksymalnie -50 punktów łącznie):
- * - personalizacja treści (znaczniki typu [imię], {{nazwa}}) -> -10
- * - optymalna długość treści (100-2000 znaków) -> -5
- * - profesjonalna stopka z danymi firmy -> -8
- * - poprawne semantyczne znaczniki HTML -> -7
- * - alt teksty przy wszystkich obrazkach -> -5
- * - spersonalizowany adres nadawcy -> -8
- * - optymalna długość tematu (20-60 znaków) -> -7
+ * Reguły scoringu (każdy test może zarówno dodawać jak i odejmować punkty):
+ * 
+ * TEMAT:
+ * - optymalna długość 20-60 znaków: -7 | nieoptymalna: +5
+ * - duża proporcja wielkich liter: +12
+ * - nadmiar wykrzykników (>=3): +6
+ * - słowa kluczowe spamowe: +8 za każde wystąpienie
+ * 
+ * TREŚĆ:
+ * - personalizacja (znaczniki %%, {{}}, []): -10 | brak: +10
+ * - optymalna długość 100-2000 znaków: -5 | za krótka (<50): +10 | za długa (>2000): +3
+ * - profesjonalna stopka: -8 | brak: +5
+ * - czyste semantyczne HTML: -7 | przestarzałe znaczniki: +8
+ * - alt teksty przy wszystkich obrazkach: -5 | brak: +6
+ * 
+ * NADAWCA:
+ * - spersonalizowany adres z własnej domeny: -8
+ * - darmowy provider (gmail, onet itp.): +4
+ * - noreply/nieprawidłowy: +8
+ * 
+ * LINKI I OBRAZY:
+ * - więcej niż 2 linki: +(linkCount-2)*6 (max +30)
+ * - niesprawne/wolne linki: +5 za każdy (max +25)
+ * - dużo obrazków (>5): +6
+ * 
+ * COMPLIANCE:
+ * - link wypisania się obecny: -8 | brak: +22
+ * 
+ * SPAM WORDS:
+ * - słowa spamowe w treści: +3 za wystąpienie (max +30)
  *
  * Końcowy wynik:
- * 1. Obliczany jest scoring negatywny (punkty karne)
- * 2. Odejmowane są punkty za pozytywne elementy (max -50)
+ * 1. Zaczynamy od bazy 50 punktów
+ * 2. Każdy test dodaje lub odejmuje punkty bezpośrednio od score
  * 3. Wynik normalizowany do zakresu 0-100
  * 4. Rating przydzielany według progów: 0-30 low, 31-60 medium, 61-100 high
  *
  * Przykład wywołania:
  * POST /mailing/spamRating
- * Body: { "subject": "FREE Offer!", "html": "<p>Buy now <a href=\"http://...\">click</a></p>", "from": "promo@example.com" }
+ * Body: { "id": 123 }
  */
-// Oblicza spam-rating dla kampanii na podstawie dostarczonych parametrów
+// computeSpamRating: pobiera tylko id kampanii, resztę parametrów pobiera z bazy
 export async function computeSpamRating(req, res) {
     try {
-        const {
-            subject = '',
-            html = '',
-            text = '',
-            from = '',
-            links = null, // opcjonalnie można podać listę linków (ale funkcja zawsze wylicza linki z treści)
-            images = null, // opcjonalnie liczba obrazków (funkcja zawsze wylicza obrazki z treści)
-            unsubscribe = null // opcjonalnie flaga lub url
-        } = req.body || {};
-
+        const { id } = req.body || {};
+        if (!id) {
+            return res.send(new Response(null, false, 'Brak id kampanii.'));
+        }
+        // Pobierz kampanię z bazy
+        const campaign = await MarketingCampanies.findByPk(id);
+        if (!campaign) {
+            return res.send(new Response(null, false, 'Nie znaleziono kampanii.'));
+        }
+        // Pobierz parametry z modelu
+        const subject = campaign.subject || '';
+        const html = campaign.htmlContent || '';
+        const from = campaign.from || '';
+        const unsubscribe = campaign.unsubscribe || null;
+        // Treść tekstowa (opcjonalnie, jeśli chcesz dodać)
+        const text =  campaign.textContent || '';
         const content = (html || text || '').toString();
 
-        // Punkty za dobre praktyki
-        let positiveScore = 0;
-        const positiveDetails = {};
-
-        // Sprawdź personalizację (użycie imienia/nazwiska/nazwy firmy)
-        const personalizationRegex = /%[A-Za-z_]+%|\{\{[A-Za-z_]+\}\}|\[imię\]|\[nazwisko\]|\[firma\]/g;
-        const hasPersonalization = personalizationRegex.test(content);
-        if (hasPersonalization) {
-            positiveScore += 10;
-            positiveDetails.personalization = true;
-        }
-
-        // Sprawdź długość treści (optymalna długość)
-        const contentLength = content.replace(/<[^>]*>/g, '').trim().length;
-        if (contentLength >= 100 && contentLength <= 2000) {
-            positiveScore += 5;
-            positiveDetails.optimalLength = true;
-        }
-
-        // Sprawdź obecność stopki z danymi firmy
-        const footerRegex = /(?:stopka|footer|kontakt|contact|tel|phone|address|adres|nip|regon|krs)/i;
-        if (footerRegex.test(content)) {
-            positiveScore += 8;
-            positiveDetails.hasFooter = true;
-        }
-
-        // Sprawdź formatowanie HTML (czyste, semantyczne)
-        const hasCleanHtml = !/<font|<center|<marquee|style=/i.test(content) && 
-                           /<(p|div|header|footer|section|article|h[1-6]|ul|ol|li|table)[^>]*>/i.test(content);
-        if (hasCleanHtml) {
-            positiveScore += 7;
-            positiveDetails.cleanHtml = true;
-        }
-
-        // Sprawdź obecność alt tekstów przy obrazkach
-        const imgTags = content.match(/<img[^>]+>/g) || [];
-        const altTexts = imgTags.filter(tag => /alt=["'][^"']+["']/i.test(tag));
-        if (imgTags.length > 0 && altTexts.length === imgTags.length) {
-            positiveScore += 5;
-            positiveDetails.hasAltTexts = true;
-        }
-
-        // Sprawdź poprawną konfigurację nagłówka From
-        if (from) {
-            const validFromRegex = /^[^@]+@[^.]+\.[a-z]{2,}$/i;
-            const isValidFrom = validFromRegex.test(from) && !from.includes('noreply') && !from.includes('no-reply');
-            if (isValidFrom) {
-                positiveScore += 8;
-                positiveDetails.validFromHeader = true;
-            }
-        }
-
-        // Sprawdź czy temat nie jest zbyt krótki ani zbyt długi
-        if (subject && subject.length >= 20 && subject.length <= 60) {
-            positiveScore += 7;
-            positiveDetails.optimalSubjectLength = true;
-        }
+        // Inicjalizuj scoring (zaczynamy od 0, testy mogą dodawać lub odejmować punkty)
+        let score = 0;
+        const details = {};
 
         // lista słów typowo kojarzonych ze spamem (PL i EN)
         const spamWords = [
@@ -389,22 +360,35 @@ export async function computeSpamRating(req, res) {
             'likwidacja sklepu', 'likwidacja magazynu', 'wszystko musi się sprzedać'
         ];
 
-        let score = 0;
-        const details = {};
-
         // 1) analiza tematu
         const subj = subject.toString();
         const subjLength = subj.length;
+
+        // Test: Optymalna długość tematu
+        if (subject && subjLength >= 20 && subjLength <= 60) {
+            score -= 7;
+            details.optimalSubjectLength = true;
+        } else if (subjLength > 0) {
+            score += 5;
+            details.suboptimalSubjectLength = true;
+        }
+
+        // Test: Wielkie litery w temacie
         const upperCount = (subj.match(/[A-ZĄĆĘŁŃÓŚŹŻ]/g) || []).length;
         const upperRatio = subjLength > 0 ? upperCount / subjLength : 0;
         if (upperRatio > 0.6 && subjLength > 5) {
             score += 12;
             details.subjectUppercase = true;
         }
-        const exclam = (subj.match(/!/g) || []).length;
-        if (exclam >= 3) { score += 6; details.subjectExclaim = exclam; }
 
-        // spam words in subject
+        // Test: Wykrzykniki w temacie
+        const exclam = (subj.match(/!/g) || []).length;
+        if (exclam >= 3) { 
+            score += 6; 
+            details.subjectExclaim = exclam; 
+        }
+
+        // Test: Spam words w temacie
         const foundSpamInSubject = [];
         for (const w of spamWords) {
             if (subj.toLowerCase().includes(w)) {
@@ -416,6 +400,91 @@ export async function computeSpamRating(req, res) {
 
         // 2) analiza treści
         const bodyLower = content.toLowerCase();
+
+        // Test: Personalizacja
+        const personalizationRegex = /%[A-Za-z_]+%|\{\{[A-Za-z_]+\}\}|\[imię\]|\[nazwisko\]|\[firma\]/g;
+        const hasPersonalization = personalizationRegex.test(content);
+        if (hasPersonalization) {
+            score -= 10;
+            details.personalization = true;
+        } else {
+            score += 10;
+            details.noPersonalization = true;
+        }
+
+        // Test: Długość treści
+        const textLen = (content.replace(/<[^>]*>/g, '') || '').trim().length;
+        details.textLength = textLen;
+        if (textLen >= 100 && textLen <= 2000) {
+            score -= 5;
+            details.optimalLength = true;
+        } else if (textLen < 50) {
+            score += 10;
+            details.tooShort = true;
+        } else if (textLen > 2000) {
+            score += 3;
+            details.tooLong = true;
+        }
+
+        // Test: Profesjonalna stopka
+        const footerRegex = /(?:stopka|footer|kontakt|contact|tel|phone|address|adres|nip|regon|krs)/i;
+        if (footerRegex.test(content)) {
+            score -= 8;
+            details.hasFooter = true;
+        } else {
+            score += 5;
+            details.noFooter = true;
+        }
+
+        // Test: Formatowanie HTML
+        const hasCleanHtml = !/<font|<center|<marquee|style=/i.test(content) && 
+                           /<(p|div|header|footer|section|article|h[1-6]|ul|ol|li|table)[^>]*>/i.test(content);
+        if (hasCleanHtml) {
+            score -= 7;
+            details.cleanHtml = true;
+        } else if (/<font|<center|<marquee/.test(content)) {
+            score += 8;
+            details.dirtyHtml = true;
+        }
+
+        // Test: Alt teksty przy obrazkach
+
+        // Test: Alt teksty przy obrazkach
+        const imgTags = content.match(/<img[^>]+>/g) || [];
+        const altTexts = imgTags.filter(tag => /alt=["'][^"']+["']/i.test(tag));
+        if (imgTags.length > 0) {
+            if (altTexts.length === imgTags.length) {
+                score -= 5;
+                details.hasAltTexts = true;
+            } else {
+                score += 6;
+                details.missingAltTexts = true;
+            }
+        }
+
+        // Test: Nagłówek From
+        if (from && typeof from === 'string') {
+            const validFromRegex = /^[^@]+@[^.]+\.[a-z]{2,}$/i;
+            const isValidFrom = validFromRegex.test(from) && !from.includes('noreply') && !from.includes('no-reply');
+            if (isValidFrom) {
+                score -= 8;
+                details.validFromHeader = true;
+            } else {
+                const domainMatch = from.match(/@([\w.-]+)/);
+                const domain = domainMatch ? domainMatch[1].toLowerCase() : '';
+                const freeProviders = ['gmail.com','yahoo.com','hotmail.com','onet.pl','wp.pl','o2.pl'];
+                if (freeProviders.includes(domain)) { 
+                    score += 4; 
+                    details.freeProviderFrom = true;
+                } else if (!domain || from.includes('noreply') || from.includes('no-reply')) {
+                    score += 8;
+                    details.invalidFrom = true;
+                }
+            }
+        } else {
+            score += 8;
+            details.missingFrom = true;
+        }
 
         // Wyliczanie listy linków i obrazów bezpośrednio z treści (zawsze)
         let m;
@@ -431,6 +500,67 @@ export async function computeSpamRating(req, res) {
         details.linkCount = linkCount;
         details.linkList = linkList;
         if (linkCount > 2) score += Math.min((linkCount - 2) * 6, 30);
+
+        // Walidacja poprawności linków (sprawdzamy wszystkie linki http/https ze ścisłym timeoutem)
+        const httpLinks = linkList.filter(u => /^https?:\/\//i.test(u));
+        const TIMEOUT_MS = 1000; // bardzo szybka odpowiedź wymagana
+        const MAX_CONCURRENCY = 8; // batch'owanie, aby przyspieszyć bez przeciążenia
+
+        async function checkUrl(url) {
+            const start = Date.now();
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+                let resp = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: controller.signal });
+                clearTimeout(timeout);
+                // Gdy HEAD jest zablokowane – spróbuj GET dla 405/501 (również ze ścisłym timeoutem)
+                if (!resp.ok && (resp.status === 405 || resp.status === 501)) {
+                    const controller2 = new AbortController();
+                    const timeout2 = setTimeout(() => controller2.abort(), TIMEOUT_MS);
+                    resp = await fetch(url, { method: 'GET', redirect: 'follow', signal: controller2.signal });
+                    clearTimeout(timeout2);
+                }
+                const durationMs = Date.now() - start;
+                // Traktuj długą odpowiedź jako błąd
+                const ok = resp.ok && durationMs < TIMEOUT_MS;
+                return { url, ok, status: resp.status, durationMs };
+            } catch (e) {
+                const durationMs = Date.now() - start; // traktujemy jako timeout/błąd
+                return { url, ok: false, status: null, durationMs, error: e?.name || String(e) };
+            }
+        }
+
+        let checked = 0;
+        const results = [];
+        for (let i = 0; i < httpLinks.length; i += MAX_CONCURRENCY) {
+            const slice = httpLinks.slice(i, i + MAX_CONCURRENCY);
+            const batch = await Promise.all(slice.map(u => checkUrl(u)));
+            results.push(...batch);
+            checked += batch.length;
+        }
+
+        let linkValidationSuggestion = null;
+        if (checked > 0) {
+            const invalid = results.filter(r => !r.ok);
+            const invalidUrls = invalid.map(r => r.url);
+            details.linkValidation = {
+                checked,
+                total: httpLinks.length,
+                invalidCount: invalidUrls.length,
+                invalidUrls,
+                timeoutMs: TIMEOUT_MS
+            };
+            const invalidLinksPenalty = Math.min(invalidUrls.length * 5, 25);
+            if (invalidLinksPenalty > 0) {
+                score += invalidLinksPenalty;
+                linkValidationSuggestion = {
+                    problem: "Niesprawne lub zbyt wolno odpowiadające linki w treści",
+                    impact: `Zwiększa wynik spam o ${invalidLinksPenalty} punktów (sprawdzono ${checked}/${httpLinks.length}, próg ${TIMEOUT_MS}ms)`,
+                    fix: "Sprawdź wszystkie linki w wiadomości – popraw błędne adresy, usuń niedziałające i zadbaj o szybkie odpowiedzi serwera.",
+                    scoreValue: invalidLinksPenalty
+                };
+            }
+        }
 
         // Wyliczanie obrazków (src z tagów <img>)
         const imgSrcRegex = /<img[^>]+src=(?:\"|\')([^\"']+)(?:\"|\')/gi;
@@ -463,43 +593,19 @@ export async function computeSpamRating(req, res) {
         if (unsubscribe === true) hasUnsubscribe = true;
         if (/unsubscribe|wypisz|odsubskrybuj|unsubscribe_url|list-unsubscribe/gi.test(content)) hasUnsubscribe = true;
         details.hasUnsubscribe = hasUnsubscribe;
-        if (!hasUnsubscribe) score += 22;
-
-        // from header analysis (suspicious sender)
-        let fromPenalty = 0;
-        if (from && typeof from === 'string') {
-            const domainMatch = from.match(/@([\w.-]+)/);
-            const domain = domainMatch ? domainMatch[1].toLowerCase() : '';
-            // free providers moderately reduce trust (increase score slightly)
-            const freeProviders = ['gmail.com','yahoo.com','hotmail.com','onet.pl','wp.pl','o2.pl'];
-            if (freeProviders.includes(domain)) { fromPenalty = 4; }
-            // missing @ or invalid from
-            if (!domain) fromPenalty += 8;
+        if (!hasUnsubscribe) {
+            score += 22;
         } else {
-            fromPenalty += 8;
+            score -= 8;
         }
-        score += fromPenalty;
-        details.fromPenalty = fromPenalty;
-
-        // length heuristics: very short content is suspicious
-        const textLen = (content.replace(/<[^>]*>/g, '') || '').trim().length;
-        details.textLength = textLen;
-        if (textLen < 50) score += 10;
-
-        // Odejmij punkty za dobre praktyki
-        const finalPositiveScore = Math.min(50, positiveScore); // Maksymalnie można odjąć 50 punktów
-        score = Math.max(0, score - finalPositiveScore);
 
         // normalize to 0-100
-        let finalScore = Math.max(0, Math.min(100, Math.round(score)));
+        // Ustal bazę na 50 punktów i dodaj/odejmij score
+        let finalScore = Math.max(0, Math.min(100, Math.round(50 + score)));
 
         let rating = 'low';
         if (finalScore >= 61) rating = 'high';
         else if (finalScore >= 31) rating = 'medium';
-
-        // Dodaj informacje o pozytywnych elementach do details
-        details.positiveElements = positiveDetails;
-        details.positiveScore = finalPositiveScore;
 
         const result = {
             score: finalScore,
@@ -509,11 +615,40 @@ export async function computeSpamRating(req, res) {
         };
 
         // Dodajemy konkretne sugestie dla marketerów na podstawie wykrytych problemów
+
+        if (details.suboptimalSubjectLength) {
+            result.suggestions.push({
+                problem: "Nieoptymalna długość tematu",
+                impact: "Zwiększa wynik spam o 5 punktów",
+                fix: "Temat powinien mieć 20-60 znaków. Zbyt krótkie tematy mogą być niejasne, zbyt długie – obcięte w skrzynce odbiorczej.",
+                scoreValue: 5
+            });
+        }
+
+        if (details.suboptimalSubjectLength) {
+            result.suggestions.push({
+                problem: "Nieoptymalna długość tematu",
+                impact: "Zwiększa wynik spam o 5 punktów",
+                fix: "Temat powinien mieć 20-60 znaków. Zbyt krótkie tematy mogą być niejasne, zbyt długie – obcięte w skrzynce odbiorczej.",
+                scoreValue: 5
+            });
+        }
+
+        if (details.optimalSubjectLength) {
+            result.suggestions.push({
+                problem: "Optymalna długość tematu",
+                impact: "Zmniejsza wynik spam o 7 punktów",
+                fix: "Temat ma odpowiednią długość (20-60 znaków) – zwiększa to wiarygodność wiadomości.",
+                scoreValue: -7
+            });
+        }
+
         if (details.subjectUppercase) {
             result.suggestions.push({
                 problem: "Zbyt wiele wielkich liter w temacie",
                 impact: "Zwiększa wynik spam o 12 punktów",
-                fix: "Użyj wielkich liter tylko na początku zdań i w nazwach własnych. Unikaj pisania całych słów wielkimi literami."
+                fix: "Użyj wielkich liter tylko na początku zdań i w nazwach własnych. Unikaj pisania całych słów wielkimi literami.",
+                scoreValue: 12
             });
         }
 
@@ -521,23 +656,148 @@ export async function computeSpamRating(req, res) {
             result.suggestions.push({
                 problem: "Zbyt wiele wykrzykników w temacie",
                 impact: "Zwiększa wynik spam o 6 punktów",
-                fix: "Ogranicz liczbę wykrzykników do maksymalnie jednego lub dwóch. Używaj ich tylko gdy są naprawdę potrzebne."
+                fix: "Ogranicz liczbę wykrzykników do maksymalnie jednego lub dwóch. Używaj ich tylko gdy są naprawdę potrzebne.",
+                scoreValue: 6
             });
         }
 
         if (details.foundSpamInSubject.length > 0) {
+            const spamSubjectScore = details.foundSpamInSubject.length * 8;
             result.suggestions.push({
                 problem: `Znaleziono słowa kluczowe często występujące w spamie: ${details.foundSpamInSubject.join(", ")}`,
                 impact: "Każde słowo zwiększa wynik spam o 8 punktów",
-                fix: "Unikaj używania tych słów w temacie lub zastąp je synonimami. Szczególnie unikaj słów związanych z promocjami i nagłymi okazjami."
+                fix: "Unikaj używania tych słów w temacie lub zastąp je synonimami. Szczególnie unikaj słów związanych z promocjami i nagłymi okazjami.",
+                scoreValue: spamSubjectScore
+            });
+        }
+
+        if (details.noPersonalization) {
+            result.suggestions.push({
+                problem: "Brak personalizacji",
+                impact: "Zwiększa wynik spam o 10 punktów",
+                fix: "Użyj znaczników personalizacji (np. %imie%, {{nazwisko}}, [firma]) aby zwiększyć wiarygodność wiadomości.",
+                scoreValue: 10
+            });
+        }
+
+        if (details.personalization) {
+            result.suggestions.push({
+                problem: "Personalizacja treści",
+                impact: "Zmniejsza wynik spam o 10 punktów",
+                fix: "Użycie znaczników personalizacji zwiększa wiarygodność wiadomości.",
+                scoreValue: -10
+            });
+        }
+
+        if (details.tooShort) {
+            result.suggestions.push({
+                problem: "Zbyt krótka treść wiadomości",
+                impact: "Zwiększa wynik spam o 10 punktów",
+                fix: "Rozbuduj treść wiadomości. Zbyt krótkie wiadomości często są oznaczane jako spam. Dodaj więcej wartościowej treści dla odbiorcy.",
+                scoreValue: 10
+            });
+        }
+
+        if (details.tooLong) {
+            result.suggestions.push({
+                problem: "Zbyt długa treść wiadomości",
+                impact: "Zwiększa wynik spam o 3 punkty",
+                fix: "Treść przekracza 2000 znaków. Rozważ skrócenie lub podział na kilka sekcji z linkami do dalszej treści.",
+                scoreValue: 3
+            });
+        }
+
+        if (details.optimalLength) {
+            result.suggestions.push({
+                problem: "Optymalna długość treści",
+                impact: "Zmniejsza wynik spam o 5 punktów",
+                fix: "Treść między 100 a 2000 znaków jest uznawana za optymalną.",
+                scoreValue: -5
+            });
+        }
+
+        if (details.noFooter) {
+            result.suggestions.push({
+                problem: "Brak profesjonalnej stopki",
+                impact: "Zwiększa wynik spam o 5 punktów",
+                fix: "Dodaj stopkę z danymi kontaktowymi firmy (adres, telefon, NIP itp.) – zwiększa to wiarygodność.",
+                scoreValue: 5
+            });
+        }
+
+        if (details.hasFooter) {
+            result.suggestions.push({
+                problem: "Profesjonalna stopka",
+                impact: "Zmniejsza wynik spam o 8 punktów",
+                fix: "Obecność stopki z danymi kontaktowymi zwiększa wiarygodność.",
+                scoreValue: -8
+            });
+        }
+
+        if (details.dirtyHtml) {
+            result.suggestions.push({
+                problem: "Przestarzałe znaczniki HTML",
+                impact: "Zwiększa wynik spam o 8 punktów",
+                fix: "Usuń przestarzałe znaczniki HTML (font, center, marquee, inline style). Użyj semantycznego HTML5.",
+                scoreValue: 8
+            });
+        }
+
+        if (details.cleanHtml) {
+            result.suggestions.push({
+                problem: "Poprawne formatowanie HTML",
+                impact: "Zmniejsza wynik spam o 7 punktów",
+                fix: "Używanie semantycznego HTML bez przestarzałych znaczników.",
+                scoreValue: -7
+            });
+        }
+
+        if (details.missingAltTexts) {
+            result.suggestions.push({
+                problem: "Brak opisów alternatywnych obrazków",
+                impact: "Zwiększa wynik spam o 6 punktów",
+                fix: "Dodaj opisy alt do wszystkich obrazków – to nie tylko zmniejsza wynik spam, ale poprawia dostępność.",
+                scoreValue: 6
+            });
+        }
+
+        if (details.hasAltTexts) {
+            result.suggestions.push({
+                problem: "Opisy alternatywne obrazków",
+                impact: "Zmniejsza wynik spam o 5 punktów",
+                fix: "Wszystkie obrazki mają poprawne opisy alt.",
+                scoreValue: -5
+            });
+        }
+
+        if (details.freeProviderFrom || details.invalidFrom || details.missingFrom) {
+            const penalty = details.freeProviderFrom ? 4 : 8;
+            let fixMsg = "Używaj profesjonalnego adresu email z własnej domeny zamiast darmowych providerów lub noreply.";
+            if (details.missingFrom) fixMsg = "Dodaj prawidłowy adres nadawcy w polu From.";
+            result.suggestions.push({
+                problem: "Problematyczny adres nadawcy",
+                impact: `Zwiększa wynik spam o ${penalty} punktów`,
+                fix: fixMsg,
+                scoreValue: penalty
+            });
+        }
+
+        if (details.validFromHeader) {
+            result.suggestions.push({
+                problem: "Poprawny adres nadawcy",
+                impact: "Zmniejsza wynik spam o 8 punktów",
+                fix: "Użycie spersonalizowanego adresu email zwiększa wiarygodność.",
+                scoreValue: -8
             });
         }
 
         if (details.linkCount > 2) {
+            const linkScore = Math.min((details.linkCount - 2) * 6, 30);
             result.suggestions.push({
                 problem: "Zbyt duża liczba linków",
-                impact: `Zwiększa wynik spam o ${Math.min((details.linkCount - 2) * 6, 30)} punktów`,
-                fix: "Ogranicz liczbę linków do maksymalnie 2-3 najważniejszych. Każdy dodatkowy link zwiększa ryzyko oznaczenia jako spam."
+                impact: `Zwiększa wynik spam o ${linkScore} punktów`,
+                fix: "Ogranicz liczbę linków do maksymalnie 2-3 najważniejszych. Każdy dodatkowy link zwiększa ryzyko oznaczenia jako spam.",
+                scoreValue: linkScore
             });
         }
 
@@ -545,15 +805,20 @@ export async function computeSpamRating(req, res) {
             result.suggestions.push({
                 problem: "Zbyt dużo obrazków",
                 impact: "Zwiększa wynik spam o 6 punktów",
-                fix: "Ogranicz liczbę obrazków do maksymalnie 4-5. Używaj tylko niezbędnych grafik."
+                fix: "Ogranicz liczbę obrazków do maksymalnie 4-5. Używaj tylko niezbędnych grafik.",
+                scoreValue: 6
             });
         }
 
         if (details.foundSpamInBody.length > 0) {
+            let spamBodyScore = 0;
+            for (const s of details.foundSpamInBody) spamBodyScore += s.count * 3;
+            spamBodyScore = Math.min(spamBodyScore, 30);
             result.suggestions.push({
                 problem: "Znaleziono słowa kluczowe często występujące w spamie w treści wiadomości",
                 impact: "Każde wystąpienie zwiększa wynik spam o 3 punkty (max 30)",
-                fix: "Przejrzyj listę znalezionych słów i zastąp je alternatywnymi określeniami. Szczególnie uważaj na słowa związane z promocjami i pilnością oferty."
+                fix: "Przejrzyj listę znalezionych słów i zastąp je alternatywnymi określeniami. Szczególnie uważaj na słowa związane z promocjami i pilnością oferty.",
+                scoreValue: spamBodyScore
             });
         }
 
@@ -561,85 +826,28 @@ export async function computeSpamRating(req, res) {
             result.suggestions.push({
                 problem: "Brak linku do wypisania się z newslettera",
                 impact: "Zwiększa wynik spam o 22 punkty",
-                fix: "Dodaj wyraźny link do wypisania się z newslettera. To nie tylko zmniejszy wynik spam, ale jest też wymagane przez przepisy prawa."
+                fix: "Dodaj wyraźny link do wypisania się z newslettera. To nie tylko zmniejszy wynik spam, ale jest też wymagane przez przepisy prawa.",
+                scoreValue: 22
             });
-        }
-
-        if (details.fromPenalty > 0) {
+        } else {
             result.suggestions.push({
-                problem: "Problematyczny adres nadawcy",
-                impact: `Zwiększa wynik spam o ${details.fromPenalty} punktów`,
-                fix: "Używaj profesjonalnego adresu email z własnej domeny zamiast darmowych providerów. Upewnij się, że adres jest prawidłowo skonfigurowany."
-            });
-        }
-
-        if (details.textLength < 50) {
-            result.suggestions.push({
-                problem: "Zbyt krótka treść wiadomości",
-                impact: "Zwiększa wynik spam o 10 punktów",
-                fix: "Rozbuduj treść wiadomości. Zbyt krótkie wiadomości często są oznaczane jako spam. Dodaj więcej wartościowej treści dla odbiorcy."
-            });
-        }
-
-        // Dodaj informacje o pozytywnych elementach
-        result.positiveElements = [];
-        
-        if (positiveDetails.personalization) {
-            result.positiveElements.push({
-                feature: "Personalizacja treści",
-                impact: "Zmniejsza wynik spam o 10 punktów",
-                details: "Użycie znaczników personalizacji (np. imię, nazwisko, nazwa firmy) zwiększa wiarygodność wiadomości"
-            });
-        }
-
-        if (positiveDetails.optimalLength) {
-            result.positiveElements.push({
-                feature: "Optymalna długość treści",
-                impact: "Zmniejsza wynik spam o 5 punktów",
-                details: "Treść między 100 a 2000 znaków jest uznawana za optymalną"
-            });
-        }
-
-        if (positiveDetails.hasFooter) {
-            result.positiveElements.push({
-                feature: "Profesjonalna stopka",
+                problem: "Link do wypisania się obecny",
                 impact: "Zmniejsza wynik spam o 8 punktów",
-                details: "Obecność stopki z danymi kontaktowymi zwiększa wiarygodność"
+                fix: "Obecność linku wypisania się jest zgodna z przepisami i zmniejsza wynik spam.",
+                scoreValue: -8
             });
         }
 
-        if (positiveDetails.cleanHtml) {
-            result.positiveElements.push({
-                feature: "Poprawne formatowanie HTML",
-                impact: "Zmniejsza wynik spam o 7 punktów",
-                details: "Używanie semantycznego HTML bez przestarzałych znaczników"
-            });
+        // Sugestia dotycząca linków (po utworzeniu result)
+        if (linkValidationSuggestion) {
+            result.suggestions.push(linkValidationSuggestion);
         }
 
-        if (positiveDetails.hasAltTexts) {
-            result.positiveElements.push({
-                feature: "Opisy alternatywne obrazków",
-                impact: "Zmniejsza wynik spam o 5 punktów",
-                details: "Wszystkie obrazki mają poprawne opisy alt"
-            });
-        }
-
-        if (positiveDetails.validFromHeader) {
-            result.positiveElements.push({
-                feature: "Poprawny adres nadawcy",
-                impact: "Zmniejsza wynik spam o 8 punktów",
-                details: "Użycie spersonalizowanego adresu email zamiast noreply"
-            });
-        }
-
-        if (positiveDetails.optimalSubjectLength) {
-            result.positiveElements.push({
-                feature: "Optymalna długość tematu",
-                impact: "Zmniejsza wynik spam o 7 punktów",
-                details: "Temat ma odpowiednią długość (20-60 znaków)"
-            });
-        }
-
+        // Zapisz scoring i sugestie do bazy
+        await campaign.update({
+            scoring: result.score,
+            suggestions: result.suggestions
+        });
         res.send(new Response(result, true, 'Spam rating calculated successfully'));
     } catch (err) {
         res.send(new Response(null, false, `Failed to calculate spam rating: ${err.message}`));

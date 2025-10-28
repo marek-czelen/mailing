@@ -1,9 +1,15 @@
 import axios from 'axios';
 
 export class Campaigns {
-  static async fetchAll() {
+  static async getList() {
     // Zmień URL na właściwy endpoint backendu
-    const response = await axios.get('/mailing/getCampaigns');
+    const response = await axios.get('/mailing/getCampaignsList');
+    return response.data.data;
+  }
+
+  static async getCampaignById(id) {
+    // Pobierz jedną kampanię po id
+    const response = await axios.get(`/mailing/getCampaignById/${id}`);
     return response.data.data;
   }
   

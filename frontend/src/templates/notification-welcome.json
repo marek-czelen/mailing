@@ -1,0 +1,159 @@
+{
+  "id": "notification-welcome",
+  "name": "Powiadomienie - Powitanie",
+  "description": "Szablon powitalny dla nowych użytkowników lub klientów",
+  "category": "powiadomienie",
+  "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZWNmMGYxIi8+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNDAiIHI9IjI1IiBmaWxsPSIjMjdhZTYwIi8+PHRleHQgeD0iMTAwIiB5PSI0NyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iMjAiPuKckTwvdGV4dD48dGV4dCB4PSIxMDAiIHk9IjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMmMzZTUwIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCI+V2l0YWo8L3RleHQ+PHRleHQgeD0iMTAwIiB5PSIxMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM3ZjhjOGQiIGZvbnQtc2l6ZT0iMTAiPkRaw65rdWplbXkgemEgcmVqZXN0cmFjasW5PC90ZXh0PjxyZWN0IHg9IjcwIiB5PSIxMTUiIHdpZHRoPSI2MCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzM0OThkYiIgcng9IjMiLz48dGV4dCB4PSIxMDAiIHk9IjEyOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iOSI+UG9jemF0ZWs8L3RleHQ+PC9zdmc+",
+  "blocks": [
+    {
+      "id": 1,
+      "type": "text",
+      "content": {
+        "text": "✨ Witamy w naszej społeczności! ✨",
+        "fontSize": 24,
+        "color": "#27ae60",
+        "fontWeight": "bold",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 20,
+        "marginBottom": 24,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 2,
+      "type": "text",
+      "content": {
+        "text": "Dziękujemy za rejestrację w naszym serwisie. Cieszymy się, że do nas dołączyłeś!",
+        "fontSize": 18,
+        "color": "#2c3e50",
+        "fontWeight": "normal",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 32,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 3,
+      "type": "image",
+      "content": {
+        "src": "https://via.placeholder.com/300x150/27ae60/ffffff?text=WITAJ+W+ZESPOLE",
+        "alt": "Witaj w zespole",
+        "width": 300,
+        "height": 150,
+        "url": "",
+        "borderRadius": 12
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 32,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 4,
+      "type": "text",
+      "content": {
+        "text": "Co możesz teraz zrobić?",
+        "fontSize": 20,
+        "color": "#34495e",
+        "fontWeight": "bold",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 16,
+        "textAlign": "left"
+      }
+    },
+    {
+      "id": 5,
+      "type": "text",
+      "content": {
+        "text": "🎯 Uzupełnij swój profil\n📱 Pobierz naszą aplikację mobilną\n🎁 Skorzystaj z kodu rabatowego WELCOME20\n📧 Dostosuj ustawienia powiadomień\n👥 Dołącz do naszej grupy na Facebook",
+        "fontSize": 15,
+        "color": "#333333",
+        "fontWeight": "normal",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 32,
+        "textAlign": "left"
+      }
+    },
+    {
+      "id": 6,
+      "type": "button",
+      "content": {
+        "text": "Rozpocznij przygodę",
+        "url": "https://example.com/start",
+        "backgroundColor": "#3498db",
+        "textColor": "#ffffff",
+        "borderRadius": 25,
+        "padding": "16px 32px"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 32,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 7,
+      "type": "text",
+      "content": {
+        "text": "💡 Wskazówka: Sprawdzaj regularnie swoją skrzynkę mailową - będziemy wysyłać Ci najlepsze oferty i nowości!",
+        "fontSize": 14,
+        "color": "#f39c12",
+        "fontWeight": "normal",
+        "fontStyle": "italic"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 40,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 8,
+      "type": "spacer",
+      "content": {
+        "height": 2,
+        "backgroundColor": "#bdc3c7",
+        "borderRadius": 0
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 20,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 9,
+      "type": "text",
+      "content": {
+        "text": "Masz pytania? Skontaktuj się z nami!\n\nZespół Obsługi Klienta\nE-mail: pomoc@example.com\nTelefon: +48 800 123 456\n\n© 2025 Twoja Firma. Wszystkie prawa zastrzeżone.",
+        "fontSize": 12,
+        "color": "#7f8c8d",
+        "fontWeight": "normal",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 0,
+        "textAlign": "center"
+      }
+    }
+  ],
+  "metadata": {
+    "createdAt": "2025-10-27",
+    "version": "1.0",
+    "author": "Block Email Editor",
+    "tags": ["powitanie", "rejestracja", "welcome", "onboarding"]
+  }
+}

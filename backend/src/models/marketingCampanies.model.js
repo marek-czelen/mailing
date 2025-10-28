@@ -1,3 +1,5 @@
+
+
 import { DataTypes } from "sequelize";
 import sequelize from "../include/db.js";
 import Customers from "./customers.model.js";
@@ -14,16 +16,36 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
         field:"customer_id",
         allowNull: false,
     }  ,    
-    name:{
-        type: DataTypes.STRING,
-        allowNull: false,
-        field: "name"
-    },
-    mailContent:{
-        type: DataTypes.TEXT("medium"),
-        field: "mail_content",
-        allowNull: true
-    },
+  name:{
+    type: DataTypes.STRING,
+    allowNull: false,
+    field: "name"
+  },
+  subject: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: "subject"
+  },
+  from: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: "from"
+  },
+  unsubscribe: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: "unsubscribe"
+  },
+  textContent: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: "text_content"
+  },
+  htmlContent:{
+    type: DataTypes.TEXT("medium"),
+    field: "html_content",
+    allowNull: true
+  },
     dateStart:{
       type: DataTypes.DATE,
       field: "date_start"
@@ -37,8 +59,18 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
         field:"progress"
     },
     active:{
-        type:DataTypes.BOOLEAN,
-        field:"active"
+          type:DataTypes.BOOLEAN,
+          field:"active"
+      },
+    scoring: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "scoring"
+    },
+    suggestions: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      field: "suggestions"
     }
   }, {
     tableName: 'marketing_campanies',

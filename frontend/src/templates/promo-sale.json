@@ -1,0 +1,159 @@
+{
+  "id": "promo-sale",
+  "name": "Promocja - Wielka Wyprzedaż",
+  "description": "Atrakcyjny szablon promocyjny z dużym rabatem i call-to-action",
+  "category": "promocja",
+  "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNlNzRjM2M7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojYzM0MzMzO3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JhZCkiLz48dGV4dCB4PSIxMDAiIHk9IjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPi01MCU8L3RleHQ+PHJlY3QgeD0iNTAiIHk9IjYwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjMwIiBmaWxsPSIjZmZmIiByeD0iNSIvPjx0ZXh0IHg9IjEwMCIgeT0iODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNlNzRjM2MiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIj5LVVAgVEVSQVo8L3RleHQ+PC9zdmc+",
+  "blocks": [
+    {
+      "id": 1,
+      "type": "text",
+      "content": {
+        "text": "🔥 WIELKA WYPRZEDAŻ 🔥",
+        "fontSize": 32,
+        "color": "#e74c3c",
+        "fontWeight": "bold",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 20,
+        "marginBottom": 16,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 2,
+      "type": "text",
+      "content": {
+        "text": "DO -50% ZNIŻKI",
+        "fontSize": 48,
+        "color": "#c0392b",
+        "fontWeight": "bold",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 24,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 3,
+      "type": "text",
+      "content": {
+        "text": "Tylko przez ograniczony czas!",
+        "fontSize": 20,
+        "color": "#2c3e50",
+        "fontWeight": "normal",
+        "fontStyle": "italic"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 32,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 4,
+      "type": "image",
+      "content": {
+        "src": "https://via.placeholder.com/400x200/f39c12/ffffff?text=PRODUKTY+W+PROMOCJI",
+        "alt": "Produkty w promocji",
+        "width": 400,
+        "height": 200,
+        "url": "https://example.com/promocja",
+        "borderRadius": 8
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 32,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 5,
+      "type": "text",
+      "content": {
+        "text": "✅ Setki produktów w promocyjnych cenach\n✅ Darmowa dostawa od 100 zł\n✅ 30 dni na zwrot\n✅ Gwarancja najniższej ceny",
+        "fontSize": 16,
+        "color": "#27ae60",
+        "fontWeight": "normal",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 32,
+        "textAlign": "left"
+      }
+    },
+    {
+      "id": 6,
+      "type": "button",
+      "content": {
+        "text": "ZOBACZ PROMOCJE",
+        "url": "https://example.com/promocje",
+        "backgroundColor": "#e74c3c",
+        "textColor": "#ffffff",
+        "borderRadius": 8,
+        "padding": "18px 36px"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 24,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 7,
+      "type": "text",
+      "content": {
+        "text": "⏰ Promocja ważna do 31 października 2025",
+        "fontSize": 14,
+        "color": "#e67e22",
+        "fontWeight": "bold",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 40,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 8,
+      "type": "spacer",
+      "content": {
+        "height": 20,
+        "backgroundColor": "#ecf0f1",
+        "borderRadius": 0
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 0,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 9,
+      "type": "text",
+      "content": {
+        "text": "Sklep Online\nul. Przykładowa 123, 00-001 Warszawa\nTel: +48 123 456 789\n\nWypisz się z newslettera | Polityka prywatności",
+        "fontSize": 11,
+        "color": "#7f8c8d",
+        "fontWeight": "normal",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 16,
+        "marginBottom": 0,
+        "textAlign": "center"
+      }
+    }
+  ],
+  "metadata": {
+    "createdAt": "2025-10-27",
+    "version": "1.0",
+    "author": "Block Email Editor",
+    "tags": ["promocja", "wyprzedaż", "rabat", "ecommerce"]
+  }
+}

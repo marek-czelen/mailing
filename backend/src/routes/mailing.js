@@ -1,6 +1,6 @@
 import express from 'express';
 import {
-    getCampaigns,
+    getCampaignsList,
     getCampaignById,
     createCampaign,
     updateCampaign,
@@ -13,7 +13,7 @@ import {
 const router = express.Router();
 
 // Pobierz wszystkie kampanie
-router.get('/getCampaigns', getCampaigns);
+router.get('/getCampaignsList', getCampaignsList);
 
 // Pobierz kampanię po ID
 router.get('/getCampaignById/:id', getCampaignById);

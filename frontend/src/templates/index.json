@@ -1,0 +1,38 @@
+[
+  {
+    "id": "newsletter-basic",
+    "name": "Newsletter Firmowy",
+    "description": "Profesjonalny szablon newslettera z logo, nagłówkiem i stopką",
+    "category": "newsletter",
+    "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjVmNWY1Ii8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjMwIiBmaWxsPSIjMjE5NkYzIi8+PHJlY3QgeD0iMTAiIHk9IjUwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZTBlMGUwIi8+PHJlY3QgeD0iMTAiIHk9IjgwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZTBlMGUwIi8+PHJlY3QgeD0iMTAiIHk9IjExMCIgd2lkdGg9IjgwIiBoZWlnaHQ9IjMwIiBmaWxsPSIjNGNhZjUwIi8+PC9zdmc+",
+    "file": "newsletter-basic.json",
+    "tags": ["newsletter", "firmowy", "miesięczny"]
+  },
+  {
+    "id": "promo-sale",
+    "name": "Promocja - Wielka Wyprzedaż",
+    "description": "Atrakcyjny szablon promocyjny z dużym rabatem i call-to-action",
+    "category": "promocja",
+    "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNlNzRjM2M7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojYzM0MzMzO3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JhZCkiLz48dGV4dCB4PSIxMDAiIHk9IjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPi01MCU8L3RleHQ+PHJlY3QgeD0iNTAiIHk9IjYwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjMwIiBmaWxsPSIjZmZmIiByeD0iNSIvPjx0ZXh0IHg9IjEwMCIgeT0iODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNlNzRjM2MiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIj5LVVAgVEVSQVo8L3RleHQ+PC9zdmc+",
+    "file": "promo-sale.json",
+    "tags": ["promocja", "wyprzedaż", "rabat", "ecommerce"]
+  },
+  {
+    "id": "notification-welcome",
+    "name": "Powiadomienie - Powitanie",
+    "description": "Szablon powitalny dla nowych użytkowników lub klientów",
+    "category": "powiadomienie",
+    "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZWNmMGYxIi8+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNDAiIHI9IjI1IiBmaWxsPSIjMjdhZTYwIi8+PHRleHQgeD0iMTAwIiB5PSI0NyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iMjAiPuKckTwvdGV4dD48dGV4dCB4PSIxMDAiIHk9IjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMmMzZTUwIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCI+V2l0YWo8L3RleHQ+PHRleHQgeD0iMTAwIiB5PSIxMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM3ZjhjOGQiIGZvbnQtc2l6ZT0iMTAiPkRaw65rdWplbXkgemEgcmVqZXN0cmFjasW5PC90ZXh0PjxyZWN0IHg9IjcwIiB5PSIxMTUiIHdpZHRoPSI2MCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzM0OThkYiIgcng9IjMiLz48dGV4dCB4PSIxMDAiIHk9IjEyOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iOSI+UG9jemF0ZWs8L3RleHQ+PC9zdmc+",
+    "file": "notification-welcome.json",
+    "tags": ["powitanie", "rejestracja", "welcome", "onboarding"]
+  },
+  {
+    "id": "event-invitation",
+    "name": "Zaproszenie na Wydarzenie",
+    "description": "Elegancki szablon zaproszenia na konferencję, webinar lub spotkanie",
+    "category": "wydarzenia",
+    "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjNjc0ZWE3IiByeD0iOCIvPjx0ZXh0IHg9IjEwMCIgeT0iMzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+WkFQUk9TWkVOSUU8L3RleHQ+PGNpcmNsZSBjeD0iNDAiIGN5PSI4NSIgcj0iMTUiIGZpbGw9IiNlNzRjM2MiLz48dGV4dCB4PSI0MCIgeT0iOTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjEwIj4xNTwvdGV4dD48dGV4dCB4PSI3MCIgeT0iNzgiIGZpbGw9IiMyYzNlNTAiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIj5LT05GRVJFTkNKQTwvdGV4dD48dGV4dCB4PSI3MCIgeT0iOTIiIGZpbGw9IiM3ZjhjOGQiIGZvbnQtc2l6ZT0iMTAiPjE1IExpc3RvcGFkYSAyMDI1PC90ZXh0PjxyZWN0IHg9IjcwIiB5PSIxMDUiIHdpZHRoPSI4MCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzI3YWU2MCIgcng9IjQiLz48dGV4dCB4PSIxMTAiIHk9IjExOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iMTAiPkRPTMSEQ1o8L3RleHQ+PC9zdmc+",
+    "file": "event-invitation.json",
+    "tags": ["wydarzenie", "konferencja", "zaproszenie", "networking"]
+  }
+]

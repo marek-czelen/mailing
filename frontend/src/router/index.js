@@ -1,7 +1,26 @@
+import EmailEditorView from '../views/EmailEditorView.vue';
+import EmailEditorDemo from '../views/EmailEditorDemo.vue';
+import BlockEditorView from '../views/BlockEditorView.vue';
+
 import { createRouter, createWebHistory } from 'vue-router';
 import LoginView from '../views/LoginView.vue';
 
 const routes = [
+  {
+    path: '/email-editor',
+    name: 'EmailEditor',
+    component: EmailEditorView
+  },
+  {
+    path: '/email-editor-demo',
+    name: 'EmailEditorDemo',
+    component: EmailEditorDemo
+  },
+  {
+    path: '/block-email-editor',
+    name: 'BlockEmailEditor',
+    component: BlockEditorView
+  },
   {
     path: '/login',
     name: 'Login',
