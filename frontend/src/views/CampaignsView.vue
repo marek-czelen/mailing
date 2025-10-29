@@ -146,53 +146,33 @@
           <div v-if="selectedCampaign" class="campaign-details">
             <!-- Campaign Stats Cards -->
             <div class="stats-grid">
-              <v-card class="stat-card">
-                <div class="stat-content">
-                  <div class="stat-icon recipients">
-                    <v-icon>mdi-account-group</v-icon>
-                  </div>
-                  <div class="stat-info">
-                    <h3>{{ selectedCampaign.recipientsCount || 0 }}</h3>
-                    <p>Odbiorców</p>
-                  </div>
-                </div>
-              </v-card>
-              
-              <v-card class="stat-card">
-                <div class="stat-content">
-                  <div class="stat-icon sent">
-                    <v-icon>mdi-email-send</v-icon>
-                  </div>
-                  <div class="stat-info">
-                    <h3>{{ selectedCampaign.sentCount || 0 }}</h3>
-                    <p>Wysłanych</p>
-                  </div>
-                </div>
-              </v-card>
-              
-              <v-card class="stat-card">
-                <div class="stat-content">
-                  <div class="stat-icon opened">
-                    <v-icon>mdi-email-open</v-icon>
-                  </div>
-                  <div class="stat-info">
-                    <h3>{{ selectedCampaign.openRate || 0 }}%</h3>
-                    <p>Otwartych</p>
-                  </div>
-                </div>
-              </v-card>
-              
-              <v-card class="stat-card">
-                <div class="stat-content">
-                  <div class="stat-icon clicks">
-                    <v-icon>mdi-cursor-pointer</v-icon>
-                  </div>
-                  <div class="stat-info">
-                    <h3>{{ selectedCampaign.clickRate || 0 }}%</h3>
-                    <p>Kliknięć</p>
-                  </div>
-                </div>
-              </v-card>
+              <StatCard
+                icon="mdi-account-group"
+                title="Odbiorców"
+                :value="selectedCampaign.recipientsCount || 0"
+                class="recipients"
+                />
+                <StatCard
+                  icon="mdi-email-send"
+                  title="Wysłanych"
+                  :value="selectedCampaign.sentCount || 0"
+                  class="sent"
+                />
+
+              <StatCard 
+                icon="mdi-email-open"
+                title="Otwartych"
+                :value="selectedCampaign.openRate || 0"
+                class="opened"
+              />
+
+              <StatCard
+                icon="mdi-cursor-pointer"
+                title="Kliknięć"
+                :value="selectedCampaign.clickRate || 0"
+                class="clicks"
+              />
+
             </div>
 
             <!-- Action Buttons -->
@@ -350,6 +330,7 @@ import CampaignAnalytics from '../components/campaigns/CampaignAnalytics.vue'
 import CampaignDialog from '../components/campaigns/CampaignDialog.vue'
 import ScheduleDialog from '../components/campaigns/ScheduleDialog.vue'
 import { Campaigns } from '../services/campaigns.js'
+import StatCard from '../components/StatCard.vue'
 
 const router = useRouter()
 
@@ -817,59 +798,6 @@ function manageRecipients() {
   margin-bottom: 24px;
 }
 
-.stat-card {
-  border-radius: 12px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-  padding: 5px 5px 5px 10px;
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 16px;
-  color: white;
-}
-
-.stat-icon.recipients {
-  background: linear-gradient(135deg, #202950 0%, #515bad 100%);
-}
-
-.stat-icon.sent {
-  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
-}
-
-.stat-icon.opened {
-  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-}
-
-.stat-icon.clicks {
-  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
-}
-
-.stat-info h3 {
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin: 0;
-  color: #333;
-}
-
-.stat-info p {
-  margin: 0;
-  color: #666;
-  font-size: 0.9rem;
-}
 
 /* Action Buttons */
 .action-buttons {
