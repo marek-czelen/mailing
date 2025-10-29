@@ -370,9 +370,11 @@ function saveEmailBuilderContent() {
 
 <style scoped>
 .campaign-edit {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
   border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(60, 60, 120, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 24px;
   overflow-y: auto;
 }
@@ -399,11 +401,12 @@ function saveEmailBuilderContent() {
   text-align: left;
 }
 .suggestion-frame {
-  border: 1.5px solid #e0e0e0;
-  border-radius: 10px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 12px;
   overflow: hidden;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(60,60,120,0.04);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 .suggestion-row1 {
   display: flex;
@@ -480,13 +483,35 @@ function saveEmailBuilderContent() {
   align-items: center;
   margin-bottom: 24px;
   width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(102, 126, 234, 0.1);
 }
+
+.edit-header h2 {
+  color: #333;
+  margin: 0;
+  font-weight: 600;
+}
+
 .actions {
   display: flex;
   gap: 8px;
   justify-content: flex-start;
   flex: 1;
 }
+
+.actions .v-btn {
+  border-radius: 8px !important;
+  transition: all 0.3s ease !important;
+}
+
+.actions .v-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
 .title {
   display: flex;
   justify-content: flex-end;

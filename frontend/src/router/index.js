@@ -37,6 +37,11 @@ const routes = [
     component: () => import('../views/CampaignsView.vue')
   },
   {
+    path: '/databases',
+    name: 'Databases',
+    component: () => import('../views/DatabasesView.vue')
+  },
+  {
     path: '/',
     redirect: '/login'
   }

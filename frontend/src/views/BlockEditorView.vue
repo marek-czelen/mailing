@@ -18,6 +18,9 @@ export default {
 <style scoped>
 .block-editor-view {
   width: 100vw;
-  height: 100vh;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 </style>

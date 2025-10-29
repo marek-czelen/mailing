@@ -18,8 +18,8 @@
     - Drag & drop do zmiany kolejności bloków
   -->
   <div class="block-email-editor">
-    <v-container fluid class="pa-0">
-      <v-row no-gutters>
+    <v-container fluid class="pa-0 ma-0" style="max-width: none; width: 100vw;">
+      <v-row no-gutters class="ma-0">
         <!-- PANEL BLOKÓW - Lewy panel z dostępnymi typami bloków -->
         <v-col cols="2" class="blocks-panel">
           <v-card class="pa-3 h-100">
@@ -1263,7 +1263,23 @@ export default {
 
 <style scoped>
 .block-email-editor {
-  height: 100vh;
+  width: 100vw;
+  height: 100%;
+  background: linear-gradient(135deg, #eadcf6 0%, #9395fa 100%);
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
+/* Modern Panel Styling */
+.blocks-panel .v-card,
+.canvas-panel .v-card,
+.properties-panel .v-card {
+  border-radius: 20px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
 }
 
 .blocks-panel,
@@ -1341,13 +1357,13 @@ export default {
 }
 
 .email-canvas {
-  border: 2px dashed #e0e0e0;
-  border-radius: 8px;
+  border: 2px dashed rgba(102, 126, 234, 0.3);
+  border-radius: 16px;
   padding: 20px;
   position: relative;
-  background: white;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.05), 0 4px 20px rgba(0, 0, 0, 0.08);
   min-height: 400px;
   height: auto;
   width: 100%;
@@ -1382,6 +1398,27 @@ export default {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  border-radius: 12px;
+  border: 2px dashed rgba(102, 126, 234, 0.2);
+  position: relative;
+}
+
+.empty-canvas::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23667eea' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+  border-radius: 12px;
+  z-index: 0;
+}
+
+.empty-canvas > * {
+  position: relative;
+  z-index: 1;
 }
 
 .blocks-container {
@@ -1421,22 +1458,27 @@ export default {
 }
 
 .add-block-button .v-btn {
-  background-color: white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
 }
 
 .add-block-button .v-btn:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%) !important;
+  transform: translateY(-2px) scale(1.05) !important;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
 }
 
 .email-block {
   border: 2px solid transparent;
-  border-radius: 4px;
-  padding: 4px;
+  border-radius: 12px;
+  padding: 8px;
   position: relative;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
 }
 
 .block-content-wrapper {
@@ -1445,12 +1487,16 @@ export default {
 }
 
 .email-block:hover {
-  border-color: #2196F3;
+  border-color: rgba(102, 126, 234, 0.6);
+  background: rgba(102, 126, 234, 0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
 }
 
 .email-block.selected {
-  border-color: #2196F3;
-  background-color: #f3f9ff;
+  border-color: #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
 }
 
 .block-controls {

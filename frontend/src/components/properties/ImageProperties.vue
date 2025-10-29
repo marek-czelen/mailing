@@ -198,7 +198,7 @@ export default {
      */
     onImageError(event) {
       // Fallback gdy obraz się nie załaduje - placeholder z via.placeholder.com
-      event.target.src = `https://via.placeholder.com/${this.block.content.width}x${this.block.content.height}?text=Obraz+nie+znaleziony`;
+      event.target.src = "assets/placeholder-image.svg";
     }
   },
   
