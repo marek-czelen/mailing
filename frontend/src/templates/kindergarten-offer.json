@@ -1,0 +1,103 @@
+{
+  "id": "kindergarten-offer",
+  "name": "Oferta dla przedszkoli",
+  "description": "Kolorowy szablon promujący wyposażenie i pomoce dydaktyczne dla przedszkoli",
+  "category": "promocje",
+  "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZmNmNDAwIi8+PHJlY3QgeD0iMzAiIHk9IjQwIiB3aWR0aD0iMTQwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjZmZmIiByeD0iOCIgc3Ryb2tlPSIjZmM4MDAwIiBzdHJva2Utd2lkdGg9IjMiLz48dGV4dCB4PSIxMDAiIHk9IjkwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmM4MDAwIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCI+UHJ6ZWRza29sZTwvdGV4dD48L3N2Zz4=",
+  "blocks": [
+    {
+      "id": 1,
+      "type": "text",
+      "content": {
+        "text": "🧸 OFERTA DLA PRZEDSZKOLI",
+        "fontSize": 26,
+        "color": "#fc8000",
+        "fontWeight": "bold",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 16,
+        "marginBottom": 24,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 2,
+      "type": "text",
+      "content": {
+        "text": "Kolorowe i bezpieczne wyposażenie, które wspiera rozwój i naukę poprzez zabawę.",
+        "fontSize": 18,
+        "color": "#333333",
+        "fontWeight": "normal",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginBottom": 24,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 3,
+      "type": "image",
+      "content": {
+        "src": "https://via.placeholder.com/500x200/fc8000/ffffff?text=Zestaw+edukacyjny+KidsPlay",
+        "alt": "Zestaw edukacyjny KidsPlay",
+        "width": 500,
+        "height": 200,
+        "url": "https://example.com/produkty/zestaw-kidsplay",
+        "borderRadius": 10
+      },
+      "style": {
+        "marginBottom": 24,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 4,
+      "type": "text",
+      "content": {
+        "text": "🎨 **Zestaw edukacyjny KidsPlay**\n- Tablica magnetyczna + akcesoria plastyczne\n- Bezpieczne materiały (certyfikaty CE)\n- Kolorowe kształty i puzzle sensoryczne\n\nCena: **od 899 zł netto/szt.**",
+        "fontSize": 14,
+        "color": "#333333"
+      },
+      "style": {
+        "marginBottom": 20,
+        "textAlign": "left"
+      }
+    },
+    {
+      "id": 5,
+      "type": "button",
+      "content": {
+        "text": "ZOBACZ PRODUKT",
+        "url": "https://example.com/produkty/zestaw-kidsplay",
+        "backgroundColor": "#fc8000",
+        "textColor": "#ffffff",
+        "borderRadius": 8,
+        "padding": "16px 40px"
+      },
+      "style": {
+        "textAlign": "center",
+        "marginBottom": 32
+      }
+    },
+    {
+      "id": 6,
+      "type": "text",
+      "content": {
+        "text": "📧 Kontakt: edu@edumarket.pl | ☎️ +48 22 111 22 33\nEdumarket Sp. z o.o. | www.edumarket.pl",
+        "fontSize": 11,
+        "color": "#7f8c8d"
+      },
+      "style": {
+        "textAlign": "center"
+      }
+    }
+  ],
+  "metadata": {
+    "createdAt": "2025-10-30",
+    "version": "1.0",
+    "author": "Block Email Editor",
+    "tags": ["przedszkole", "edukacja", "zabawki", "wyposażenie", "promocja"]
+  }
+}

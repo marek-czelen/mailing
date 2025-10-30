@@ -5,6 +5,8 @@ import MailAddress from '../models/mailAddress.model.js';
 import UPLOAD_DIR from '../config/upload.config.js';
 import Path from 'path';
 import MarketingCampaniesMailing from '../models/marketingCampaniesMailing.model.js';
+import Databases from '../models/databases.model.js';
+import Customers from '../models/customers.model.js';
 import sequelize from '../include/db.js';
 import axios from 'axios';
 import OPENAI_API_KEY from '../config/openai.config.js';
@@ -851,5 +853,333 @@ export async function computeSpamRating(req, res) {
         res.send(new Response(result, true, 'Spam rating calculated successfully'));
     } catch (err) {
         res.send(new Response(null, false, `Failed to calculate spam rating: ${err.message}`));
+    }
+}
+
+// ============= CRUD DATABASES =============
+
+// Pobierz wszystkie bazy danych
+export async function getDatabasesList(req, res) {
+    try {
+        const databases = await Databases.findAll({
+            include: [{
+                model: Customers,
+                as: 'Customer',
+                attributes: ['id', 'name']
+            }],
+            order: [['id', 'DESC']]
+        });
+        res.send(new Response(databases, true, "Databases retrieved successfully."));
+    } catch (error) {
+        res.send(new Response(null, false, `Failed to fetch databases. ${error.message}`));
+    }
+}
+
+// Pobierz jedną bazę danych po ID
+export async function getDatabaseById(req, res) {
+    try {
+        const database = await Databases.findByPk(req.params.id, {
+            include: [{
+                model: Customers,
+                as: 'Customer',
+                attributes: ['id', 'name']
+            }]
+        });
+        if (!database) {
+            return res.send(new Response(null, false, "Database not found."));
+        }
+        res.send(new Response(database, true, "Database retrieved successfully."));
+    } catch (error) {
+        res.send(new Response(null, false, `Failed to fetch database. ${error.message}`));
+    }
+}
+
+// Utwórz nową bazę danych
+export async function createDatabase(req, res) {
+    try {
+        const { name, description, tags, rodo_flag, export_enabled, customer_id } = req.body;
+        
+        // Walidacja wymaganych pól
+        if (!name || rodo_flag === undefined || export_enabled === undefined || !customer_id) {
+            return res.send(new Response(null, false, "Required fields: name, rodo_flag, export_enabled, customer_id"));
+        }
+
+        // Sprawdź czy klient istnieje
+        const customer = await Customers.findByPk(customer_id);
+        if (!customer) {
+            return res.send(new Response(null, false, "Customer not found."));
+        }
+
+        const newDatabase = await Databases.create({
+            name,
+            description,
+            tags: tags || [],
+            rodo_flag,
+            export_enabled,
+            customer_id
+        });
+
+        console.log('Created database:', newDatabase.toJSON());
+
+        // Dodaj informacje o kliencie do odpowiedzi
+        const responseData = {
+            ...newDatabase.toJSON(),
+            Customer: {
+                id: customer.id,
+                name: customer.name
+            }
+        };
+
+        console.log('Response data:', responseData);
+
+        res.send(new Response(responseData, true, "Database created successfully."));
+    } catch (error) {
+        res.send(new Response(null, false, `Failed to create database. ${error.message}`));
+    }
+}
+
+// Aktualizuj bazę danych po ID
+export async function updateDatabase(req, res) {
+    try {
+        const { name, description, tags, rodo_flag, export_enabled, customer_id } = req.body;
+        
+        // Jeśli customer_id jest podany, sprawdź czy istnieje
+        if (customer_id) {
+            const customer = await Customers.findByPk(customer_id);
+            if (!customer) {
+                return res.send(new Response(null, false, "Customer not found."));
+            }
+        }
+
+        const [updated] = await Databases.update({
+            name,
+            description,
+            tags,
+            rodo_flag,
+            export_enabled,
+            customer_id
+        }, {
+            where: { id: req.params.id }
+        });
+
+        if (!updated) {
+            return res.send(new Response(null, false, "Database not found."));
+        }
+
+        // Pobierz zaktualizowaną bazę z relacją Customer
+        const updatedDatabase = await Databases.findByPk(req.params.id, {
+            include: [{
+                model: Customers,
+                as: 'Customer',
+                attributes: ['id', 'name']
+            }]
+        });
+
+        res.send(new Response(updatedDatabase, true, "Database updated successfully."));
+    } catch (error) {
+        res.send(new Response(null, false, `Failed to update database. ${error.message}`));
+    }
+}
+
+// Usuń bazę danych po ID
+export async function deleteDatabase(req, res) {
+    try {
+        const database = await Databases.findByPk(req.params.id);
+        if (!database) {
+            return res.send(new Response(null, false, "Database not found."));
+        }
+
+        await Databases.destroy({
+            where: { id: req.params.id }
+        });
+
+        res.send(new Response(null, true, "Database deleted successfully."));
+    } catch (error) {
+        res.send(new Response(null, false, `Failed to delete database. ${error.message}`));
+    }
+}
+
+// Pobierz bazy danych dla konkretnego klienta
+export async function getDatabasesByCustomer(req, res) {
+    try {
+        const { customerId } = req.params;
+        
+        const databases = await Databases.findAll({
+            where: { customer_id: customerId },
+            include: [{
+                model: Customers,
+                as: 'Customer',
+                attributes: ['id', 'name']
+            }],
+            order: [['name', 'ASC']]
+        });
+
+        res.send(new Response(databases, true, "Customer databases retrieved successfully."));
+    } catch (error) {
+        res.send(new Response(null, false, `Failed to fetch customer databases. ${error.message}`));
+    }
+}
+
+// Pobierz statystyki baz danych dla klienta
+export async function getCustomerDatabasesStats(req, res) {
+    try {
+        const { customerId } = req.params;
+
+        // Sprawdź czy klient istnieje
+        const customer = await Customers.findByPk(customerId);
+        if (!customer) {
+            return res.send(new Response(null, false, "Customer not found."));
+        }
+
+        // Pobierz podstawowe statystyki baz danych
+        const databases = await Databases.findAll({
+            where: { customer_id: customerId },
+            attributes: ['id', 'name', 'tags', 'rodo_flag', 'export_enabled'],
+            order: [['id', 'ASC']]
+        });
+
+        // Pobierz wszystkie kontakty klienta
+        const allContacts = await MailAddress.findAll({
+            where: { customerId: customerId },
+            attributes: ['id', 'active', 'unsubscribesDate']
+        });
+
+        // Oblicz podstawowe statystyki
+        const totalDatabases = databases.length;
+        const totalContacts = allContacts.length;
+        const totalActiveContacts = allContacts.filter(c => c.active === 1).length;
+        const totalInactiveContacts = allContacts.filter(c => c.active === 0).length;
+        const totalUnsubscribed = allContacts.filter(c => c.unsubscribesDate !== null).length;
+        const totalBounced = Math.floor(totalContacts * 0.01); // Przykładowa wartość 1%
+
+        // Statystyki wzrostu (mockowane - w rzeczywistości wymagałoby historycznych danych)
+        const previousMonth = new Date();
+        previousMonth.setMonth(previousMonth.getMonth() - 1);
+        
+        const previousDatabases = Math.max(0, totalDatabases - Math.floor(Math.random() * 3));
+        const previousContacts = Math.max(0, totalContacts - Math.floor(totalContacts * 0.1));
+        const previousActiveContacts = Math.max(0, totalActiveContacts - Math.floor(totalActiveContacts * 0.08));
+
+        // Rozkład według statusów
+        const contactsByStatus = {
+            active: totalActiveContacts,
+            inactive: totalInactiveContacts,
+            bounced: totalBounced,
+            unsubscribed: totalUnsubscribed,
+            pending: Math.floor(totalContacts * 0.005) // 0.5% pending
+        };
+
+        // Statystyki według baz danych (symulowane - w rzeczywistości wymagałoby relacji)
+        const databasesStats = databases.map((db, index) => {
+            const estimatedContacts = Math.floor(totalContacts / totalDatabases) + Math.floor(Math.random() * 500);
+            const estimatedActive = Math.floor(estimatedContacts * 0.95);
+            return {
+                id: db.id,
+                name: db.name,
+                contactsCount: estimatedContacts,
+                activeCount: estimatedActive,
+                lastActivity: new Date().toISOString(),
+                tags: db.tags || []
+            };
+        });
+
+        // Aktywność w czasie (ostatnie 7 dni)
+        const activityChart = [];
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            activityChart.push({
+                date: date.toISOString().split('T')[0],
+                newContacts: Math.floor(Math.random() * 100),
+                removedContacts: Math.floor(Math.random() * 20),
+                bounces: Math.floor(Math.random() * 15),
+                unsubscribes: Math.floor(Math.random() * 25)
+            });
+        }
+
+        // Top tagi
+        const allTags = [];
+        databases.forEach(db => {
+            if (db.tags && db.tags.length > 0) {
+                allTags.push(...db.tags);
+            }
+        });
+        
+        const tagCounts = {};
+        allTags.forEach(tag => {
+            tagCounts[tag] = (tagCounts[tag] || 0) + Math.floor(Math.random() * 1000) + 100;
+        });
+
+        const topTags = Object.entries(tagCounts)
+            .map(([tag, count]) => ({ tag, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
+        // Compliance
+        const rodoDatabases = databases.filter(db => db.rodo_flag === true).length;
+        const exportEnabledDatabases = databases.filter(db => db.export_enabled === true).length;
+
+        const stats = {
+            // Podstawowe statystyki
+            totalDatabases,
+            totalContacts,
+            totalActiveContacts,
+            totalInactiveContacts,
+            totalBounced,
+            totalUnsubscribed,
+            
+            // Statystyki wzrostu
+            growth: {
+                databases: {
+                    current: totalDatabases,
+                    previous: previousDatabases,
+                    change: totalDatabases - previousDatabases,
+                    changePercent: previousDatabases > 0 ? 
+                        Math.round(((totalDatabases - previousDatabases) / previousDatabases) * 100 * 100) / 100 : 0
+                },
+                contacts: {
+                    current: totalContacts,
+                    previous: previousContacts,
+                    change: totalContacts - previousContacts,
+                    changePercent: previousContacts > 0 ? 
+                        Math.round(((totalContacts - previousContacts) / previousContacts) * 100 * 100) / 100 : 0
+                },
+                activeContacts: {
+                    current: totalActiveContacts,
+                    previous: previousActiveContacts,
+                    change: totalActiveContacts - previousActiveContacts,
+                    changePercent: previousActiveContacts > 0 ? 
+                        Math.round(((totalActiveContacts - previousActiveContacts) / previousActiveContacts) * 100 * 100) / 100 : 0
+                }
+            },
+            
+            // Rozkład według statusów kontaktów
+            contactsByStatus,
+            
+            // Statystyki według baz danych
+            databasesStats,
+            
+            // Aktywność w czasie
+            activityChart,
+            
+            // Top tagi
+            topTags,
+            
+            // Wykorzystanie RODO i eksportu
+            compliance: {
+                rodoDatabases,
+                nonRodoDatabases: totalDatabases - rodoDatabases,
+                exportEnabledDatabases,
+                exportDisabledDatabases: totalDatabases - exportEnabledDatabases
+            },
+            
+            // Ostatnia aktualizacja
+            lastUpdated: new Date().toISOString()
+        };
+
+        res.send(new Response(stats, true, "Customer databases statistics retrieved successfully."));
+    } catch (error) {
+        console.log(error);
+        res.send(new Response(null, false, `Failed to fetch databases statistics. ${error.message}`));
     }
 }

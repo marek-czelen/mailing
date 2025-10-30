@@ -1,0 +1,40 @@
+{
+  "id": "highschool-projectors",
+  "name": "Oferta dla liceów i techników",
+  "description": "Szablon promujący projektory interaktywne dla liceów i techników",
+  "category": "promocje",
+  "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjZjYjYwIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjYjZjZjYwIiByeD0iOCIvPjx0ZXh0IHg9IjEwMCIgeT0iMzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+PROJEKTORY INTERAKTYWNE< /dGV4dD48L3N2Zz4=",
+  "blocks": [
+    {
+      "id":1,
+      "type":"text",
+      "content":{"text":"📽️ NOWE PROJEKTORY INTERAKTYWNE DLA LICEÓW I TECHNIKÓW","fontSize":26,"color":"#117a65","fontWeight":"bold","fontStyle":"normal"},
+      "style":{"marginTop":16,"marginBottom":24,"textAlign":"center"}
+    },
+    {
+      "id":2,
+      "type":"image",
+      "content":{"src":"https://via.placeholder.com/500x200/117a65/ffffff?text=Projektory+Interaktywne","alt":"Projektor edukacyjny","width":500,"height":200,"url":"https://example.com/produkty/projektor-interaktywny","borderRadius":10},
+      "style":{"marginTop":0,"marginBottom":24,"textAlign":"center"}
+    },
+    {
+      "id":3,
+      "type":"text",
+      "content":{"text":"Projektor EduVision 4K – duży ekran, interaktywne funkcje, łatwa instalacja\n- Obsługa dotyku i rysika\n- Idealny do sal wykładowych\n- Cena dla szkół: **od 3999 zł/szt.**","fontSize":14,"color":"#117a65","fontWeight":"normal","fontStyle":"normal"},
+      "style":{"marginTop":0,"marginBottom":24,"textAlign":"left"}
+    },
+    {
+      "id":4,
+      "type":"button",
+      "content":{"text":"ZOBACZ OFERTĘ","url":"https://example.com/produkty/projektor-interaktywny","backgroundColor":"#117a65","textColor":"#ffffff","borderRadius":8,"padding":"16px 40px"},
+      "style":{"marginTop":0,"marginBottom":32,"textAlign":"center"}
+    },
+    {
+      "id":5,
+      "type":"text",
+      "content":{"text":"Kontakt: 📧 edu@techmarket.pl | ☎️ +48 22 555 44 33","fontSize":11,"color":"#7f8c8d","fontWeight":"normal","fontStyle":"normal"},
+      "style":{"marginTop":0,"marginBottom":0,"textAlign":"center"}
+    }
+  ],
+  "metadata":{"createdAt":"2025-10-30","version":"1.0","author":"Block Email Editor","tags":["edukacja","liceum","projektor","promocja"]}
+}

@@ -1,0 +1,45 @@
+{
+  "template": {
+    "id": "teacher-tools",
+    "name": "Nowoczesne Narzędzia dla Nauczycieli",
+    "description": "Mailing promujący oprogramowanie i materiały dydaktyczne dla szkół.",
+    "category": "edukacja",
+    "thumbnail": "https://via.placeholder.com/200x150/9b59b6/ffffff?text=Nauczyciele",
+    "blocks": [
+      {
+        "id": 1,
+        "type": "text",
+        "content": { "text": "🧑‍🏫 NOWOCZESNE NARZĘDZIA DLA NAUCZYCIELI", "fontSize": 28, "color": "#9b59b6", "fontWeight": "bold" },
+        "style": { "textAlign": "center", "marginBottom": 12 }
+      },
+      {
+        "id": 2,
+        "type": "image",
+        "content": { "src": "https://via.placeholder.com/400x200/9b59b6/ffffff?text=Platforma+Edukacyjna", "alt": "Platforma edukacyjna", "url": "https://example.com/edutool" },
+        "style": { "textAlign": "center", "marginBottom": 16 }
+      },
+      {
+        "id": 3,
+        "type": "text",
+        "content": { "text": "📚 Pakiet „EduTools 2025”\n💡 Interaktywne ćwiczenia i testy online\n🎓 Licencje szkolne w promocyjnej cenie!", "fontSize": 15, "color": "#2c3e50" },
+        "style": { "textAlign": "left", "marginBottom": 20 }
+      },
+      {
+        "id": 4,
+        "type": "button",
+        "content": { "text": "ZAMÓW DEMO", "url": "https://example.com/demo", "backgroundColor": "#9b59b6", "textColor": "#ffffff", "borderRadius": 6 },
+        "style": { "textAlign": "center" }
+      }
+    ],
+    "metadata": { "createdAt": "2025-10-30", "version": "1.0", "author": "EduMailer", "tags": ["nauczyciel", "narzędzia", "oprogramowanie"] }
+  },
+  "description": {
+    "id": "teacher-tools",
+    "name": "Nowoczesne Narzędzia dla Nauczycieli",
+    "description": "Szablon promujący oprogramowanie edukacyjne i pomoce dydaktyczne.",
+    "category": "edukacja",
+    "thumbnail": "https://via.placeholder.com/200x150/9b59b6/ffffff?text=Nauczyciele",
+    "file": "teacher-tools.json",
+    "tags": ["edukacja", "nauczyciele", "oprogramowanie"]
+  }
+}

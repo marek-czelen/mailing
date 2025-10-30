@@ -1,45 +1,37 @@
 <template>
-    <v-card class="stat-card">
-        <div class="stat-content">
-            <div :class="className">
-                <v-icon>{{ icon }}</v-icon>
-            </div>
-            <div class="stat-info">
-                <h3>{{ value }}</h3>
-                <p>{{ title }}</p>
-            </div>
-        </div>
-    </v-card>
-</template>
-<script setup>
-import { computed } from 'vue';
+    <div class="stats-grid">
+        <StatCard v-for="item, index of props.statElements" 
+          :icon="item.icon" 
+          :title="item.title" 
+          :value="item.value"
+          :class="`stat-icon-${index + 1}`" />
 
+
+    </div>
+</template>
+
+<script setup>
+import StatCard from './StatCard.vue';
 
 const props = defineProps({
-    selectedCampaign: Object,
-    icon: {
-        type: String,
-        default: 'mdi-email-send'
-    },
-    title: {
-        type: String,
-        default: 'Wysłanych'
-    },
-    class: {
-        type: String,
-        default: 'sent'
-    },
-    value: {
-        type: Number,
-        default: 0
-    }
-});
-
-const className = computed(() => {
-    return `stat-icon ${props.class}`;
+  statElements: {
+    type: Array,
+    required: true,
+    default: () => []
+  }
 });
 </script>
+
 <style scoped>
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
 .stat-card {
   border-radius: 12px !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
@@ -65,19 +57,19 @@ const className = computed(() => {
   color: white;
 }
 
-.stat-icon-1 {
+.stat-icon.contacts {
   background: linear-gradient(135deg, #202950 0%, #515bad 100%);
 }
 
-.stat-icon-2 {
+.stat-icon.active {
   background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
 }
 
-.stat-icon-3 {
+.stat-icon.campaigns {
   background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
 }
 
-.stat-icon-4 {
+.stat-icon.segments {
   background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
 }
 

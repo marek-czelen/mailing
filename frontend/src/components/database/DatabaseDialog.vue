@@ -170,8 +170,8 @@ watch(() => props.database, (newDatabase) => {
       name: newDatabase.name || '',
       description: newDatabase.description || '',
       tags: [...(newDatabase.tags || [])],
-      gdprCompliant: newDatabase.gdprCompliant !== false,
-      allowExport: newDatabase.allowExport !== false,
+      gdprCompliant: newDatabase.rodo_flag !== false,
+      allowExport: newDatabase.export_enabled !== false,
       autoCleanup: newDatabase.autoCleanup || false,
       notifications: {
         newContacts: newDatabase.notifications?.newContacts !== false,

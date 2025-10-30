@@ -446,7 +446,7 @@ function toggleRequired(field) {
 
 function deleteField(field) {
   if (confirm(`Czy na pewno chcesz usunąć pole "${field.name}"? Ta akcja usunie także wszystkie dane z tego pola z kontaktów.`)) {
-    console.log('Usuwanie pola:', field)
+    emit('delete-field', field)
   }
 }
 

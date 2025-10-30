@@ -26,6 +26,11 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
     allowNull: true,
     field: "subject"
   },
+  description:{
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: "description"
+  },
   from: {
     type: DataTypes.STRING,
     allowNull: true,

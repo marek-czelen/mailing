@@ -1,0 +1,71 @@
+{
+  "id": "primary-school-tablets",
+  "name": "Oferta dla szkół podstawowych",
+  "description": "Szablon promujący zestawy tabletów edukacyjnych dla szkół podstawowych",
+  "category": "promocje",
+  "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjdiNmYxIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZmY5YjYwIiByeD0iOCIvPjx0ZXh0IHg9IjEwMCIgeT0iMzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+U0tPTEUgUE9EV0lTIkU8L3RleHQ+PC9zdmc+",
+  "blocks": [
+    {
+      "id": 1,
+      "type": "text",
+      "content": {
+        "text": "📚 NOWE TABLETY EDUKACYJNE DLA SZKÓŁ PODSTAWOWYCH",
+        "fontSize": 26,
+        "color": "#1f618d",
+        "fontWeight": "bold",
+        "fontStyle": "normal"
+      },
+      "style": {"marginTop":16,"marginBottom":24,"textAlign":"center"}
+    },
+    {
+      "id": 2,
+      "type": "image",
+      "content": {
+        "src": "https://via.placeholder.com/500x200/1f618d/ffffff?text=Tablety+Edukacyjne",
+        "alt": "Tablety edukacyjne",
+        "width": 500,
+        "height": 200,
+        "url": "https://example.com/produkty/tablet-edukacyjny",
+        "borderRadius": 10
+      },
+      "style":{"marginTop":0,"marginBottom":24,"textAlign":"center"}
+    },
+    {
+      "id": 3,
+      "type": "text",
+      "content": {
+        "text": "Tablet EduKid 10\" – idealny do nauki w klasie i zdalnie\n- Wytrzymała konstrukcja\n- Kontrola rodzicielska i edukacyjne aplikacje\n- Cena specjalna dla szkół: **od 899 zł/szt.**",
+        "fontSize":14,"color":"#1f618d","fontWeight":"normal","fontStyle":"normal"
+      },
+      "style":{"marginTop":0,"marginBottom":24,"textAlign":"left"}
+    },
+    {
+      "id": 4,
+      "type": "button",
+      "content": {
+        "text": "ZOBACZ OFERTĘ",
+        "url": "https://example.com/produkty/tablet-edukacyjny",
+        "backgroundColor": "#1f618d",
+        "textColor": "#ffffff",
+        "borderRadius":8,
+        "padding":"16px 40px"
+      },
+      "style":{"marginTop":0,"marginBottom":32,"textAlign":"center"}
+    },
+    {
+      "id": 5,
+      "type": "text",
+      "content": {
+        "text": "Skontaktuj się: 📧 edu@techmarket.pl | ☎️ +48 22 555 44 33",
+        "fontSize":11,"color":"#7f8c8d","fontWeight":"normal","fontStyle":"normal"
+      },
+      "style":{"marginTop":0,"marginBottom":0,"textAlign":"center"}
+    }
+  ],
+  "metadata": {
+    "createdAt":"2025-10-30",
+    "version":"1.0",
+    "author":"Block Email Editor",
+    "tags":["edukacja","szkoła podstawowa","tablet","promocja"]
+  }
+}

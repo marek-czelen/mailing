@@ -37,7 +37,9 @@ const MailAddress = sequelize.define('mail_addresses', {
     }  
   }, {
     tableName: 'mail_addresses',
-    timestamps: false,
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
   });
 
   MailAddress.belongsTo(Customers,{

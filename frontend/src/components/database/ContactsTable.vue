@@ -331,7 +331,7 @@ function deleteContact(contact) {
 }
 
 function exportContacts() {
-  console.log('Eksportowanie kontaktów')
+  emit('export-contacts')
 }
 
 function importContacts() {
@@ -341,7 +341,7 @@ function importContacts() {
 function handleImportComplete(result) {
   console.log('Import zakończony:', result)
   showImportDialog.value = false
-  // Refresh database data
+  emit('import-contacts', result)
 }
 </script>
 

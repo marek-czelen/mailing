@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt"
 import User from "../models/user.model.js";
+import Customers from "../models/customers.model.js";
 import jwt from 'jsonwebtoken';
 
 export class Auth {
@@ -34,6 +35,23 @@ export class Auth {
             returnValue = Auth.generateToken({userEmail: user.email})
         }
         return returnValue
+    }
+
+    static async getUserByEmail(email) {
+        try {
+            const user = await User.findOne({
+                where: { email: email },
+                include: [{
+                    model: Customers,
+                    as: 'Customer',
+                    attributes: ['id', 'name']
+                }]
+            });
+            return user;
+        } catch (err) {
+            console.error('Error fetching user:', err);
+            return null;
+        }
     }
 }
 

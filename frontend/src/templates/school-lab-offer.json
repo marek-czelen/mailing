@@ -1,0 +1,97 @@
+{
+  "id": "school-lab-offer",
+  "name": "Laboratoria Szkolne",
+  "description": "Szablon promujący nowoczesne wyposażenie laboratoriów i pracowni szkolnych",
+  "category": "promocje",
+  "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCBmaWxsPSIjZTFlZmYwIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIi8+PGNpcmNsZSBjeD0iNjAiIGN5PSI3NSIgcj0iMjUiIGZpbGw9IiM0YmQ0ZjUiLz48dGV4dCB4PSIxMDAiIHk9IjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNDJiNGY1IiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iYm9sZCI+Q2hlbWlhPC90ZXh0Pjwvc3ZnPg==",
+  "blocks": [
+    {
+      "id": 1,
+      "type": "text",
+      "content": {
+        "text": "🔬 NOWOCZESNE LABORATORIA SZKOLNE",
+        "fontSize": 26,
+        "color": "#2c3e50",
+        "fontWeight": "bold"
+      },
+      "style": {
+        "textAlign": "center",
+        "marginBottom": 24
+      }
+    },
+    {
+      "id": 2,
+      "type": "text",
+      "content": {
+        "text": "Stwórz profesjonalne środowisko nauki dzięki wyposażeniu chemicznemu i fizycznemu nowej generacji.",
+        "fontSize": 18,
+        "color": "#34495e"
+      },
+      "style": {
+        "textAlign": "center",
+        "marginBottom": 24
+      }
+    },
+    {
+      "id": 3,
+      "type": "image",
+      "content": {
+        "src": "https://via.placeholder.com/500x200/4bd4f5/ffffff?text=Zestaw+ChemLab+Pro",
+        "alt": "Zestaw ChemLab Pro",
+        "url": "https://example.com/produkty/chemlab-pro",
+        "borderRadius": 10
+      },
+      "style": {
+        "textAlign": "center",
+        "marginBottom": 24
+      }
+    },
+    {
+      "id": 4,
+      "type": "text",
+      "content": {
+        "text": "⚗️ **Zestaw ChemLab Pro**\n- 25 elementów laboratoryjnych\n- Bezpieczne szkło borokrzemowe\n- Idealny do doświadczeń szkolnych\n\nCena edukacyjna: **od 1299 zł netto/szt.**",
+        "fontSize": 14,
+        "color": "#2c3e50"
+      },
+      "style": {
+        "textAlign": "left",
+        "marginBottom": 20
+      }
+    },
+    {
+      "id": 5,
+      "type": "button",
+      "content": {
+        "text": "SPRAWDŹ SZCZEGÓŁY",
+        "url": "https://example.com/produkty/chemlab-pro",
+        "backgroundColor": "#4bd4f5",
+        "textColor": "#ffffff",
+        "borderRadius": 8,
+        "padding": "16px 40px"
+      },
+      "style": {
+        "textAlign": "center",
+        "marginBottom": 32
+      }
+    },
+    {
+      "id": 6,
+      "type": "text",
+      "content": {
+        "text": "📧 Kontakt: sales@edulabs.pl | ☎️ +48 22 321 00 44\nEduLabs Polska | www.edulabs.pl",
+        "fontSize": 11,
+        "color": "#7f8c8d"
+      },
+      "style": {
+        "textAlign": "center"
+      }
+    }
+  ],
+  "metadata": {
+    "createdAt": "2025-10-30",
+    "version": "1.0",
+    "author": "Block Email Editor",
+    "tags": ["laboratorium", "chemia", "fizyka", "szkoła", "edukacja"]
+  }
+}

@@ -1,264 +1,167 @@
 <template>
-  <div class="databases-container">
-    <!-- Header Section -->
-    <div class="databases-header">
-      <h2 class="page-title">Bazy Danych</h2>
-      <p class="page-subtitle">Zarządzaj bazami kontaktów dla kampanii marketingowych</p>
-    </div>
-
-    <v-container fluid class="databases-content">
-      <v-row>
-        <!-- Left Panel - Database List -->
-        <v-col cols="12" md="4">
-          <v-card class="database-list-card">
-            <v-card-title class="card-header">
-              <div class="header-content">
-                <div class="header-info">
-                  <h3>Bazy Danych</h3>
-                  <span class="db-count">{{ databases.length }} baz</span>
-                </div>
-                <v-btn 
-                  color="primary" 
-                  class="add-btn"
-                  @click="openCreateDialog"
-                >
-                  <v-icon left>mdi-plus</v-icon>
-                  Nowa baza
-                </v-btn>
-              </div>
-            </v-card-title>
-            
-            <v-card-text class="pa-0">
-              <!-- Search -->
-              <div class="search-section">
-                <v-text-field
-                  v-model="searchQuery"
-                  placeholder="Wyszukaj bazę..."
-                  prepend-inner-icon="mdi-magnify"
-                  variant="outlined"
-                  density="comfortable"
-                  hide-details
-                />
-              </div>
-
-              <!-- Database List -->
-              <div class="database-list">
-                <div 
-                  v-for="database in filteredDatabases"
-                  :key="database.id"
-                  class="database-item"
-                  :class="{ 'selected': selectedDatabase?.id === database.id }"
-                  @click="selectDatabase(database)"
-                >
-                  <div class="db-icon">
-                    <v-icon size="24" color="primary">mdi-database</v-icon>
-                  </div>
-                  <div class="db-info">
-                    <h4 class="db-name">{{ database.name }}</h4>
-                    <div class="db-meta">
-                      <span class="contact-count">
-                        <v-icon size="16">mdi-account-group</v-icon>
-                        {{ database.contactsCount }} kontaktów
-                      </span>
-                      <span class="db-date">{{ formatDate(database.createdAt) }}</span>
-                    </div>
-                    <div class="db-tags" v-if="database.tags?.length">
-                      <v-chip
-                        v-for="tag in database.tags.slice(0, 2)"
-                        :key="tag"
-                        size="small"
-                        variant="outlined"
-                        class="tag-chip"
-                      >
-                        {{ tag }}
-                      </v-chip>
-                      <span v-if="database.tags.length > 2" class="more-tags">
-                        +{{ database.tags.length - 2 }}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="db-actions">
-                    <v-menu>
-                      <template v-slot:activator="{ props }">
-                        <v-btn
-                          icon
-                          size="small"
-                          variant="text"
-                          v-bind="props"
-                          @click.stop
-                        >
-                          <v-icon>mdi-dots-vertical</v-icon>
-                        </v-btn>
-                      </template>
-                      <v-list>
-                        <v-list-item @click="editDatabase(database)">
-                          <v-list-item-title>
-                            <v-icon left size="16">mdi-pencil</v-icon>
-                            Edytuj
-                          </v-list-item-title>
-                        </v-list-item>
-                        <v-list-item @click="duplicateDatabase(database)">
-                          <v-list-item-title>
-                            <v-icon left size="16">mdi-content-copy</v-icon>
-                            Duplikuj
-                          </v-list-item-title>
-                        </v-list-item>
-                        <v-list-item @click="exportDatabase(database)">
-                          <v-list-item-title>
-                            <v-icon left size="16">mdi-download</v-icon>
-                            Eksportuj
-                          </v-list-item-title>
-                        </v-list-item>
-                        <v-divider />
-                        <v-list-item @click="deleteDatabase(database)" class="delete-item">
-                          <v-list-item-title>
-                            <v-icon left size="16">mdi-delete</v-icon>
-                            Usuń
-                          </v-list-item-title>
-                        </v-list-item>
-                      </v-list>
-                    </v-menu>
-                  </div>
-                </div>
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-
-        <!-- Right Panel - Database Details -->
-        <v-col cols="12" md="8">
-          <div v-if="selectedDatabase" class="database-details">
-            <!-- Database Stats Cards -->
-            <div class="stats-grid">
-              <v-card class="stat-card">
-                <div class="stat-content">
-                  <div class="stat-icon contacts">
-                    <v-icon>mdi-account-group</v-icon>
-                  </div>
-                  <div class="stat-info">
-                    <h3>{{ selectedDatabase.contactsCount }}</h3>
-                    <p>Kontaktów</p>
-                  </div>
-                </div>
-              </v-card>
-              
-              <v-card class="stat-card">
-                <div class="stat-content">
-                  <div class="stat-icon active">
-                    <v-icon>mdi-check-circle</v-icon>
-                  </div>
-                  <div class="stat-info">
-                    <h3>{{ selectedDatabase.activeCount || 0 }}</h3>
-                    <p>Aktywnych</p>
-                  </div>
-                </div>
-              </v-card>
-              
-              <v-card class="stat-card">
-                <div class="stat-content">
-                  <div class="stat-icon campaigns">
-                    <v-icon>mdi-email-multiple</v-icon>
-                  </div>
-                  <div class="stat-info">
-                    <h3>{{ selectedDatabase.campaignsUsed || 0 }}</h3>
-                    <p>Kampanii</p>
-                  </div>
-                </div>
-              </v-card>
-              
-              <v-card class="stat-card">
-                <div class="stat-content">
-                  <div class="stat-icon segments">
-                    <v-icon>mdi-filter</v-icon>
-                  </div>
-                  <div class="stat-info">
-                    <h3>{{ selectedDatabase.segments?.length || 0 }}</h3>
-                    <p>Segmentów</p>
-                  </div>
-                </div>
-              </v-card>
+  <PageContent title="Bazy Danych" subtitle="Zarządzaj bazami kontaktów dla kampanii marketingowych">
+    <template #left-panel>
+      <v-card class="database-list-card">
+        <v-card-title class="card-header">
+          <div class="header-content">
+            <div class="header-info">
+              <h3>Bazy Danych</h3>
+              <span class="db-count">{{ databases.length }} baz</span>
             </div>
-
-            <!-- Tabs Section -->
-            <v-card class="details-card">
-              <v-tabs v-model="activeTab" bg-color="transparent">
-                <v-tab value="contacts">
-                  <v-icon left>mdi-account-group</v-icon>
-                  Kontakty
-                </v-tab>
-                <v-tab value="history">
-                  <v-icon left>mdi-history</v-icon>
-                  Historia
-                </v-tab>
-              </v-tabs>
-
-              <v-card-text>
-                <v-window v-model="activeTab">
-                  <!-- Contacts Tab -->
-                  <v-window-item value="contacts">
-                    <ContactsTable 
-                      :database="selectedDatabase"
-                      :contacts="selectedDatabase.contacts || []"
-                      @edit-contact="editContact"
-                      @delete-contact="deleteContact"
-                    />
-                  </v-window-item>
-
-                  <!-- Segments Tab -->
-                  <v-window-item value="segments">
-                    <SegmentsManager 
-                      :database="selectedDatabase"
-                      :segments="selectedDatabase.segments || []"
-                      @create-segment="createSegmentFromRules"
-                      @edit-segment="editSegment"
-                    />
-                  </v-window-item>
-
-                  <!-- Fields Tab -->
-                  <v-window-item value="fields">
-                    <FieldsManager 
-                      :database="selectedDatabase"
-                      :fields="selectedDatabase.customFields || []"
-                      @add-field="addCustomField"
-                      @edit-field="editCustomField"
-                    />
-                  </v-window-item>
-
-                  <!-- History Tab -->
-                  <v-window-item value="history">
-                    <DatabaseHistory 
-                      :database="selectedDatabase"
-                      :history="selectedDatabase.history || []"
-                    />
-                  </v-window-item>
-                </v-window>
-              </v-card-text>
-            </v-card>
-          </div>
-
-          <!-- Empty State -->
-          <div v-else class="empty-state">
-            <div class="empty-icon">
-              <v-icon size="80" color="grey-lighten-2">mdi-database-outline</v-icon>
-            </div>
-            <h3>Wybierz bazę danych</h3>
-            <p>Wybierz bazę danych z listy po lewej stronie, aby zobaczyć szczegóły i zarządzać kontaktami.</p>
-            <v-btn color="primary" @click="openCreateDialog">
+            <v-btn color="primary" class="add-btn" @click="openCreateDialog">
               <v-icon left>mdi-plus</v-icon>
-              Utwórz pierwszą bazę
+              Nowa baza
             </v-btn>
           </div>
-        </v-col>
-      </v-row>
-    </v-container>
+        </v-card-title>
 
+        <v-card-text class="pa-0">
+          <!-- Search -->
+          <div class="search-section">
+            <v-text-field v-model="searchQuery" placeholder="Wyszukaj bazę..." prepend-inner-icon="mdi-magnify"
+              variant="outlined" density="comfortable" hide-details />
+          </div>
+
+          <!-- Database List -->
+          <div class="database-list">
+            <div v-for="database in filteredDatabases" :key="database.id" class="database-item"
+              :class="{ 'selected': selectedDatabase?.id === database.id }" @click="selectDatabase(database)">
+              <div class="db-icon">
+                <v-icon size="24" color="primary">mdi-database</v-icon>
+              </div>
+              <div class="db-info">
+                <h4 class="db-name">{{ database.name }}</h4>
+                <div class="db-meta">
+                  <span class="contact-count">
+                    <v-icon size="16">mdi-account-group</v-icon>
+                    {{ database.contactsCount }} kontaktów
+                  </span>
+                  <span class="db-date">{{ formatDate(database.createdAt) }}</span>
+                </div>
+                <div class="db-tags" v-if="database.tags?.length">
+                  <v-chip v-for="tag in database.tags.slice(0, 2)" :key="tag" size="small" variant="outlined"
+                    class="tag-chip">
+                    {{ tag }}
+                  </v-chip>
+                  <span v-if="database.tags.length > 2" class="more-tags">
+                    +{{ database.tags.length - 2 }}
+                  </span>
+                </div>
+              </div>
+              <div class="db-actions">
+                <v-menu>
+                  <template v-slot:activator="{ props }">
+                    <v-btn icon size="small" variant="text" v-bind="props" @click.stop>
+                      <v-icon>mdi-dots-vertical</v-icon>
+                    </v-btn>
+                  </template>
+                  <v-list>
+                    <v-list-item @click="editDatabase(database)">
+                      <v-list-item-title>
+                        <v-icon left size="16">mdi-pencil</v-icon>
+                        Edytuj
+                      </v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="duplicateDatabase(database)">
+                      <v-list-item-title>
+                        <v-icon left size="16">mdi-content-copy</v-icon>
+                        Duplikuj
+                      </v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="exportDatabase(database)">
+                      <v-list-item-title>
+                        <v-icon left size="16">mdi-download</v-icon>
+                        Eksportuj
+                      </v-list-item-title>
+                    </v-list-item>
+                    <v-divider />
+                    <v-list-item @click="deleteDatabase(database)" class="delete-item">
+                      <v-list-item-title>
+                        <v-icon left size="16">mdi-delete</v-icon>
+                        Usuń
+                      </v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+              </div>
+            </div>
+          </div>
+        </v-card-text>
+      </v-card>
+    </template>
+    <template #right-panel>
+      <div v-if="selectedDatabase" class="database-details">
+        <!-- Database Stats Cards -->
+          <StatGrid :statElements="[
+            { icon: 'mdi-account-group', title: 'Kontaktów', value: selectedDatabase.contactsCount || 0, class: 'contacts' },
+            { icon: 'mdi-check-circle', title: 'Aktywnych', value: selectedDatabase.activeCount || 0, class: 'active' },
+            { icon: 'mdi-email-multiple', title: 'Kampanii', value: selectedDatabase.campaignsUsed || 0, class: 'campaigns' },
+            { icon: 'mdi-filter', title: 'Segmentów', value: selectedDatabase.segments?.length || 0, class: 'segments' }
+          ]" />
+
+
+        <!-- Tabs Section -->
+        <v-card class="details-card">
+          <v-tabs v-model="activeTab" bg-color="transparent">
+            <v-tab value="contacts">
+              <v-icon left>mdi-account-group</v-icon>
+              Kontakty
+            </v-tab>
+            <v-tab value="history">
+              <v-icon left>mdi-history</v-icon>
+              Historia
+            </v-tab>
+          </v-tabs>
+
+          <v-card-text>
+            <v-window v-model="activeTab">
+              <!-- Contacts Tab -->
+              <v-window-item value="contacts">
+                <ContactsTable :database="selectedDatabase" :contacts="selectedDatabase.contacts || []"
+                  @edit-contact="editContact" @delete-contact="deleteContact" 
+                  @export-contacts="exportContacts" @import-contacts="handleImportContacts" />
+              </v-window-item>
+
+              <!-- Segments Tab -->
+              <v-window-item value="segments">
+                <SegmentsManager :database="selectedDatabase" :segments="selectedDatabase.segments || []"
+                  @create-segment="createSegmentFromRules" @edit-segment="editSegment" @delete-segment="deleteSegment" />
+              </v-window-item>
+
+              <!-- Fields Tab -->
+              <v-window-item value="fields">
+                <FieldsManager :database="selectedDatabase" :fields="selectedDatabase.customFields || []"
+                  @add-field="addCustomField" @edit-field="editCustomField" @delete-field="deleteCustomField" />
+              </v-window-item>
+
+              <!-- History Tab -->
+              <v-window-item value="history">
+                <DatabaseHistory :database="selectedDatabase" :history="selectedDatabase.history || []" />
+              </v-window-item>
+            </v-window>
+          </v-card-text>
+        </v-card>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else class="empty-state">
+        <div class="empty-icon">
+          <v-icon size="80" color="grey-lighten-2">mdi-database-outline</v-icon>
+        </div>
+        <h3>Wybierz bazę danych</h3>
+        <p>Wybierz bazę danych z listy po lewej stronie, aby zobaczyć szczegóły i zarządzać kontaktami.</p>
+        <v-btn color="primary" @click="openCreateDialog">
+          <v-icon left>mdi-plus</v-icon>
+          Utwórz pierwszą bazę
+        </v-btn>
+      </div>
+    </template>
+  </PageContent>
+
+  <div class="databases-container">
     <!-- Create/Edit Database Dialog -->
-    <DatabaseDialog
-      v-model="showDatabaseDialog"
-      :database="editingDatabase"
-      @save="saveDatabase"
-      @close="closeDatabaseDialog"
-    />
+    <DatabaseDialog v-model="showDatabaseDialog" :database="editingDatabase" @save="saveDatabase"
+      @close="closeDatabaseDialog" />
 
 
   </div>
@@ -271,6 +174,9 @@ import SegmentsManager from '../components/database/SegmentsManager.vue'
 import FieldsManager from '../components/database/FieldsManager.vue'
 import DatabaseHistory from '../components/database/DatabaseHistory.vue'
 import DatabaseDialog from '../components/database/DatabaseDialog.vue'
+import PageContent from '../components/PageContent.vue'
+import StatGrid from '../components/StatGrid.vue'
+import { Databases } from '../services/databases.js'
 
 
 // Reactive data
@@ -285,8 +191,8 @@ const editingDatabase = ref(null)
 // Computed
 const filteredDatabases = computed(() => {
   if (!searchQuery.value) return databases.value
-  
-  return databases.value.filter(db => 
+
+  return databases.value.filter(db =>
     db.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
     db.description?.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
@@ -308,34 +214,56 @@ function editDatabase(database) {
   showDatabaseDialog.value = true
 }
 
-function saveDatabase(databaseData) {
-  if (editingDatabase.value) {
-    // Update existing
-    const index = databases.value.findIndex(db => db.id === editingDatabase.value.id)
-    if (index !== -1) {
-      databases.value[index] = { ...databases.value[index], ...databaseData }
-      if (selectedDatabase.value?.id === editingDatabase.value.id) {
-        selectedDatabase.value = databases.value[index]
+async function saveDatabase(databaseData) {
+  try {
+    console.log('Zapisywanie bazy danych:', databaseData)
+    
+    // Mapowanie pól z dialogu na pola backend
+    const backendData = {
+      name: databaseData.name,
+      description: databaseData.description,
+      tags: databaseData.tags,
+      rodo_flag: databaseData.gdprCompliant !== false,
+      export_enabled: databaseData.allowExport !== false
+      // customer_id będzie automatycznie dodane w serwisie Databases
+    }
+    
+    console.log('Dane do wysłania:', backendData)
+    
+    if (editingDatabase.value) {
+      // Update existing database
+      const updatedDatabase = await Databases.update(editingDatabase.value.id, backendData)
+      
+      const index = databases.value.findIndex(db => db.id === editingDatabase.value.id)
+      if (index !== -1) {
+        databases.value[index] = updatedDatabase
+        if (selectedDatabase.value?.id === editingDatabase.value.id) {
+          selectedDatabase.value = updatedDatabase
+        }
+      }
+      console.log('Baza danych zaktualizowana:', updatedDatabase)
+      
+      // Zamknij dialog po sukcesie
+      closeDatabaseDialog()
+    } else {
+      // Create new database
+      const newDatabase = await Databases.create(backendData)
+      console.log('Odpowiedź z API create:', newDatabase)
+      
+      if (newDatabase) {
+        databases.value.unshift(newDatabase)
+        selectedDatabase.value = newDatabase
+        console.log('Nowa baza danych dodana do listy:', newDatabase.name)
+        
+        // Zamknij dialog po sukcesie
+        closeDatabaseDialog()
       }
     }
-  } else {
-    // Create new
-    const newDatabase = {
-      id: Date.now(),
-      ...databaseData,
-      createdAt: new Date(),
-      contactsCount: 0,
-      activeCount: 0,
-      campaignsUsed: 0,
-      contacts: [],
-      segments: [],
-      customFields: [],
-      history: []
-    }
-    databases.value.unshift(newDatabase)
-    selectedDatabase.value = newDatabase
+  } catch (error) {
+    console.error('Błąd podczas zapisywania bazy danych:', error)
+    console.error('Response error:', error.response?.data)
+    alert('Nie udało się zapisać bazy danych: ' + (error.response?.data?.message || error.message))
   }
-  closeDatabaseDialog()
 }
 
 function closeDatabaseDialog() {
@@ -354,18 +282,46 @@ function duplicateDatabase(database) {
   databases.value.unshift(duplicate)
 }
 
-function deleteDatabase(database) {
-  if (confirm(`Czy na pewno chcesz usunąć bazę "${database.name}"?`)) {
-    databases.value = databases.value.filter(db => db.id !== database.id)
-    if (selectedDatabase.value?.id === database.id) {
-      selectedDatabase.value = null
+async function deleteDatabase(database) {
+  if (confirm(`Czy na pewno chcesz usunąć bazę "${database.name}"? Ta operacja jest nieodwracalna.`)) {
+    try {
+      await Databases.delete(database.id)
+      databases.value = databases.value.filter(db => db.id !== database.id)
+      if (selectedDatabase.value?.id === database.id) {
+        selectedDatabase.value = null
+      }
+      console.log('Baza danych usunięta:', database.name)
+    } catch (error) {
+      console.error('Błąd podczas usuwania bazy danych:', error)
+      alert('Nie udało się usunąć bazy danych. Spróbuj ponownie.')
     }
   }
 }
 
-function exportDatabase(database) {
-  // Export logic here
-  console.log('Eksportowanie bazy:', database.name)
+async function exportDatabase(database) {
+  try {
+    console.log('Eksportowanie bazy:', database.name)
+    const blob = await Databases.exportContacts(database.id, {
+      format: 'csv',
+      fields: ['email', 'firstName', 'lastName', 'phone'],
+      status: 'active'
+    })
+    
+    // Utwórz link do pobrania pliku
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${database.name}_contacts_${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    console.log('Baza danych wyeksportowana:', database.name)
+  } catch (error) {
+    console.error('Błąd podczas eksportowania bazy danych:', error)
+    alert('Nie udało się wyeksportować bazy danych.')
+  }
 }
 
 
@@ -377,12 +333,30 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString('pl-PL')
 }
 
-function editContact(contact) {
+async function editContact(contact) {
   console.log('Edytowanie kontaktu:', contact)
+  // Tutaj można otworzyć dialog edycji kontaktu
+  // Implementacja zależy od struktury komponentu ContactDialog
 }
 
-function deleteContact(contact) {
-  console.log('Usuwanie kontaktu:', contact)
+async function deleteContact(contact) {
+  if (confirm(`Czy na pewno chcesz usunąć kontakt ${contact.email}?`)) {
+    try {
+      if (selectedDatabase.value) {
+        await Databases.deleteContact(selectedDatabase.value.id, contact.id)
+        
+        // Odśwież dane kontaktów dla aktualnie wybranej bazy
+        const updatedContacts = await Databases.getContacts(selectedDatabase.value.id)
+        selectedDatabase.value.contacts = updatedContacts.contacts || []
+        selectedDatabase.value.contactsCount = updatedContacts.total || 0
+        
+        console.log('Kontakt usunięty:', contact.email)
+      }
+    } catch (error) {
+      console.error('Błąd podczas usuwania kontaktu:', error)
+      alert('Nie udało się usunąć kontaktu.')
+    }
+  }
 }
 
 function createSegmentFromRules(rules) {
@@ -393,19 +367,135 @@ function editSegment(segment) {
   console.log('Edytowanie segmentu:', segment)
 }
 
-function addCustomField(field) {
-  console.log('Dodawanie pola:', field)
+async function deleteSegment(segment) {
+  try {
+    if (selectedDatabase.value) {
+      await Databases.deleteSegment(selectedDatabase.value.id, segment.id)
+      
+      // Odśwież dane segmentów dla aktualnie wybranej bazy
+      const segments = await Databases.getSegments(selectedDatabase.value.id)
+      selectedDatabase.value.segments = segments || []
+      
+      console.log('Segment usunięty:', segment.name)
+    }
+  } catch (error) {
+    console.error('Błąd podczas usuwania segmentu:', error)
+    alert('Nie udało się usunąć segmentu.')
+  }
 }
 
-function editCustomField(field) {
-  console.log('Edytowanie pola:', field)
+async function addCustomField(field) {
+  try {
+    if (selectedDatabase.value) {
+      await Databases.addCustomField(selectedDatabase.value.id, field)
+      
+      // Odśwież dane pól niestandardowych dla aktualnie wybranej bazy
+      const customFields = await Databases.getCustomFields(selectedDatabase.value.id)
+      selectedDatabase.value.customFields = customFields || []
+      
+      console.log('Pole dodane:', field.name)
+    }
+  } catch (error) {
+    console.error('Błąd podczas dodawania pola:', error)
+    alert('Nie udało się dodać pola.')
+  }
+}
+
+async function editCustomField(field) {
+  try {
+    if (selectedDatabase.value) {
+      await Databases.updateCustomField(selectedDatabase.value.id, field.id, field)
+      
+      // Odśwież dane pól niestandardowych dla aktualnie wybranej bazy
+      const customFields = await Databases.getCustomFields(selectedDatabase.value.id)
+      selectedDatabase.value.customFields = customFields || []
+      
+      console.log('Pole zaktualizowane:', field.name)
+    }
+  } catch (error) {
+    console.error('Błąd podczas aktualizacji pola:', error)
+    alert('Nie udało się zaktualizować pola.')
+  }
+}
+
+async function deleteCustomField(field) {
+  try {
+    if (selectedDatabase.value) {
+      await Databases.deleteCustomField(selectedDatabase.value.id, field.id)
+      
+      // Odśwież dane pól niestandardowych dla aktualnie wybranej bazy
+      const customFields = await Databases.getCustomFields(selectedDatabase.value.id)
+      selectedDatabase.value.customFields = customFields || []
+      
+      console.log('Pole usunięte:', field.name)
+    }
+  } catch (error) {
+    console.error('Błąd podczas usuwania pola:', error)
+    alert('Nie udało się usunąć pola.')
+  }
+}
+
+async function exportContacts() {
+  try {
+    if (selectedDatabase.value) {
+      const blob = await Databases.exportContacts(selectedDatabase.value.id, {
+        format: 'csv',
+        fields: ['email', 'firstName', 'lastName', 'status']
+      })
+      
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${selectedDatabase.value.name}_contacts.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      
+      console.log('Kontakty wyeksportowane')
+    }
+  } catch (error) {
+    console.error('Błąd podczas eksportu kontaktów:', error)
+    alert('Nie udało się wyeksportować kontaktów.')
+  }
+}
+
+async function handleImportContacts(result) {
+  try {
+    if (selectedDatabase.value && result.file) {
+      const importResult = await Databases.importContacts(selectedDatabase.value.id, result.file, {
+        mapping: result.mapping,
+        options: result.options
+      })
+      
+      // Odśwież dane kontaktów
+      const updatedContacts = await Databases.getContacts(selectedDatabase.value.id)
+      selectedDatabase.value.contacts = updatedContacts.contacts || []
+      selectedDatabase.value.contactsCount = updatedContacts.total || 0
+      
+      console.log('Import zakończony:', importResult)
+      alert(`Zaimportowano ${importResult.imported} kontaktów`)
+    }
+  } catch (error) {
+    console.error('Błąd podczas importu kontaktów:', error)
+    alert('Nie udało się zaimportować kontaktów.')
+  }
 }
 
 
 
-// Sample data
-onMounted(() => {
-  databases.value = [
+// Load data from API
+async function loadDatabases() {
+  try {
+    const data = await Databases.getList()
+    databases.value = data || []
+    if (databases.value.length > 0) {
+      selectedDatabase.value = databases.value[0]
+    }
+  } catch (error) {
+    console.error('Błąd podczas ładowania baz danych:', error)
+    // Fallback to sample data in case of error
+    databases.value = [
     {
       id: 1,
       name: 'Klienci Premium',
@@ -443,46 +533,28 @@ onMounted(() => {
       tags: ['Leads', 'Reklamy', 'Konwersja'],
       segments: []
     }
-  ]
+    ]
+  }
+}
+
+async function loadDatabaseStats() {
+  try {
+    const stats = await Databases.getStats()
+    console.log('Statystyki baz danych:', stats)
+    return stats
+  } catch (error) {
+    console.error('Błąd podczas ładowania statystyk:', error)
+    return {}
+  }
+}
+
+onMounted(async () => {
+  await loadDatabases()
+  await loadDatabaseStats()
 })
 </script>
 
 <style scoped>
-.databases-container {
-  width: 100vw;
-  background: linear-gradient(135deg, #eadcf6 0%, #9395fa 100%);
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-.databases-header {
-  background: linear-gradient(135deg, #202950 0%, #515bad 100%);
-  padding: 10px 0;
-  text-align: center;
-  color: #eadcf6;
-  margin: 0;
-  width: 100%;
-}
-
-.page-title {
-  font-size: 1.8rem;
-  font-weight: 800;
-  margin-bottom: 8px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-}
-
-.page-subtitle {
-  font-size: 0.9rem;
-  opacity: 0.9;
-}
-
-.databases-content {
-  padding: 20px !important;
-  margin: 0 !important;
-  width: 100% !important;
-}
-
 /* Database List Card */
 .database-list-card {
   border-radius: 16px !important;
@@ -611,67 +683,6 @@ onMounted(() => {
   color: #666;
 }
 
-/* Stats Grid */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 10px;
-}
-
-.stat-card {
-  border-radius: 12px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px) !important;
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-  padding: 5px 5px 5px 10px;
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 16px;
-  color: white;
-}
-
-.stat-icon.contacts {
-  background: linear-gradient(135deg, #202950 0%, #515bad 100%);
-}
-
-.stat-icon.active {
-  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
-}
-
-.stat-icon.campaigns {
-  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-}
-
-.stat-icon.segments {
-  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
-}
-
-.stat-info h3 {
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin: 0;
-  color: #333;
-}
-
-.stat-info p {
-  margin: 0;
-  color: #666;
-  font-size: 0.9rem;
-}
 
 /* Action Buttons */
 .action-buttons {
@@ -729,11 +740,11 @@ onMounted(() => {
   .databases-content {
     padding: 10px !important;
   }
-  
+
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .action-buttons {
     justify-content: center;
   }

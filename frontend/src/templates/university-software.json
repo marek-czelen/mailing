@@ -1,0 +1,16 @@
+{
+  "id":"university-software",
+  "name":"Oferta dla uczelni wyższych",
+  "description":"Szablon promujący licencje oprogramowania edukacyjnego dla uczelni",
+  "category":"promocje",
+  "thumbnail":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNmY4YjYwIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjOWY5YmYyIiByeD0iOCIvPjx0ZXh0IHg9IjEwMCIgeT0iMzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+LICENCJE OPROGRAMOWANIA EDUKACYJNEGO< /dGV4dD48L3N2Zz4=",
+  "blocks":[
+    {"id":1,"type":"text","content":{"text":"💻 LICENCJE OPROGRAMOWANIA EDUKACYJNEGO DLA UCZELNI WYŻSZYCH","fontSize":26,"color":"#8e44ad","fontWeight":"bold","fontStyle":"normal"},"style":{"marginTop":16,"marginBottom":24,"textAlign":"center"}},
+    {"id":2,"type":"text","content":{"text":"Oferujemy dostęp do profesjonalnych narzędzi edukacyjnych i naukowych dla studentów i wykładowców.","fontSize":18,"color":"#34495e","fontWeight":"normal","fontStyle":"normal"},"style":{"marginTop":0,"marginBottom":24,"textAlign":"center"}},
+    {"id":3,"type":"image","content":{"src":"https://via.placeholder.com/500x200/8e44ad/ffffff?text=Oprogramowanie+Edukacyjne","alt":"Oprogramowanie edukacyjne","width":500,"height":200,"url":"https://example.com/produkty/licencje-software","borderRadius":10},"style":{"marginTop":0,"marginBottom":24,"textAlign":"center"}},
+    {"id":4,"type":"text","content":{"text":"Licencja EduSoft Pro – dostęp do narzędzi do analizy danych, modelowania 3D i symulacji\n- Licencja roczna dla uczelni\n- Indywidualny panel zarządzania\n- Cena specjalna: **od 1999 zł/rok**","fontSize":14,"color":"#8e44ad","fontWeight":"normal","fontStyle":"normal"},"style":{"marginTop":0,"marginBottom":24,"textAlign":"left"}},
+    {"id":5,"type":"button","content":{"text":"ZOBACZ OFERTĘ","url":"https://example.com/produkty/licencje-software","backgroundColor":"#8e44ad","textColor":"#ffffff","borderRadius":8,"padding":"16px 40px"},"style":{"marginTop":0,"marginBottom":32,"textAlign":"center"}},
+    {"id":6,"type":"text","content":{"text":"Kontakt: 📧 edu@techmarket.pl | ☎️ +48 22 555 44 33","fontSize":11,"color":"#7f8c8d","fontWeight":"normal","fontStyle":"normal"},"style":{"marginTop":0,"marginBottom":0,"textAlign":"center"}}
+  ],
+  "metadata":{"createdAt":"2025-10-30","version":"1.0","author":"Block Email Editor","tags":["edukacja","uczelnia","oprogramowanie","promocja"]}
+}

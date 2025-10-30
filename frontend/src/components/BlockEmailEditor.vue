@@ -1054,7 +1054,13 @@ export default {
             'newsletter-basic.json': () => import('@/templates/newsletter-basic.json'),
             'promo-sale.json': () => import('@/templates/promo-sale.json'),
             'notification-welcome.json': () => import('@/templates/notification-welcome.json'),
-            'event-invitation.json': () => import('@/templates/event-invitation.json')
+            'event-invitation.json': () => import('@/templates/event-invitation.json'),
+            'education-offer.json': () => import('@/templates/education-offer.json'),
+            'kindergarten-offer.json': () => import('@/templates/kindergarten-offer.json'),
+            'school-lab-offer.json': () => import('@/templates/school-lab-offer.json'),
+            'primary-school-tablets.json': () => import('@/templates/primary-school-tablets.json'),
+            'highschool-projectors.json': () => import('@/templates/highschool-projectors.json'),
+            'university-software.json': () => import('@/templates/university-software.json')
           };
 
           // Załaduj odpowiedni szablon

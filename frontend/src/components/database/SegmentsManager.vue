@@ -457,7 +457,7 @@ function duplicateSegment(segment) {
 
 function deleteSegment(segment) {
   if (confirm(`Czy na pewno chcesz usunąć segment "${segment.name}"?`)) {
-    console.log('Usuwanie segmentu:', segment)
+    emit('delete-segment', segment)
   }
 }
 

@@ -1,0 +1,81 @@
+{
+
+    "id": "language-courses",
+    "name": "Nowe Kursy Językowe - Zapisz się już dziś!",
+    "description": "Promocyjny mailing o kursach językowych dla szkół i uczelni.",
+    "category": "edukacja",
+    "thumbnail": "https://via.placeholder.com/200x150/3498db/ffffff?text=Kursy+jezykowe",
+    "blocks": [
+      {
+        "id": 1,
+        "type": "text",
+        "content": {
+          "text": "🌍 NOWE KURSY JĘZYKOWE 2025 🌍",
+          "fontSize": 30,
+          "color": "#2980b9",
+          "fontWeight": "bold"
+        },
+        "style": { "textAlign": "center", "marginBottom": 16 }
+      },
+      {
+        "id": 2,
+        "type": "text",
+        "content": {
+          "text": "Zwiększ kompetencje językowe nauczycieli i uczniów!",
+          "fontSize": 18,
+          "color": "#2c3e50"
+        },
+        "style": { "textAlign": "center", "marginBottom": 20 }
+      },
+      {
+        "id": 3,
+        "type": "image",
+        "content": {
+          "src": "https://via.placeholder.com/400x200/2980b9/ffffff?text=Angielski+dla+szkol",
+          "alt": "Kurs języka angielskiego",
+          "url": "https://example.com/kurs-angielski"
+        },
+        "style": { "textAlign": "center", "marginBottom": 12 }
+      },
+      {
+        "id": 4,
+        "type": "text",
+        "content": {
+          "text": "📘 Kurs angielskiego dla szkół – od 59 zł / ucznia\n📗 Kurs niemieckiego – zniżka 20% do 30 listopada!",
+          "fontSize": 15,
+          "color": "#16a085"
+        },
+        "style": { "textAlign": "left", "marginBottom": 24 }
+      },
+      {
+        "id": 5,
+        "type": "button",
+        "content": {
+          "text": "ZOBACZ SZCZEGÓŁY",
+          "url": "https://example.com/oferta-jezykowa",
+          "backgroundColor": "#3498db",
+          "textColor": "#ffffff",
+          "borderRadius": 8
+        },
+        "style": { "textAlign": "center", "marginBottom": 20 }
+      },
+      {
+        "id": 6,
+        "type": "text",
+        "content": {
+          "text": "Oferta ważna do 30 listopada 2025",
+          "fontSize": 12,
+          "color": "#7f8c8d"
+        },
+        "style": { "textAlign": "center" }
+      }
+    ],
+    "metadata": {
+      "createdAt": "2025-10-30",
+      "version": "1.0",
+      "author": "EduMailer",
+      "tags": ["kursy", "języki", "edukacja", "promocja"]
+    }
+
+
+}

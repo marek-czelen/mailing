@@ -34,5 +34,62 @@
     "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjNjc0ZWE3IiByeD0iOCIvPjx0ZXh0IHg9IjEwMCIgeT0iMzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+WkFQUk9TWkVOSUU8L3RleHQ+PGNpcmNsZSBjeD0iNDAiIGN5PSI4NSIgcj0iMTUiIGZpbGw9IiNlNzRjM2MiLz48dGV4dCB4PSI0MCIgeT0iOTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjEwIj4xNTwvdGV4dD48dGV4dCB4PSI3MCIgeT0iNzgiIGZpbGw9IiMyYzNlNTAiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIj5LT05GRVJFTkNKQTwvdGV4dD48dGV4dCB4PSI3MCIgeT0iOTIiIGZpbGw9IiM3ZjhjOGQiIGZvbnQtc2l6ZT0iMTAiPjE1IExpc3RvcGFkYSAyMDI1PC90ZXh0PjxyZWN0IHg9IjcwIiB5PSIxMDUiIHdpZHRoPSI4MCIgaGVpZ2h0PSIyMCIgZmlsbD0iIzI3YWU2MCIgcng9IjQiLz48dGV4dCB4PSIxMTAiIHk9IjExOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iMTAiPkRPTMSEQ1o8L3RleHQ+PC9zdmc+",
     "file": "event-invitation.json",
     "tags": ["wydarzenie", "konferencja", "zaproszenie", "networking"]
-  }
+  },
+  {
+  "id": "education-offer",
+  "name": "Oferta dla szkół i uczelni",
+  "description": "Profesjonalny szablon promujący produkty i rozwiązania dla sektora edukacji.",
+  "category": "promocje",
+  "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZWRmMmYwIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjNDY4YmYyIiByeD0iOCIvPjx0ZXh0IHg9IjEwMCIgeT0iMzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+RURVQ0FDSU8gMjAyNSA8L3RleHQ+PHJlY3QgeD0iMzAiIHk9IjcwIiB3aWR0aD0iMTQwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjZmZmIiByeD0iOCIgc3Ryb2tlPSIjNDY4YmYyIiBzdHJva2Utd2lkdGg9IjMiLz48dGV4dCB4PSIxMDAiIHk9Ijk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNDY4YmYyIiBmb250LXNpemU9IjEyIj5MYXB0b3AgRWQ8L3RleHQ+PC9zdmc+",
+  "file": "education-offer.json",
+  "tags": ["edukacja", "sprzedaż", "szkoła", "uczelnia", "promocja"]
+},
+{
+  "id": "kindergarten-offer",
+  "name": "Oferta dla przedszkoli",
+  "description": "Kolorowy szablon promujący pomoce dydaktyczne i wyposażenie dla najmłodszych.",
+  "category": "promocje",
+  "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZmNmNDAwIi8+PHJlY3QgeD0iMzAiIHk9IjQwIiB3aWR0aD0iMTQwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjZmZmIiByeD0iOCIgc3Ryb2tlPSIjZmM4MDAwIiBzdHJva2Utd2lkdGg9IjMiLz48dGV4dCB4PSIxMDAiIHk9IjkwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmM4MDAwIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCI+UHJ6ZWRza29sZTwvdGV4dD48L3N2Zz4=",
+  "file": "kindergarten-offer.json",
+  "tags": ["przedszkole", "zabawki", "edukacja", "promocja"]
+},
+{
+  "id": "school-lab-offer",
+  "name": "Laboratoria Szkolne",
+  "description": "Szablon promujący zestawy i sprzęt do laboratoriów szkolnych.",
+  "category": "promocje",
+  "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCBmaWxsPSIjZTFlZmYwIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIi8+PGNpcmNsZSBjeD0iNjAiIGN5PSI3NSIgcj0iMjUiIGZpbGw9IiM0YmQ0ZjUiLz48dGV4dCB4PSIxMDAiIHk9IjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNDJiNGY1IiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iYm9sZCI+Q2hlbWlhPC90ZXh0Pjwvc3ZnPg==",
+  "file": "school-lab-offer.json",
+  "tags": ["laboratorium", "chemia", "fizyka", "edukacja"]
+},
+{
+  "id": "primary-school-tablets",
+  "name": "Oferta dla szkół podstawowych",
+  "description": "Szablon promujący zestawy tabletów edukacyjnych dla szkół podstawowych",
+  "category": "promocje",
+  "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjdiNmYxIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZmY5YjYwIiByeD0iOCIvPjx0ZXh0IHg9IjEwMCIgeT0iMzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+U0tPTEUgUE9EV0lTIkU8L3RleHQ+PC9zdmc+",
+  "file": "primary-school-tablets.json",
+  "tags": ["edukacja","szkoła podstawowa","tablet","promocja"]
+},
+{
+  "id":"highschool-projectors",
+  "name":"Oferta dla liceów i techników",
+  "description":"Szablon promujący projektory interaktywne dla liceów i techników",
+  "category":"promocje",
+  "thumbnail":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjZjYjYwIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjYjZjZjYwIiByeD0iOCIvPjx0ZXh0IHg9IjEwMCIgeT0iMzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+PROJEKTORY INTERAKTYWNE< /dGV4dD48L3N2Zz4=",
+  "file":"highschool-projectors.json",
+  "tags":["edukacja","liceum","projektor","promocja"]
+},
+{
+  "id":"university-software",
+  "name":"Oferta dla uczelni wyższych",
+  "description":"Szablon promujący licencje oprogramowania edukacyjnego dla uczelni",
+  "category":"promocje",
+  "thumbnail":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNmY4YjYwIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjOWY5YmYyIiByeD0iOCIvPjx0ZXh0IHg9IjEwMCIgeT0iMzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+ LICENCJE OPROGRAMOWANIA EDUKACYJNEGO< /dGV4dD48L3N2Zz4=",
+  "file":"university-software.json",
+  "tags":["edukacja","uczelnia","oprogramowanie","promocja"]
+}
+
+
+
 ]

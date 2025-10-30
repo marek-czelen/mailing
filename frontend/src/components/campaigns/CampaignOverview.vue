@@ -29,6 +29,11 @@
           <v-icon left>mdi-pencil</v-icon>
           Edytuj
         </v-btn>
+          <v-btn variant="outlined" size="small"
+            @click="$emit('schedule', campaign)">
+            <v-icon left>mdi-calendar-clock</v-icon>
+            Zaplanuj wysyłkę
+          </v-btn>        
       </div>
     </div>
 

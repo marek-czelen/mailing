@@ -1,6 +1,7 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../include/db.js";
 import Customers from "./customers.model.js";
+import MarketingCampanies from "./marketingCampanies.model.js";
 
 const Databases = sequelize.define('databases', {
   id:{
@@ -31,17 +32,30 @@ const Databases = sequelize.define('databases', {
 
   customer_id: {
         type: DataTypes.INTEGER,
+        field: "customer_id",
         references: {
             model: Customers,
             key: 'id'
         }
   }
+}, {
+    tableName: 'databases',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
 });
 
-Databases.belongsTo(Customers,{
+Databases.belongsToMany(MarketingCampanies, {
+    through: 'campaign_database_link',
+    as: 'MarketingCampanies',
+    foreignKey: 'database_id',
+    otherKey: 'campaign_id'
+});
+
+Databases.belongsTo(Customers, {
     as: "Customer",
     foreignKey: "customer_id",
     targetKey: "id"
-  })
-  
+});
+
 export default Databases;

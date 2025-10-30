@@ -1,12 +1,12 @@
 meta {
-  name: createCampaign
+  name: getDatabasesList
   type: http
-  seq: 1
+  seq: 8
 }
 
-post {
-  url: {{backendUrl}}/mailing/createCampaign
-  body: json
+get {
+  url: {{backendUrl}}/mailing/getDatabasesList
+  body: none
   auth: bearer
 }
 

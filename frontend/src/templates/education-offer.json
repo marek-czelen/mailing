@@ -1,0 +1,129 @@
+{
+  "id": "education-offer",
+  "name": "Oferta dla szkół i uczelni",
+  "description": "Profesjonalny szablon mailingowy promujący produkty i rozwiązania dla edukacji",
+  "category": "promocje",
+  "thumbnail": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZWRmMmYwIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjNDY4YmYyIiByeD0iOCIvPjx0ZXh0IHg9IjEwMCIgeT0iMzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCI+RURVQ0FDSU8gMjAyNSA8L3RleHQ+PHJlY3QgeD0iMzAiIHk9IjcwIiB3aWR0aD0iMTQwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjZmZmIiByeD0iOCIgc3Ryb2tlPSIjNDY4YmYyIiBzdHJva2Utd2lkdGg9IjMiLz48dGV4dCB4PSIxMDAiIHk9Ijk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNDY4YmYyIiBmb250LXNpemU9IjEyIj5MYXB0b3AgRWQ8L3RleHQ+PC9zdmc+",
+  "blocks": [
+    {
+      "id": 1,
+      "type": "text",
+      "content": {
+        "text": "🎓 OFERTA SPECJALNA DLA SZKÓŁ I UCZELNI",
+        "fontSize": 26,
+        "color": "#2c3e50",
+        "fontWeight": "bold",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 16,
+        "marginBottom": 24,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 2,
+      "type": "text",
+      "content": {
+        "text": "Wyposaż swoją placówkę edukacyjną w nowoczesny sprzęt i technologie wspierające naukę.",
+        "fontSize": 18,
+        "color": "#34495e",
+        "fontWeight": "normal",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 32,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 3,
+      "type": "image",
+      "content": {
+        "src": "https://via.placeholder.com/500x200/468bf2/ffffff?text=Laptopy+dla+edukacji",
+        "alt": "Laptopy edukacyjne",
+        "width": 500,
+        "height": 200,
+        "url": "https://example.com/produkty/laptop-edukacyjny",
+        "borderRadius": 10
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 24,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 4,
+      "type": "text",
+      "content": {
+        "text": "💻 **Laptop EduSmart 14\"**\n- Procesor Intel i5, 16 GB RAM, SSD 512 GB\n- Lekka konstrukcja (1,3 kg)\n- Wydłużony czas pracy na baterii (do 12h)\n- Idealny do zajęć zdalnych i pracy w sali\n\nCena specjalna dla instytucji edukacyjnych: **od 2199 zł netto/szt.**",
+        "fontSize": 14,
+        "color": "#2c3e50",
+        "fontWeight": "normal",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 24,
+        "textAlign": "left"
+      }
+    },
+    {
+      "id": 5,
+      "type": "button",
+      "content": {
+        "text": "ZOBACZ OFERTĘ",
+        "url": "https://example.com/produkty/laptop-edukacyjny",
+        "backgroundColor": "#468bf2",
+        "textColor": "#ffffff",
+        "borderRadius": 8,
+        "padding": "16px 40px"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 32,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 6,
+      "type": "text",
+      "content": {
+        "text": "📦 Dla większych zamówień oferujemy rabaty oraz możliwość leasingu sprzętu edukacyjnego.",
+        "fontSize": 14,
+        "color": "#e67e22",
+        "fontWeight": "bold",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 24,
+        "textAlign": "center"
+      }
+    },
+    {
+      "id": 7,
+      "type": "text",
+      "content": {
+        "text": "Skontaktuj się z naszym działem sprzedaży edukacyjnej:\n📧 edu@techmarket.pl | ☎️ +48 22 555 44 33\n\nTechMarket Sp. z o.o. | www.techmarket.pl\nRegulamin | Polityka prywatności",
+        "fontSize": 11,
+        "color": "#7f8c8d",
+        "fontWeight": "normal",
+        "fontStyle": "normal"
+      },
+      "style": {
+        "marginTop": 0,
+        "marginBottom": 0,
+        "textAlign": "center"
+      }
+    }
+  ],
+  "metadata": {
+    "createdAt": "2025-10-30",
+    "version": "1.0",
+    "author": "Block Email Editor",
+    "tags": ["edukacja", "sprzedaż", "promocja", "szkoła", "uczelnia"]
+  }
+}
