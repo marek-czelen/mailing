@@ -1498,3 +1498,141 @@ export async function unsubscribeContact(req, res) {
         res.send(new Response(null, false, `Failed to unsubscribe contact. ${error.message}`));
     }
 }
+
+/**
+ * Aktualizuj dane kontaktu
+ * 
+ * Endpoint: POST /mailing/contactUpdate
+ * 
+ * Parametry (body JSON):
+ * - id: number - ID kontaktu do aktualizacji (wymagane)
+ * - mailAddress: string - nowy adres email (opcjonalne)
+ * - miasto: string - miasto (opcjonalne)
+ * - rodzaj: string - rodzaj kontaktu (opcjonalne)
+ * - active: number (0/1) - status aktywności (opcjonalne)
+ * - databaseId: number - ID bazy danych (opcjonalne)
+ * - customerId: number - ID klienta (opcjonalne, dla weryfikacji)
+ * 
+ * Przykład użycia:
+ * POST /mailing/contactUpdate
+ * {
+ *   "id": 123,
+ *   "mailAddress": "new.email@example.com",
+ *   "miasto": "Kraków",
+ *   "rodzaj": "vip",
+ *   "active": 1
+ * }
+ */
+export async function contactUpdate(req, res) {
+    try {
+        const { id, mailAddress, miasto, rodzaj, active, databaseId, customerId, phone } = req.body;
+
+        // Walidacja wymaganego parametru
+        if (!id) {
+            return res.send(new Response(null, false, "Contact ID is required."));
+        }
+
+        // Sprawdź czy kontakt istnieje
+        let whereCondition = { id: id };
+        if (customerId) {
+            whereCondition.customerId = customerId; // Dodatkowa weryfikacja bezpieczeństwa
+        }
+
+        const existingContact = await MailAddress.findOne({
+            where: whereCondition,
+            include: [{
+                model: Customers,
+                as: 'Customer',
+                attributes: ['id', 'name']
+            }]
+        });
+
+        if (!existingContact) {
+            const message = customerId 
+                ? "Contact not found or does not belong to specified customer."
+                : "Contact not found.";
+            return res.send(new Response(null, false, message));
+        }
+
+        // Sprawdź czy nowy email już istnieje (jeśli email jest zmieniany)
+        if (mailAddress && mailAddress !== existingContact.mailAddress) {
+            const emailExists = await MailAddress.findOne({
+                where: {
+                    mailAddress: mailAddress,
+                    customerId: existingContact.customerId,
+                    id: { [Op.ne]: id } // Wyklucz aktualny kontakt
+                }
+            });
+
+            if (emailExists) {
+                return res.send(new Response(null, false, "Email address already exists for this customer."));
+            }
+        }
+
+        // Sprawdź czy baza danych istnieje (jeśli databaseId jest zmieniany)
+        if (databaseId && databaseId !== existingContact.databaseId) {
+            const database = await Databases.findOne({
+                where: {
+                    id: databaseId,
+                    deleted_at: null,
+                    customer_id: existingContact.customerId // Baza musi należeć do tego samego klienta
+                }
+            });
+
+            if (!database) {
+                return res.send(new Response(null, false, "Database not found or does not belong to the same customer."));
+            }
+        }
+
+        // Przygotuj dane do aktualizacji (tylko pola które zostały przekazane)
+        const updateData = {};
+        if (mailAddress !== undefined) updateData.mailAddress = mailAddress;
+        if (miasto !== undefined) updateData.miasto = miasto;
+        if (rodzaj !== undefined) updateData.rodzaj = rodzaj;
+        if (active !== undefined) updateData.active = active;
+        if (databaseId !== undefined) updateData.databaseId = databaseId;
+        if (phone!== undefined) updateData.phone = phone;
+
+        // Jeśli nie ma żadnych danych do aktualizacji
+        if (Object.keys(updateData).length === 0) {
+            return res.send(new Response(null, false, "No fields to update provided."));
+        }
+
+        // Wykonaj aktualizację
+        await existingContact.update(updateData);
+
+        // Pobierz zaktualizowany kontakt z relacjami
+        const updatedContact = await MailAddress.findOne({
+            where: { id: id },
+            include: [{
+                model: Customers,
+                as: 'Customer',
+                attributes: ['id', 'name']
+            }]
+        });
+
+        const result = {
+            contact: {
+                id: updatedContact.id,
+                mailAddress: updatedContact.mailAddress,
+                miasto: updatedContact.miasto,
+                rodzaj: updatedContact.rodzaj,
+                active: updatedContact.active,
+                databaseId: updatedContact.databaseId,
+                customerId: updatedContact.customerId,
+                unsubscribesDate: updatedContact.unsubscribesDate,
+                createdAt: updatedContact.created_at,
+                updatedAt: updatedContact.updated_at
+            },
+            customer: updatedContact.Customer,
+            updatedFields: Object.keys(updateData),
+            updateCount: Object.keys(updateData).length
+        };
+
+        res.send(new Response(result, true, "Contact updated successfully."));
+
+    } catch (error) {
+        console.log(error);
+        res.send(new Response(null, false, `Failed to update contact. ${error.message}`));
+    }
+}

@@ -1,0 +1,28 @@
+meta {
+  name: contactUpdate
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{backendUrl}}/mailing/contactUpdate
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "id": 59985,
+    "mailAddress": "snrppvrbde.niyfp@mail.comfdf",
+    "miasto": "Kraków",
+    "phone": "",
+    "rodzaj": "klient",
+    "active": 1,
+    "databaseId": 12,
+    "customerId": 1
+  }
+}

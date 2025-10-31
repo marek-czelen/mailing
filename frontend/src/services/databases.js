@@ -445,6 +445,37 @@ export class Databases {
     }
   }
 
+  /**
+   * Aktualizuj kontakt w systemie
+   * @param {Object} contactData - Dane kontaktu do aktualizacji
+   * @returns {Promise<Object>} - Wynik operacji aktualizacji
+   */
+  static async updateContact(contactData) {
+    try {
+      const customer_id = await this._getCurrentCustomerId();
+      
+      const payload = {
+        id: contactData.id,
+        mailAddress: contactData.mailAddress,
+        miasto: contactData.miasto,
+        phone: contactData.phone,
+        rodzaj: contactData.rodzaj,
+        active: contactData.active !== undefined ? contactData.active : 1,
+        databaseId: contactData.databaseId,
+        customerId: customer_id
+      };
+      
+      const response = await axios.post('/mailing/contactUpdate', payload, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Błąd podczas aktualizacji kontaktu:', error);
+      throw new Error(error.response?.data?.message || 'Błąd podczas aktualizacji kontaktu');
+    }
+  }
+
   // ============= STATYSTYKI =============
 
   /**

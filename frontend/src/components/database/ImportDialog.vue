@@ -6,9 +6,38 @@
     persistent
   >
     <v-card class="import-dialog">
+      <!-- Loading Overlay -->
+      <v-overlay
+        :model-value="uploading || importing"
+        class="align-center justify-center"
+        contained
+        persistent
+      >
+        <div class="loading-content">
+          <v-progress-circular
+            indeterminate
+            size="64"
+            color="primary"
+          ></v-progress-circular>
+          <h3 class="loading-title">
+            {{ uploading ? 'Przesyłanie pliku...' : 'Importowanie danych...' }}
+          </h3>
+          <p class="loading-subtitle">
+            {{ uploading ? uploadStatus : importStatus }}
+          </p>
+          <v-progress-linear
+            :model-value="uploading ? uploadProgress : importProgress"
+            color="primary"
+            height="8"
+            rounded
+            class="loading-progress"
+          ></v-progress-linear>
+        </div>
+      </v-overlay>
+
       <v-card-title class="dialog-header">
         <h2>Import kontaktów</h2>
-        <v-btn icon variant="text" @click="close" class="close-btn">
+        <v-btn icon variant="text" @click="close" class="close-btn" :disabled="uploading || importing">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
@@ -927,6 +956,33 @@ function close() {
 .import-dialog {
   border-radius: 16px !important;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15) !important;
+  position: relative;
+}
+
+/* Loading Overlay Styles */
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: white;
+}
+
+.loading-title {
+  margin: 24px 0 8px 0;
+  font-weight: 600;
+  font-size: 1.4rem;
+}
+
+.loading-subtitle {
+  margin: 0 0 24px 0;
+  opacity: 0.9;
+  font-size: 1rem;
+}
+
+.loading-progress {
+  width: 300px;
+  max-width: 80vw;
 }
 
 .dialog-header {

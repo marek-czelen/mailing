@@ -24,7 +24,18 @@
 
           <!-- Database List -->
           <div class="database-list">
-            <div v-for="database in filteredDatabases" :key="database.id" class="database-item"
+            <!-- Loading State -->
+            <div v-if="loadingDatabases" class="loading-state">
+              <v-progress-circular 
+                indeterminate 
+                color="primary"
+                size="40"
+              ></v-progress-circular>
+              <p class="loading-text">Ładowanie baz danych...</p>
+            </div>
+            
+            <!-- Database Items -->
+            <div v-else v-for="database in filteredDatabases" :key="database.id" class="database-item"
               :class="{ 'selected': selectedDatabase?.id === database.id }" @click="selectDatabase(database)">
               <div class="db-icon">
                 <v-icon size="24" color="primary">mdi-database</v-icon>
@@ -93,10 +104,9 @@
       <div v-if="selectedDatabase" class="database-details">
         <!-- Database Stats Cards -->
           <StatGrid :statElements="[
-            { icon: 'mdi-account-group', title: 'Kontaktów', value: selectedDatabase.contactsCount || 0, class: 'contacts' },
-            { icon: 'mdi-check-circle', title: 'Aktywnych', value: selectedDatabase.activeCount || 0, class: 'active' },
-            { icon: 'mdi-email-multiple', title: 'Kampanii', value: selectedDatabase.campaignsUsed || 0, class: 'campaigns' },
-            { icon: 'mdi-filter', title: 'Segmentów', value: selectedDatabase.segments?.length || 0, class: 'segments' }
+            { icon: 'mdi-account-group', title: 'Kontaktów', value: selectedDatabase.contacts?.length || 0, class: 'contacts' },
+            { icon: 'mdi-check-circle', title: 'Aktywnych', value: selectedDatabase.contacts?.filter(contact => contact.active == 1).length || 0, class: 'active' },
+            { icon: 'mdi-email-multiple', title: 'Wypisanych', value: selectedDatabase.contacts?.filter(contact => contact.unsubscribesDate).length || 0, class: 'campaigns' },
           ]" />
 
 
@@ -107,7 +117,7 @@
               <v-icon left>mdi-account-group</v-icon>
               Kontakty
             </v-tab>
-            <v-tab value="history">
+            <v-tab value="history" v-if="false">
               <v-icon left>mdi-history</v-icon>
               Historia
             </v-tab>
@@ -117,9 +127,20 @@
             <v-window v-model="activeTab">
               <!-- Contacts Tab -->
               <v-window-item value="contacts">
-                <ContactsTable :database="selectedDatabase" :contacts="selectedDatabase.contacts || []"
+                <!-- Loading overlay for contacts -->
+                <div v-if="loadingContacts" class="contacts-loading-overlay">
+                  <v-progress-circular 
+                    indeterminate 
+                    color="primary"
+                    size="40"
+                  ></v-progress-circular>
+                  <p class="loading-text">Ładowanie kontaktów...</p>
+                </div>
+                
+                <ContactsTable v-else :database="selectedDatabase" :contacts="selectedDatabase.contacts || []"
                   @edit-contact="editContact" @delete-contact="deleteContact" 
-                  @export-contacts="exportContacts" @import-contacts="handleImportContacts" />
+                  @export-contacts="exportContacts" @import-contacts="handleImportContacts"
+                  @contact-updated="handleContactUpdated" />
               </v-window-item>
 
               <!-- Segments Tab -->
@@ -203,6 +224,9 @@ const selectedDatabase = ref(null)
 const searchQuery = ref('')
 const activeTab = ref('contacts')
 const showDatabaseDialog = ref(false)
+const loadingDatabases = ref(true)
+const loadingContacts = ref(false)
+const loadingOperation = ref(false)
 
 const editingDatabase = ref(null)
 
@@ -237,11 +261,12 @@ async function selectDatabase(database) {
   selectedDatabase.value = database
   activeTab.value = 'contacts'
   
-  // Załaduj kontakty dla wybranej bazy danych
+  // Załaduj kontakty dla wybranej bazy danych z loaderem
   await loadDatabaseContacts(database.id)
 }
 
 async function loadDatabaseContacts(databaseId) {
+  loadingContacts.value = true
   try {
     console.log('Ładowanie kontaktów dla bazy:', databaseId)
     const contactsData = await Databases.getContacts(databaseId)
@@ -256,6 +281,9 @@ async function loadDatabaseContacts(databaseId) {
     if (selectedDatabase.value && selectedDatabase.value.id === databaseId) {
       selectedDatabase.value.contacts = []
     }
+    showSnackbar('Nie udało się załadować kontaktów', 'error')
+  } finally {
+    loadingContacts.value = false
   }
 }
 
@@ -270,6 +298,7 @@ function editDatabase(database) {
 }
 
 async function saveDatabase(databaseData) {
+  loadingOperation.value = true
   try {
     console.log('Zapisywanie bazy danych:', databaseData)
     
@@ -298,7 +327,7 @@ async function saveDatabase(databaseData) {
       }
       console.log('Baza danych zaktualizowana:', updatedDatabase)
       
-      // Zamknij dialog po sukcesie
+      showSnackbar('Baza danych została zaktualizowana', 'success')
       closeDatabaseDialog()
     } else {
       // Create new database
@@ -310,14 +339,16 @@ async function saveDatabase(databaseData) {
         selectedDatabase.value = newDatabase
         console.log('Nowa baza danych dodana do listy:', newDatabase.name)
         
-        // Zamknij dialog po sukcesie
+        showSnackbar('Nowa baza danych została utworzona', 'success')
         closeDatabaseDialog()
       }
     }
   } catch (error) {
     console.error('Błąd podczas zapisywania bazy danych:', error)
     console.error('Response error:', error.response?.data)
-    alert('Nie udało się zapisać bazy danych: ' + (error.response?.data?.message || error.message))
+    showSnackbar('Nie udało się zapisać bazy danych: ' + (error.response?.data?.message || error.message), 'error')
+  } finally {
+    loadingOperation.value = false
   }
 }
 
@@ -339,6 +370,7 @@ function duplicateDatabase(database) {
 
 async function deleteDatabase(database) {
   if (confirm(`Czy na pewno chcesz usunąć bazę "${database.name}"? Ta operacja jest nieodwracalna.`)) {
+    loadingOperation.value = true
     try {
       await Databases.delete(database.id)
       databases.value = databases.value.filter(db => db.id !== database.id)
@@ -346,14 +378,18 @@ async function deleteDatabase(database) {
         selectedDatabase.value = null
       }
       console.log('Baza danych usunięta:', database.name)
+      showSnackbar('Baza danych została usunięta', 'success')
     } catch (error) {
       console.error('Błąd podczas usuwania bazy danych:', error)
-      alert('Nie udało się usunąć bazy danych. Spróbuj ponownie.')
+      showSnackbar('Nie udało się usunąć bazy danych. Spróbuj ponownie.', 'error')
+    } finally {
+      loadingOperation.value = false
     }
   }
 }
 
 async function exportDatabase(database) {
+  loadingOperation.value = true
   try {
     console.log('Eksportowanie bazy:', database.name)
     const blob = await Databases.exportContacts(database.id, {
@@ -373,9 +409,12 @@ async function exportDatabase(database) {
     window.URL.revokeObjectURL(url)
     
     console.log('Baza danych wyeksportowana:', database.name)
+    showSnackbar('Baza danych została wyeksportowana', 'success')
   } catch (error) {
     console.error('Błąd podczas eksportowania bazy danych:', error)
-    alert('Nie udało się wyeksportować bazy danych.')
+    showSnackbar('Nie udało się wyeksportować bazy danych.', 'error')
+  } finally {
+    loadingOperation.value = false
   }
 }
 
@@ -570,10 +609,31 @@ async function handleImportContacts(result) {
   }
 }
 
-
+function handleContactUpdated(updatedContact) {
+  console.log('Kontakt zaktualizowany:', updatedContact)
+  
+  if (selectedDatabase.value && selectedDatabase.value.contacts) {
+    // Znajdź index kontaktu w liście
+    const contactIndex = selectedDatabase.value.contacts.findIndex(
+      contact => contact.id === updatedContact.id
+    )
+    
+    if (contactIndex !== -1) {
+      // Aktualizuj kontakt w liście
+      selectedDatabase.value.contacts[contactIndex] = {
+        ...selectedDatabase.value.contacts[contactIndex],
+        ...updatedContact
+      }
+      console.log('Kontakt zaktualizowany w liście:', selectedDatabase.value.contacts[contactIndex])
+    } else {
+      console.warn('Nie znaleziono kontaktu do aktualizacji:', updatedContact.id)
+    }
+  }
+}
 
 // Load data from API
 async function loadDatabases() {
+  loadingDatabases.value = true
   try {
     const data = await Databases.getList()
     databases.value = data || []
@@ -582,46 +642,11 @@ async function loadDatabases() {
     }
   } catch (error) {
     console.error('Błąd podczas ładowania baz danych:', error)
+    showSnackbar('Nie udało się załadować baz danych', 'error')
     // Fallback to sample data in case of error
-    databases.value = [
-    {
-      id: 1,
-      name: 'Klienci Premium',
-      description: 'Baza VIP klientów z wysoką wartością życiową',
-      contactsCount: 1247,
-      activeCount: 1180,
-      campaignsUsed: 15,
-      createdAt: new Date('2024-01-15'),
-      tags: ['VIP', 'Premium', 'Aktywni'],
-      segments: [
-        { id: 1, name: 'Bardzo aktywni', count: 450 },
-        { id: 2, name: 'Średnio aktywni', count: 730 },
-        { id: 3, name: 'Nowi klienci', count: 67 }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Newsletter Subskrybenci',
-      description: 'Wszyscy subskrybenci newslettera',
-      contactsCount: 8432,
-      activeCount: 7890,
-      campaignsUsed: 42,
-      createdAt: new Date('2023-11-20'),
-      tags: ['Newsletter', 'Marketing'],
-      segments: []
-    },
-    {
-      id: 3,
-      name: 'Potencjalni Klienci',
-      description: 'Leady z kampanii reklamowych',
-      contactsCount: 3156,
-      activeCount: 2890,
-      campaignsUsed: 8,
-      createdAt: new Date('2024-02-10'),
-      tags: ['Leads', 'Reklamy', 'Konwersja'],
-      segments: []
-    }
-    ]
+    databases.value = []
+  } finally {
+    loadingDatabases.value = false
   }
 }
 
@@ -816,6 +841,32 @@ onMounted(async () => {
 .empty-state p {
   color: #666;
   margin-bottom: 24px;
+}
+
+/* Loading States */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.contacts-loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+  min-height: 300px;
+}
+
+.loading-text {
+  margin-top: 16px;
+  color: #666;
+  font-size: 0.95rem;
 }
 
 /* Delete item styling */

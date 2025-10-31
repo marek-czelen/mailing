@@ -6,9 +6,31 @@
     persistent
   >
     <v-card class="contact-dialog">
+      <!-- Loading Overlay for unsubscribe operations -->
+      <v-overlay
+        :model-value="unsubscribing || resubscribing"
+        class="align-center justify-center"
+        contained
+        persistent
+      >
+        <div class="loading-content">
+          <v-progress-circular
+            indeterminate
+            size="64"
+            color="primary"
+          ></v-progress-circular>
+          <h3 class="loading-title">
+            {{ unsubscribing ? 'Wypisywanie z listy...' : 'Zapisywanie na listę...' }}
+          </h3>
+          <p class="loading-subtitle">
+            Proszę czekać
+          </p>
+        </div>
+      </v-overlay>
+
       <v-card-title class="dialog-header">
         <h2>{{ isEditing ? 'Edytuj kontakt' : 'Nowy kontakt' }}</h2>
-        <v-btn icon variant="text" @click="close" class="close-btn">
+        <v-btn icon variant="text" @click="close" class="close-btn" :disabled="unsubscribing || resubscribing">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
@@ -21,7 +43,7 @@
             
 
             <v-text-field
-              v-model="formData.email"
+              v-model="formData.mailAddress"
               density="compact"
               label="Adres email"
               :rules="[rules.required, rules.email]"
@@ -45,13 +67,13 @@
             
             <div class="contact-row">
               <v-text-field
-                v-model="formData.city"
+                v-model="formData.miasto"
                 density="compact"
                 label="Miasto"
                 variant="outlined"
               />
               <v-text-field
-                v-model="formData.type"
+                v-model="formData.rodzaj"
                 density="compact"
                 label="Rodzaj kontaktu"
                 variant="outlined"
@@ -124,6 +146,92 @@
         </v-btn>
       </v-card-actions>
     </v-card>
+
+    <!-- Confirmation Dialogs -->
+    <!-- Unsubscribe Confirmation Dialog -->
+    <v-dialog 
+      v-model="showUnsubscribeDialog" 
+      max-width="500px" 
+      persistent
+    >
+      <v-card>
+        <v-card-title class="confirmation-header">
+          <v-icon color="warning" class="mr-2">mdi-alert</v-icon>
+          Wypisanie z listy
+        </v-card-title>
+        <v-card-text class="confirmation-content">
+          <p>Czy na pewno chcesz wypisać ten kontakt ze <strong>WSZYSTKICH</strong> list mailingowych tego klienta?</p>
+          <v-alert type="warning" variant="tonal" class="mt-3">
+            <v-icon>mdi-information</v-icon>
+            Ta operacja wypisze kontakt ze wszystkich baz danych i jest nieodwracalna.
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showUnsubscribeDialog = false">
+            Anuluj
+          </v-btn>
+          <v-btn 
+            color="warning" 
+            :loading="unsubscribing"
+            @click="confirmUnsubscribe"
+          >
+            Wypisz z listy
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Resubscribe Confirmation Dialog -->
+    <v-dialog 
+      v-model="showResubscribeDialog" 
+      max-width="500px" 
+      persistent
+    >
+      <v-card>
+        <v-card-title class="confirmation-header">
+          <v-icon color="success" class="mr-2">mdi-check-circle</v-icon>
+          Zapisanie na listę
+        </v-card-title>
+        <v-card-text class="confirmation-content">
+          <p>Czy na pewno chcesz ponownie zapisać ten kontakt na listy mailingowe?</p>
+          <v-alert type="info" variant="tonal" class="mt-3">
+            <v-icon>mdi-information</v-icon>
+            Kontakt będzie mógł ponownie otrzymywać wiadomości e-mail.
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showResubscribeDialog = false">
+            Anuluj
+          </v-btn>
+          <v-btn 
+            color="success" 
+            :loading="resubscribing"
+            @click="confirmResubscribe"
+          >
+            Zapisz na listę
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Success/Error Snackbar -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      timeout="5000"
+    >
+      {{ snackbar.message }}
+      <template v-slot:actions>
+        <v-btn
+          variant="text"
+          @click="snackbar.show = false"
+        >
+          Zamknij
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-dialog>
 </template>
 
@@ -145,24 +253,33 @@ const saving = ref(false)
 const form = ref(null)
 const unsubscribing = ref(false)
 const resubscribing = ref(false)
+const showUnsubscribeDialog = ref(false)
+const showResubscribeDialog = ref(false)
+
+// Snackbar for notifications
+const snackbar = ref({
+  show: false,
+  message: '',
+  color: 'info'
+})
 
 // Form data
 const formData = ref({
-  firstName: '',
-  lastName: '',
-  email: '',
+  mailAddress: '',
+  miasto: '',
+  rodzaj: '',
   phone: '',
-  city: '',
-  type: 'individual',
   unsubscribeDate: null
 })
 
 // Type options
 const typeOptions = [
-  { title: 'Indywidualny', value: 'individual' },
-  { title: 'Biznesowy', value: 'business' },
-  { title: 'VIP', value: 'vip' },
-  { title: 'Partner', value: 'partner' }
+  { title: 'Szkoła Podstawowa', value: 'podstawowa' },
+  { title: 'Szkoła Średnia', value: 'srednia' },
+  { title: 'Szkoła Wyższa', value: 'wyzsza' },
+  { title: 'Przedszkole', value: 'przedszkole' },
+  { title: 'Prywatna placówka edukacyjna', value: 'prywatna' },
+  { title: 'Inny', value: 'inny' },
 ]
 
 // Validation rules
@@ -181,13 +298,11 @@ const isEditing = computed(() => !!props.contact)
 watch(() => props.contact, (newContact) => {
   if (newContact) {
     formData.value = {
-      firstName: newContact.firstName || '',
-      lastName: newContact.lastName || '',
-      email: newContact.email || '',
-      phone: newContact.phone || '',
-      city: newContact.city || '',
-      type: newContact.type || 'individual',
-      unsubscribeDate: newContact.unsubscribeDate || null
+        mailAddress: newContact.mailAddress || '',
+        miasto: newContact.miasto || '',
+        rodzaj: newContact.rodzaj || '',
+        phone: newContact.phone || '',
+        unsubscribeDate: newContact.unsubscribeDate || null,
     }
   } else {
     resetForm()
@@ -197,13 +312,20 @@ watch(() => props.contact, (newContact) => {
 // Methods
 function resetForm() {
   formData.value = {
-    firstName: '',
-    lastName: '',
-    email: '',
+    mailAddress: '',
+    miasto: '',
+    rodzaj: '',
     phone: '',
-    city: '',
-    type: 'individual',
     unsubscribeDate: null
+  }
+}
+
+// Snackbar helper
+function showSnackbar(message, color = 'info') {
+  snackbar.value = {
+    show: true,
+    message,
+    color
   }
 }
 
@@ -212,25 +334,23 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString('pl-PL')
 }
 
-async function unsubscribeContact() {
+function unsubscribeContact() {
   if (!props.contact?.id) {
-    alert('Brak ID kontaktu')
+    showSnackbar('Brak ID kontaktu', 'error')
     return
   }
   
-  const confirmed = confirm(
-    'Czy na pewno chcesz wypisać ten kontakt ze WSZYSTKICH list mailingowych tego klienta?\n\n' +
-    'Ta operacja wypisze kontakt ze wszystkich baz danych i jest nieodwracalna.'
-  )
-  
-  if (!confirmed) return
-  
+  showUnsubscribeDialog.value = true
+}
+
+async function confirmUnsubscribe() {
+  showUnsubscribeDialog.value = false
   unsubscribing.value = true
   
   try {
     const result = await Databases.unsubscribeContact(props.contact.id)
     
-    if (result.response.success) {
+    if (result.response?.success || result.success) {
       // Aktualizuj lokalny stan
       formData.value.unsubscribeDate = new Date().toISOString().split('T')[0]
       
@@ -239,32 +359,30 @@ async function unsubscribeContact() {
         ...props.contact,
         unsubscribeDate: formData.value.unsubscribeDate
       })
-      
-      alert('Kontakt został pomyślnie wypisany ze wszystkich list mailingowych.')
+
+      showSnackbar('Kontakt został pomyślnie wypisany ze wszystkich list mailingowych.', 'success')
     } else {
       throw new Error(result.message || 'Nieznany błąd')
     }
   } catch (error) {
     console.error('Błąd podczas wypisywania kontaktu:', error)
-    alert('Błąd podczas wypisywania kontaktu: ' + error.message)
+    showSnackbar('Błąd podczas wypisywania kontaktu: ' + error.message, 'error')
   } finally {
     unsubscribing.value = false
   }
 }
 
-async function resubscribeContact() {
+function resubscribeContact() {
   if (!props.contact?.id) {
-    alert('Brak ID kontaktu')
+    showSnackbar('Brak ID kontaktu', 'error')
     return
   }
   
-  const confirmed = confirm(
-    'Czy na pewno chcesz ponownie zapisać ten kontakt na listy mailingowe?\n\n' +
-    'Kontakt będzie mógł ponownie otrzymywać wiadomości e-mail.'
-  )
-  
-  if (!confirmed) return
-  
+  showResubscribeDialog.value = true
+}
+
+async function confirmResubscribe() {
+  showResubscribeDialog.value = false
   resubscribing.value = true
   
   try {
@@ -280,13 +398,13 @@ async function resubscribeContact() {
         unsubscribeDate: null
       })
       
-      alert('Kontakt został pomyślnie zapisany ponownie na listy mailingowe.')
+      showSnackbar('Kontakt został pomyślnie zapisany ponownie na listy mailingowe.', 'success')
     } else {
       throw new Error(result.message || 'Nieznany błąd')
     }
   } catch (error) {
     console.error('Błąd podczas ponownego zapisywania kontaktu:', error)
-    alert('Błąd podczas ponownego zapisywania kontaktu: ' + error.message)
+    showSnackbar('Błąd podczas ponownego zapisywania kontaktu: ' + error.message, 'error')
   } finally {
     resubscribing.value = false
   }
@@ -301,14 +419,47 @@ async function save() {
     // Validate form
     await form.value.validate()
     
-    // Emit save event with form data
-    emit('save', { 
-      ...formData.value,
-      lastActivity: new Date(),
-      lastActivityType: isEditing.value ? 'Zaktualizowano' : 'Utworzono'
-    })
+    if (isEditing.value && props.contact?.id) {
+      // Update existing contact via backend
+      const updateData = {
+        id: props.contact.id,
+        mailAddress: formData.value.mailAddress,
+        miasto: formData.value.miasto,
+        phone: formData.value.phone,
+        rodzaj: formData.value.rodzaj,
+        active: 1, // Always active when editing
+        databaseId: props.database?.id
+      }
+      
+      const result = await Databases.updateContact(updateData)
+      
+      if (result.success || result.response?.success) {
+        showSnackbar('Kontakt został pomyślnie zaktualizowany', 'success')
+        
+        // Powiadom rodzica o zmianie - przekaż zaktualizowane dane
+        emit('contact-updated', {
+          ...props.contact,
+          ...formData.value,
+          lastActivity: new Date(),
+          lastActivityType: 'Zaktualizowano'
+        })
+        
+        // Zamknij dialog
+        close()
+      } else {
+        throw new Error(result.message || 'Nieznany błąd')
+      }
+    } else {
+      // Create new contact - emit event for parent to handle
+      emit('save', { 
+        ...formData.value,
+        lastActivity: new Date(),
+        lastActivityType: 'Utworzono'
+      })
+    }
   } catch (error) {
     console.error('Błąd podczas zapisywania:', error)
+    showSnackbar('Błąd podczas zapisywania kontaktu: ' + error.message, 'error')
   } finally {
     saving.value = false
   }
@@ -324,6 +475,28 @@ function close() {
 .contact-dialog {
   border-radius: 16px !important;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15) !important;
+  position: relative;
+}
+
+/* Loading Overlay Styles */
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: white;
+}
+
+.loading-title {
+  margin: 24px 0 8px 0;
+  font-weight: 600;
+  font-size: 1.4rem;
+}
+
+.loading-subtitle {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 1rem;
 }
 
 .dialog-header {
@@ -393,6 +566,23 @@ function close() {
 .dialog-actions {
   padding: 16px 24px 24px 24px !important;
   background: #f8f9fa;
+}
+
+/* Confirmation Dialog Styles */
+.confirmation-header {
+  background: #f8f9fa;
+  font-weight: 600;
+  padding: 20px 24px 16px 24px !important;
+}
+
+.confirmation-content {
+  padding: 20px 24px !important;
+}
+
+.confirmation-content p {
+  margin-bottom: 0;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 /* Scrollbar styling */

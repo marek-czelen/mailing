@@ -23,15 +23,11 @@
         />
       </div>
       <div class="controls-right">
-        <v-btn variant="outlined" @click="importContacts">
+        <v-btn variant="outlined" :loading="loadingImport" @click="importContacts">
             <v-icon left>mdi-upload</v-icon>
             Importuj
             </v-btn>
-        <v-btn variant="outlined" @click="exportContacts">
-          <v-icon left>mdi-download</v-icon>
-          Eksportuj
-        </v-btn>
-        <v-btn color="primary" @click="addContact">
+        <v-btn v-if="false" color="primary" @click="addContact">
           <v-icon left>mdi-plus</v-icon>
           Dodaj kontakt
         </v-btn>
@@ -86,14 +82,7 @@
       <!-- Actions Column -->
       <template v-slot:item.actions="{ item }">
         <div class="action-buttons">
-          <v-btn
-            icon
-            size="small"
-            variant="text"
-            @click="viewContact(item)"
-          >
-            <v-icon>mdi-eye</v-icon>
-          </v-btn>
+
           <v-btn
             icon
             size="small"
@@ -118,12 +107,6 @@
                 <v-list-item-title>
                   <v-icon left size="16">mdi-email-remove</v-icon>
                   Wypisz z listy
-                </v-list-item-title>
-              </v-list-item>
-              <v-list-item @click="resubscribeContact(item)" v-if="item.unsubscribeDate !== null">
-                <v-list-item-title>
-                  <v-icon left size="16">mdi-email-plus</v-icon>
-                  Zapisz na listę
                 </v-list-item-title>
               </v-list-item>
               <v-list-item @click="viewHistory(item)">
@@ -191,6 +174,8 @@ const emit = defineEmits(['edit-contact', 'delete-contact', 'contact-updated'])
 const searchQuery = ref('')
 const statusFilter = ref('')
 const loading = ref(false)
+const loadingImport = ref(false)
+const loadingExport = ref(false)
 const showContactDialog = ref(false)
 const editingContact = ref(null)
 const showImportDialog = ref(false)
@@ -313,17 +298,26 @@ function deleteContact(contact) {
   }
 }
 
-function exportContacts() {
-  emit('export-contacts')
+async function exportContacts() {
+  loadingExport.value = true
+  try {
+    emit('export-contacts')
+    // Simulate export time - w rzeczywistości emit powiadomił by o zakończeniu
+    await new Promise(resolve => setTimeout(resolve, 2000))
+  } finally {
+    loadingExport.value = false
+  }
 }
 
 function importContacts() {
+  loadingImport.value = true
   showImportDialog.value = true
 }
 
 function handleImportComplete(result) {
   console.log('Import zakończony:', result)
   showImportDialog.value = false
+  loadingImport.value = false
   emit('import-contacts', result)
 }
 

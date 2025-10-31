@@ -22,6 +22,10 @@ const MailAddress = sequelize.define('mail_addresses', {
         type: DataTypes.STRING,
         field: "rodzaj"
     },    
+    phone:{
+        type: DataTypes.STRING,
+        field: "phone"
+    },
     active:{
       type: DataTypes.INTEGER,
       field: "active"

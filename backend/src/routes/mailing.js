@@ -17,7 +17,8 @@ import {
     getDatabasesByCustomer,
     getCustomerDatabasesStats,
     getDatabaseContacts,
-    unsubscribeContact
+    unsubscribeContact,
+    contactUpdate
 } from '../controller/mailing.js';
 
 const router = express.Router();
@@ -72,5 +73,9 @@ router.get('/getDatabaseContacts/:databaseId', getDatabaseContacts);
 
 // Wypisz kontakt ze wszystkich list mailingowych danego klienta
 router.get('/unsubscribe/:contactId', unsubscribeContact);
+
+// ============= CONTACTS MANAGEMENT =============
+// Aktualizuj dane kontaktu
+router.post('/contactUpdate', contactUpdate);
 
 export default router;
