@@ -79,7 +79,9 @@
                   </v-btn>
                 </v-btn-toggle>
 
+                <!-- Przycisk zapisz jako szablon (tryb normalny) -->
                 <v-btn 
+                  v-if="!isCampaignEditMode"
                   @click="showSaveTemplateDialog = true" 
                   color="success" 
                   size="small"
@@ -89,6 +91,20 @@
                 >
                   <v-icon left>mdi-content-save</v-icon>
                   Zapisz jako szablon
+                </v-btn>
+                
+                <!-- Przycisk eksportuj treść (tryb edycji kampanii) -->
+                <v-btn 
+                  v-if="isCampaignEditMode"
+                  @click="exportContentToCampaign" 
+                  color="success" 
+                  size="small"
+                  variant="outlined"
+                  :disabled="emailBlocks.length === 0"
+                  class="mr-2"
+                >
+                  <v-icon left>mdi-export</v-icon>
+                  Eksportuj treść
                 </v-btn>
                 
                 <v-btn @click="generatePreview" color="primary" size="small" class="mr-2">
@@ -602,8 +618,9 @@ import ButtonProperties from './properties/ButtonProperties.vue';
 import ImageProperties from './properties/ImageProperties.vue';
 import SpacerProperties from './properties/SpacerProperties.vue';
 
-// Import serwisu templat
+// Import serwisów
 import { Templates } from '@/services/templates.js';
+import { Campaigns } from '@/services/campaigns.js';
 
 export default {
   name: 'BlockEmailEditor',
@@ -628,6 +645,7 @@ export default {
       draggedBlockIndex: null,        // Indeks przeciąganego bloku (dla drag & drop)
       isDragging: false,              // Czy aktualnie przeciągamy blok
       dropZoneIndex: null,            // Indeks strefy upuszczania (wizualizacja)
+      isMounted: false,               // Czy komponent jest w pełni zamontowany
       
       // === TRYBY WYŚWIETLANIA ===
       canvasMode: 'desktop',          // Tryb canvas: 'desktop' (600px) lub 'mobile' (375px)
@@ -676,13 +694,21 @@ export default {
       // Menu dodawania bloków
       addBlockMenuVisible: false,
       addBlockMenuActivator: null,
-      addBlockPosition: 0
+      addBlockPosition: 0,
+
+      // Tryb edycji kampanii
+      isEditingCampaign: false,
+      campaignId: null
     };
   },
 
   computed: {
     selectedBlock() {
       return this.emailBlocks.find(block => block.id === this.selectedBlockId);
+    },
+    
+    isCampaignEditMode() {
+      return this.isEditingCampaign && this.campaignId;
     }
   },
 
@@ -1213,8 +1239,19 @@ export default {
 
     // Sprawdź czy potrzebne jest przewijanie i dodaj odpowiednie klasy
     checkScrollable() {
+      // Nie sprawdzaj przewijania jeśli komponent nie jest jeszcze zamontowany
+      if (!this.isMounted) {
+        return;
+      }
+      
       this.$nextTick(() => {
-        const canvasWrapper = this.$el?.querySelector('.canvas-wrapper');
+        // Sprawdź czy komponent jest mounted i $el istnieje
+        if (!this.$el || typeof this.$el.querySelector !== 'function') {
+          console.warn('checkScrollable: $el nie jest dostępne lub nie jest elementem DOM');
+          return;
+        }
+        
+        const canvasWrapper = this.$el.querySelector('.canvas-wrapper');
         if (canvasWrapper) {
           const isScrollable = canvasWrapper.scrollHeight > canvasWrapper.clientHeight;
           
@@ -1260,6 +1297,67 @@ export default {
       } catch (error) {
         console.error('Błąd podczas migracji lokalnych templat:', error);
       }
+    },
+
+    // Sprawdź czy jesteśmy w trybie edycji kampanii
+    async checkCampaignEditMode() {
+      const campaignId = this.$route.query.campaignId;
+      if (campaignId) {
+        this.isEditingCampaign = true;
+        this.campaignId = campaignId;
+        console.log('Tryb edycji kampanii aktywny dla kampanii ID:', campaignId);
+        
+        // Opcjonalnie: załaduj istniejącą treść kampanii
+        // (implementacja do przyszłej wersji - wymagałaby parsowania HTML do bloków)
+        try {
+          const campaign = await Campaigns.getCampaignById(campaignId);
+          if (campaign.htmlContent) {
+            console.log('Kampania ma już treść HTML, można zaimplementować parsowanie do bloków w przyszłości');
+          }
+        } catch (error) {
+          console.warn('Nie udało się pobrać danych kampanii:', error);
+        }
+      }
+    },
+
+    // Eksportuj treść do kampanii i wróć do widoku kampanii
+    async exportContentToCampaign() {
+      if (!this.campaignId || this.emailBlocks.length === 0) {
+        console.error('Brak ID kampanii lub treści do eksportu');
+        return;
+      }
+
+      try {
+        // Wygeneruj HTML z aktualnych bloków
+        const htmlContent = this.generateEmailHtml();
+        
+        // Pobierz aktualne dane kampanii
+        const campaign = await Campaigns.getCampaignById(this.campaignId);
+        
+        // Zaktualizuj tylko htmlContent, zachowując pozostałe dane
+        const updatedCampaign = {
+          ...campaign,
+          htmlContent: htmlContent
+        };
+        
+        // Aktualizuj kampanię przez API
+        await Campaigns.update(this.campaignId, updatedCampaign);
+        
+        console.log('Treść kampanii została zaktualizowana pomyślnie');
+        
+        // Wróć do widoku kampanii z informacją o aktualizacji
+        this.$router.push({
+          name: 'Campaigns',
+          query: {
+            selectedCampaign: this.campaignId,
+            contentUpdated: true
+          }
+        });
+        
+      } catch (error) {
+        console.error('Błąd podczas eksportowania treści:', error);
+        alert('Nie udało się wyeksportować treści: ' + error.message);
+      }
     }
   },
 
@@ -1286,6 +1384,12 @@ export default {
   },
 
   async mounted() {
+    // Ustaw flagę mounted
+    this.isMounted = true;
+    
+    // Sprawdź czy jesteśmy w trybie edycji kampanii
+    this.checkCampaignEditMode();
+
     // Załaduj templaty z API
     await this.loadTemplates();
 
@@ -1294,6 +1398,11 @@ export default {
 
     // Sprawdź przewijanie po załadowaniu komponentu
     this.checkScrollable();
+  },
+
+  beforeUnmount() {
+    // Wyczyść flagę mounted
+    this.isMounted = false;
   }
 };
 </script>

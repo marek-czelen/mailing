@@ -5,14 +5,24 @@
         <h3>Treść kampanii</h3>
         <p>Podgląd i edycja zawartości email</p>
       </div>
-      <v-btn 
-        color="primary" 
-        variant="outlined"
-        @click="$emit('edit-template')"
-      >
-        <v-icon left>mdi-pencil</v-icon>
-        Edytuj treść
-      </v-btn>
+      <div class="header-buttons">
+        <v-btn 
+          color="primary" 
+          variant="outlined"
+          @click="$emit('edit-template')"
+        >
+          <v-icon left>mdi-pencil</v-icon>
+          Zmień szablon
+        </v-btn>
+        <v-btn 
+          color="secondary" 
+          variant="outlined"
+          @click="$emit('edit-content')"
+        >
+          <v-icon left>mdi-code-tags</v-icon>
+          Edytuj treść
+        </v-btn>
+      </div>
     </div>
 
     <div class="content-grid">
@@ -197,7 +207,7 @@ defineProps({
   }
 })
 
-defineEmits(['edit-template'])
+defineEmits(['edit-template', 'edit-content'])
 
 // Reactive data
 const previewDevice = ref('desktop')
@@ -283,6 +293,12 @@ function previewInBrowser() {
 .header-info p {
   margin: 0;
   color: #666;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .content-grid {

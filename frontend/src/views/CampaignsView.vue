@@ -60,7 +60,7 @@
               <div class="campaign-actions">
                 <v-menu>
                   <template v-slot:activator="{ props }">
-                    <v-btn icon size="small" variant="text" v-bind="props" @click.stop>
+                    <v-btn icon size="small" variant="text" v-bind="props" >
                       <v-icon>mdi-dots-vertical</v-icon>
                     </v-btn>
                   </template>
@@ -143,7 +143,7 @@
             <v-window v-model="activeTab">
               <!-- Content Tab -->
               <v-window-item value="content">
-                <CampaignContent :campaign="selectedCampaign" @edit-template="editTemplate" />
+                <CampaignContent :campaign="selectedCampaign" @edit-template="editTemplate" @edit-content="editHtmlContent" />
               </v-window-item>
 
               <!-- Recipients Tab -->
@@ -391,6 +391,55 @@
       @database-changed="updateCampaignDatabase"
     />
 
+    <!-- HTML Content Editor Dialog -->
+    <v-dialog v-model="showHtmlEditor" max-width="1200px" persistent>
+      <v-card class="html-editor-dialog">
+        <v-card-title class="dialog-header">
+          <h2>Edycja treści HTML</h2>
+          <div class="dialog-actions">
+            <v-btn icon @click="cancelHtmlEdit">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </div>
+        </v-card-title>
+        
+        <v-card-text class="pa-0">
+          <div class="editor-container">
+            <!-- QuillEditor zgodnie z oficjalną dokumentacją -->
+            <QuillEditor
+              :key="editorKey"
+              v-model:content="htmlEditorContent"
+              contentType="html"
+              :toolbar="toolbarOptions"
+              placeholder="Wprowadź treść kampanii email..."
+              theme="snow"
+              @ready="onEditorReady"
+              @update:content="onContentUpdate"
+              style="height: 500px;"
+            />
+          </div>
+        </v-card-text>
+        
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn 
+            variant="text" 
+            @click="cancelHtmlEdit"
+          >
+            Anuluj
+          </v-btn>
+          <v-btn 
+            color="primary" 
+            variant="elevated"
+            @click="saveHtmlContent"
+          >
+            <v-icon left>mdi-content-save</v-icon>
+            Zapisz treść
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar for notifications -->
     <v-snackbar
       v-model="snackbar.show"
@@ -414,8 +463,10 @@
 
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import CampaignContent from '../components/campaigns/CampaignContent.vue'
 import CampaignRecipients from '../components/campaigns/CampaignRecipients.vue'
 import CampaignDialog from '../components/campaigns/CampaignDialog.vue'
@@ -427,6 +478,7 @@ import PageContent from '../components/PageContent.vue'
 import StatGrid from '../components/StatGrid.vue'
 
 const router = useRouter()
+const route = useRoute()
 
 // Reactive data
 const campaigns = ref([])
@@ -443,6 +495,9 @@ const scheduledDateTime = ref('')
 const showDatabaseDialog = ref(false)
 const testEmail = ref('')
 const loadingCampaignDetails = ref(false)
+const showHtmlEditor = ref(false)
+const htmlEditorContent = ref('')
+const editorKey = ref(0)
 const snackbar = ref({
   show: false,
   message: '',
@@ -453,6 +508,24 @@ const emailRules = [
   v => !!v || 'Email jest wymagany',
   v => /.+@.+\..+/.test(v) || 'Email musi być poprawny'
 ]
+
+// Konfiguracja toolbar dla VueQuill
+const toolbarOptions = [
+  [{ 'header': [1, 2, 3, false] }],
+  ['bold', 'italic', 'underline', 'strike'],
+  [{ 'color': [] }, { 'background': [] }],
+  [{ 'align': [] }],
+  [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+  ['blockquote', 'code-block'],
+  ['link', 'image'],
+  ['clean']
+]
+
+
+
+
+
+
 
 // Status filters
 const statusFilters = [
@@ -634,6 +707,77 @@ function editTemplate() {
   }
 }
 
+async function editHtmlContent() {
+  if (selectedCampaign.value) {
+    console.log('Otwieranie edytora HTML dla kampanii:', selectedCampaign.value.name)
+    console.log('Aktualna zawartość HTML:', selectedCampaign.value.htmlContent)
+    
+    // Ustaw zawartość przed pokazaniem dialogu
+    const content = selectedCampaign.value.htmlContent || '<p>Wprowadź treść kampanii...</p>'
+    htmlEditorContent.value = content
+    
+    // Zwiększ klucz edytora żeby go przeładować
+    editorKey.value++
+    
+    // Pokaż dialog
+    showHtmlEditor.value = true
+    
+    console.log('Ustawiono zawartość edytora:', content)
+  }
+}
+
+async function saveHtmlContent() {
+  if (!selectedCampaign.value) return
+  
+  try {
+    // VueQuill automatycznie synchronizuje z v-model:content
+    const htmlContent = htmlEditorContent.value
+    
+    // Aktualizuj kampanię z nową zawartością HTML
+    const updatedCampaign = await Campaigns.update(selectedCampaign.value.id, {
+      htmlContent: htmlContent
+    })
+    
+    // Aktualizuj lokalną kopię kampanii
+    selectedCampaign.value.htmlContent = htmlContent
+    
+    // Aktualizuj kampanię w liście
+    const index = campaigns.value.findIndex(c => c.id === selectedCampaign.value.id)
+    if (index !== -1) {
+      campaigns.value[index] = { ...campaigns.value[index], ...updatedCampaign }
+    }
+    
+    showHtmlEditor.value = false
+    showNotification('Treść kampanii została zaktualizowana', 'success')
+  } catch (error) {
+    console.error('Błąd zapisywania treści HTML:', error)
+    showNotification('Nie udało się zapisać treści kampanii', 'error')
+  }
+}
+
+function cancelHtmlEdit() {
+  showHtmlEditor.value = false
+  htmlEditorContent.value = ''
+}
+
+function onEditorReady(quill) {
+  console.log('VueQuill editor ready')
+  // Jeśli jest zawartość do ustawienia, ustaw ją teraz gdy edytor jest gotowy
+  if (htmlEditorContent.value && htmlEditorContent.value !== '<p>Wprowadź treść kampanii...</p>') {
+    quill.root.innerHTML = htmlEditorContent.value
+  }
+}
+
+function onContentUpdate(content) {
+  console.log('Content updated:', content.length, 'characters')
+}
+
+
+
+
+
+
+
 function editRecipients() {
   activeTab.value = 'recipients'
 }
@@ -800,7 +944,21 @@ onMounted(async () => {
     campaigns.value = [ ]
   }
 
-  if (campaigns.value.length > 0) {
+  // Sprawdź czy jest parametr selectedCampaign z query
+  const selectedCampaignId = route.query.selectedCampaign;
+  if (selectedCampaignId && campaigns.value.length > 0) {
+    // Znajdź i wybierz kampanię o danym ID
+    const campaignToSelect = campaigns.value.find(c => c.id.toString() === selectedCampaignId.toString());
+    if (campaignToSelect) {
+      await selectCampaign(campaignToSelect);
+      
+      // Pokaż komunikat o aktualizacji treści jeśli jest parametr contentUpdated
+      if (route.query.contentUpdated) {
+        console.log('Treść kampanii została zaktualizowana pomyślnie');
+        // Możesz dodać toast/snackbar notification tutaj
+      }
+    }
+  } else if (campaigns.value.length > 0) {
     selectedCampaign.value = campaigns.value[0]
   }
 })
@@ -1177,6 +1335,120 @@ async function sendTest() {
   flex-wrap: wrap;
 }
 
+/* HTML Editor Dialog */
+.html-editor-dialog {
+  border-radius: 16px !important;
+}
+
+.dialog-header {
+  background: linear-gradient(135deg, #202950 0%, #515bad 100%) !important;
+  color: white !important;
+  border-radius: 16px 16px 0 0 !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 20px 24px !important;
+}
+
+.dialog-header h2 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.dialog-actions {
+  display: flex;
+  align-items: center;
+}
+
+.editor-container {
+  background: white;
+  min-height: 500px;
+}
+
+/* QuillEditor Custom Styles */
+.editor-container :deep(.ql-toolbar) {
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f8f9fa;
+  padding: 12px;
+}
+
+.editor-container :deep(.ql-container) {
+  border: 1px solid #e0e0e0;
+  border-radius: 0 0 8px 8px;
+  font-size: 14px;
+}
+
+.editor-container :deep(.ql-editor) {
+  min-height: 450px;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+}
+
+.editor-container :deep(.ql-editor.ql-blank::before) {
+  color: #999;
+  font-style: italic;
+}
+
+.editor-container :deep(.ql-editor h1) {
+  font-size: 2em;
+  margin: 0.67em 0;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.editor-container :deep(.ql-editor h2) {
+  font-size: 1.5em;
+  margin: 0.75em 0;
+  font-weight: bold;
+  color: #34495e;
+}
+
+.editor-container :deep(.ql-editor h3) {
+  font-size: 1.17em;
+  margin: 0.83em 0;
+  font-weight: bold;
+  color: #34495e;
+}
+
+.editor-container :deep(.ql-editor p) {
+  margin-bottom: 12px;
+}
+
+.editor-container :deep(.ql-editor ul),
+.editor-container :deep(.ql-editor ol) {
+  margin: 12px 0;
+  padding-left: 2em;
+}
+
+.editor-container :deep(.ql-editor li) {
+  margin: 4px 0;
+}
+
+.editor-container :deep(.ql-editor img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.editor-container :deep(.ql-editor a) {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+.editor-container :deep(.ql-editor a:hover) {
+  text-decoration: underline;
+}
+
+.editor-container :deep(.ql-editor blockquote) {
+  border-left: 4px solid #ccc;
+  margin: 16px 0;
+  padding-left: 16px;
+  color: #666;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .campaigns-content {
@@ -1193,6 +1465,15 @@ async function sendTest() {
 
   .filter-chips {
     justify-content: center;
+  }
+
+  .html-editor-dialog {
+    margin: 10px;
+    max-width: calc(100vw - 20px) !important;
+  }
+
+  .editor-container :deep(.ql-toolbar) {
+    flex-wrap: wrap;
   }
 }
 </style>

@@ -1,14 +1,14 @@
-import { EmailTemplate, TemplateBlock } from "../models/index.js";
+﻿import { EmailTemplate, TemplateBlock, sequelize } from "../models/index.js";
 import { Op } from 'sequelize';
 
 class TemplatesController {
   /**
-   * Pobierz wszystkie dostępne templaty
+   * Pobierz wszystkie dostÄ™pne templaty
    * GET /mailing/templates
    */
   static async getTemplates(req, res) {
     try {
-      console.log('🔍 Templates endpoint called with query:', req.query);
+      console.log('đź”Ť Templates endpoint called with query:', req.query);
       const {
         category,
         search,
@@ -23,7 +23,7 @@ class TemplatesController {
         isActive: true
       };
 
-      // Multi-tenant: dostęp do publicznych + własnych templat
+      // Multi-tenant: dostÄ™p do publicznych + wĹ‚asnych templat
       if (customerId) {
         whereClause[Op.or] = [
           { isPublic: true },
@@ -57,7 +57,7 @@ class TemplatesController {
         }
       };
 
-      // Dołącz bloki jeśli wymagane
+      // DoĹ‚Ä…cz bloki jeĹ›li wymagane
       if (includeBlocks === 'true') {
         queryOptions.include = [{
           model: TemplateBlock,
@@ -82,10 +82,10 @@ class TemplatesController {
       });
 
     } catch (error) {
-      console.error('Błąd pobierania templat:', error);
+      console.error('BĹ‚Ä…d pobierania templat:', error);
       res.status(500).json({
         success: false,
-        message: 'Nie udało się pobrać szablonów',
+        message: 'Nie udaĹ‚o siÄ™ pobraÄ‡ szablonĂłw',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
@@ -129,7 +129,7 @@ class TemplatesController {
       if (!template) {
         return res.status(404).json({
           success: false,
-          message: 'Szablon nie został znaleziony'
+          message: 'Szablon nie zostaĹ‚ znaleziony'
         });
       }
 
@@ -139,21 +139,21 @@ class TemplatesController {
       });
 
     } catch (error) {
-      console.error('Błąd pobierania templatu:', error);
+      console.error('BĹ‚Ä…d pobierania templatu:', error);
       res.status(500).json({
         success: false,
-        message: 'Nie udało się pobrać szablonu',
+        message: 'Nie udaĹ‚o siÄ™ pobraÄ‡ szablonu',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
 
   /**
-   * Utwórz nowy template
+   * UtwĂłrz nowy template
    * POST /mailing/templates
    */
   static async createTemplate(req, res) {
-    const transaction = await req.app.locals.sequelize.transaction();
+    const transaction = await sequelize.transaction();
 
     try {
       const {
@@ -175,7 +175,7 @@ class TemplatesController {
         });
       }
 
-      // Sprawdź czy szablon o takiej nazwie już istnieje dla tego klienta
+      // SprawdĹş czy szablon o takiej nazwie juĹĽ istnieje dla tego klienta
       const existingTemplate = await EmailTemplate.findOne({
         where: {
           name: name.trim(),
@@ -187,11 +187,11 @@ class TemplatesController {
       if (existingTemplate) {
         return res.status(409).json({
           success: false,
-          message: 'Szablon o takiej nazwie już istnieje'
+          message: 'Szablon o takiej nazwie juĹĽ istnieje'
         });
       }
 
-      // Utwórz template
+      // UtwĂłrz template
       const templateData = {
         name: name.trim(),
         description: description || '',
@@ -199,13 +199,13 @@ class TemplatesController {
         tags: Array.isArray(tags) ? tags : [],
         thumbnail,
         customerId: customerId || null,
-        isPublic: !customerId, // Szablony systemowe są publiczne
+        isPublic: !customerId, // Szablony systemowe sÄ… publiczne
         metadata: metadata || {}
       };
 
       const template = await EmailTemplate.create(templateData, { transaction });
 
-      // Utwórz bloki
+      // UtwĂłrz bloki
       if (blocks.length > 0) {
         const blockPromises = blocks.map((blockData, index) => {
           return TemplateBlock.create({
@@ -239,15 +239,15 @@ class TemplatesController {
       res.status(201).json({
         success: true,
         data: createdTemplate,
-        message: 'Szablon został utworzony pomyślnie'
+        message: 'Szablon zostaĹ‚ utworzony pomyĹ›lnie'
       });
 
     } catch (error) {
       await transaction.rollback();
-      console.error('Błąd tworzenia templatu:', error);
+      console.error('BĹ‚Ä…d tworzenia templatu:', error);
       res.status(500).json({
         success: false,
-        message: 'Nie udało się utworzyć szablonu',
+        message: 'Nie udaĹ‚o siÄ™ utworzyÄ‡ szablonu',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
@@ -258,7 +258,7 @@ class TemplatesController {
    * PUT /mailing/templates/:id
    */
   static async updateTemplate(req, res) {
-    const transaction = await req.app.locals.sequelize.transaction();
+    const transaction = await sequelize.transaction();
 
     try {
       const { id } = req.params;
@@ -273,7 +273,7 @@ class TemplatesController {
         customerId
       } = req.body;
 
-      // Znajdź template
+      // ZnajdĹş template
       const template = await EmailTemplate.findOne({
         where: {
           id,
@@ -284,15 +284,15 @@ class TemplatesController {
       if (!template) {
         return res.status(404).json({
           success: false,
-          message: 'Szablon nie został znaleziony lub brak uprawnień'
+          message: 'Szablon nie zostaĹ‚ znaleziony lub brak uprawnieĹ„'
         });
       }
 
-      // Sprawdź czy nie próbuje się edytować systemowego templatu
+      // SprawdĹş czy nie prĂłbuje siÄ™ edytowaÄ‡ systemowego templatu
       if (template.isSystem && !customerId) {
         return res.status(403).json({
           success: false,
-          message: 'Nie można edytować szablonów systemowych'
+          message: 'Nie moĹĽna edytowaÄ‡ szablonĂłw systemowych'
         });
       }
 
@@ -307,9 +307,9 @@ class TemplatesController {
 
       await template.update(updateData, { transaction });
 
-      // Jeśli są nowe bloki, zastąp wszystkie
+      // JeĹ›li sÄ… nowe bloki, zastÄ…p wszystkie
       if (blocks && Array.isArray(blocks)) {
-        // Usuń stare bloki
+        // UsuĹ„ stare bloki
         await TemplateBlock.destroy({
           where: { templateId: id },
           transaction
@@ -348,22 +348,22 @@ class TemplatesController {
       res.json({
         success: true,
         data: updatedTemplate,
-        message: 'Szablon został zaktualizowany pomyślnie'
+        message: 'Szablon zostaĹ‚ zaktualizowany pomyĹ›lnie'
       });
 
     } catch (error) {
       await transaction.rollback();
-      console.error('Błąd aktualizacji templatu:', error);
+      console.error('BĹ‚Ä…d aktualizacji templatu:', error);
       res.status(500).json({
         success: false,
-        message: 'Nie udało się zaktualizować szablonu',
+        message: 'Nie udaĹ‚o siÄ™ zaktualizowaÄ‡ szablonu',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
 
   /**
-   * Usuń template
+   * UsuĹ„ template
    * DELETE /mailing/templates/:id
    */
   static async deleteTemplate(req, res) {
@@ -381,14 +381,14 @@ class TemplatesController {
       if (!template) {
         return res.status(404).json({
           success: false,
-          message: 'Szablon nie został znaleziony lub brak uprawnień'
+          message: 'Szablon nie zostaĹ‚ znaleziony lub brak uprawnieĹ„'
         });
       }
 
       if (template.isSystem) {
         return res.status(403).json({
           success: false,
-          message: 'Nie można usunąć szablonów systemowych'
+          message: 'Nie moĹĽna usunÄ…Ä‡ szablonĂłw systemowych'
         });
       }
 
@@ -397,14 +397,14 @@ class TemplatesController {
 
       res.json({
         success: true,
-        message: 'Szablon został usunięty pomyślnie'
+        message: 'Szablon zostaĹ‚ usuniÄ™ty pomyĹ›lnie'
       });
 
     } catch (error) {
-      console.error('Błąd usuwania templatu:', error);
+      console.error('BĹ‚Ä…d usuwania templatu:', error);
       res.status(500).json({
         success: false,
-        message: 'Nie udało się usunąć szablonu',
+        message: 'Nie udaĹ‚o siÄ™ usunÄ…Ä‡ szablonu',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
@@ -415,7 +415,7 @@ class TemplatesController {
    * POST /mailing/templates/:id/duplicate
    */
   static async duplicateTemplate(req, res) {
-    const transaction = await req.app.locals.sequelize.transaction();
+    const transaction = await sequelize.transaction();
 
     try {
       const { id } = req.params;
@@ -433,11 +433,11 @@ class TemplatesController {
       if (!originalTemplate) {
         return res.status(404).json({
           success: false,
-          message: 'Szablon do duplikacji nie został znaleziony'
+          message: 'Szablon do duplikacji nie zostaĹ‚ znaleziony'
         });
       }
 
-      // Utwórz kopię
+      // UtwĂłrz kopiÄ™
       const duplicateData = {
         name: name || `${originalTemplate.name} (kopia)`,
         description: originalTemplate.description,
@@ -485,22 +485,22 @@ class TemplatesController {
       res.status(201).json({
         success: true,
         data: result,
-        message: 'Szablon został zduplikowany pomyślnie'
+        message: 'Szablon zostaĹ‚ zduplikowany pomyĹ›lnie'
       });
 
     } catch (error) {
       await transaction.rollback();
-      console.error('Błąd duplikacji templatu:', error);
+      console.error('BĹ‚Ä…d duplikacji templatu:', error);
       res.status(500).json({
         success: false,
-        message: 'Nie udało się zduplikować szablonu',
+        message: 'Nie udaĹ‚o siÄ™ zduplikowaÄ‡ szablonu',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
 
   /**
-   * Zwiększ licznik użycia templatu
+   * ZwiÄ™ksz licznik uĹĽycia templatu
    * POST /mailing/templates/:id/usage
    */
   static async incrementUsage(req, res) {
@@ -512,7 +512,7 @@ class TemplatesController {
       if (!template) {
         return res.status(404).json({
           success: false,
-          message: 'Szablon nie został znaleziony'
+          message: 'Szablon nie zostaĹ‚ znaleziony'
         });
       }
 
@@ -520,14 +520,14 @@ class TemplatesController {
 
       res.json({
         success: true,
-        message: 'Licznik użycia został zaktualizowany'
+        message: 'Licznik uĹĽycia zostaĹ‚ zaktualizowany'
       });
 
     } catch (error) {
-      console.error('Błąd aktualizacji licznika:', error);
+      console.error('BĹ‚Ä…d aktualizacji licznika:', error);
       res.status(500).json({
         success: false,
-        message: 'Nie udało się zaktualizować licznika użycia',
+        message: 'Nie udaĹ‚o siÄ™ zaktualizowaÄ‡ licznika uĹĽycia',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
@@ -557,10 +557,10 @@ class TemplatesController {
       });
 
     } catch (error) {
-      console.error('Błąd pobierania kategorii:', error);
+      console.error('BĹ‚Ä…d pobierania kategorii:', error);
       res.status(500).json({
         success: false,
-        message: 'Nie udało się pobrać kategorii',
+        message: 'Nie udaĹ‚o siÄ™ pobraÄ‡ kategorii',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
@@ -592,10 +592,10 @@ class TemplatesController {
       });
 
     } catch (error) {
-      console.error('Błąd pobierania popularnych templat:', error);
+      console.error('BĹ‚Ä…d pobierania popularnych templat:', error);
       res.status(500).json({
         success: false,
-        message: 'Nie udało się pobrać popularnych szablonów',
+        message: 'Nie udaĹ‚o siÄ™ pobraÄ‡ popularnych szablonĂłw',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
@@ -612,11 +612,11 @@ class TemplatesController {
       if (!blocks || !Array.isArray(blocks)) {
         return res.status(400).json({
           success: false,
-          message: 'Bloki są wymagane do wygenerowania thumbnail'
+          message: 'Bloki sÄ… wymagane do wygenerowania thumbnail'
         });
       }
 
-      // Prosta generacja SVG thumbnail na podstawie bloków
+      // Prosta generacja SVG thumbnail na podstawie blokĂłw
       const blockTypes = blocks.map(b => b.blockType || b.type);
       const blockCount = blocks.length;
 
@@ -632,7 +632,7 @@ class TemplatesController {
           <rect width="200" height="150" fill="#f8f9fa"/>
       `;
 
-      // Dodaj reprezentację bloków
+      // Dodaj reprezentacjÄ™ blokĂłw
       blockTypes.forEach((type, index) => {
         const y = 20 + (index * 20);
         const color = colors[type] || '#666666';
@@ -644,7 +644,7 @@ class TemplatesController {
 
       svgContent += `
           <text x="100" y="140" text-anchor="middle" font-family="Arial" font-size="10" fill="#666">
-            ${blockCount} blok(ów)
+            ${blockCount} blok(Ăłw)
           </text>
         </svg>
       `;
@@ -657,14 +657,133 @@ class TemplatesController {
       });
 
     } catch (error) {
-      console.error('Błąd generowania thumbnail:', error);
+      console.error('BĹ‚Ä…d generowania thumbnail:', error);
       res.status(500).json({
         success: false,
-        message: 'Nie udało się wygenerować thumbnail',
+        message: 'Nie udaĹ‚o siÄ™ wygenerowaÄ‡ thumbnail',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
+  /**
+   * Wyszukaj templaty z zaawansowanymi filtrami
+   * GET /mailing/templates/search
+   */
+  static async searchTemplates(req, res) {
+    try {
+      console.log(' Templates search endpoint called with query:', req.query);
+      const {
+        q: query,
+        category,
+        tags,
+        author,
+        customerId,
+        limit = 50,
+        offset = 0
+      } = req.query;
+
+      // Buduj warunki WHERE
+      const whereClause = {
+        isActive: true
+      };
+
+      // Multi-tenant: dostęp do publicznych + własnych templat
+      if (customerId) {
+        whereClause[Op.or] = [
+          { isPublic: true },
+          { customerId: customerId }
+        ];
+      } else {
+        whereClause.isPublic = true;
+      }
+
+      // Wyszukiwanie tekstowe po nazwie, opisie i tagach
+      if (query) {
+        whereClause[Op.or] = [
+          { name: { [Op.like]: `%${query}%` } },
+          { description: { [Op.like]: `%${query}%` } },
+          { tags: { [Op.like]: `%${query}%` } }
+        ];
+      }
+
+      // Filtrowanie po kategorii
+      if (category && category !== 'all') {
+        whereClause.category = category;
+      }
+
+      // Filtrowanie po autorze
+      if (author) {
+        whereClause.author = { [Op.like]: `%${author}%` };
+      }
+
+      // Filtrowanie po tagach (obsługa wielu tagów)
+      if (tags) {
+        const tagArray = Array.isArray(tags) ? tags : [tags];
+        const tagConditions = tagArray.map(tag => ({
+          tags: { [Op.like]: `%${tag}%` }
+        }));
+        
+        if (whereClause[Op.or]) {
+          whereClause[Op.and] = [
+            { [Op.or]: whereClause[Op.or] },
+            { [Op.or]: tagConditions }
+          ];
+          delete whereClause[Op.or];
+        } else {
+          whereClause[Op.or] = tagConditions;
+        }
+      }
+
+      // Opcje query z sortowaniem według trafności
+      const queryOptions = {
+        where: whereClause,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        order: [
+          ['usageCount', 'DESC'], 
+          ['createdAt', 'DESC']
+        ],
+        attributes: {
+          exclude: ['deletedAt']
+        },
+        include: [{
+          model: TemplateBlock,
+          as: 'blocks',
+          where: { isActive: true },
+          required: false,
+          order: [['blockOrder', 'ASC']]
+        }]
+      };
+
+      const templates = await EmailTemplate.findAndCountAll(queryOptions);
+
+      res.json({
+        success: true,
+        data: templates.rows,
+        searchQuery: query,
+        filters: {
+          category,
+          tags: Array.isArray(tags) ? tags : (tags ? [tags] : []),
+          author
+        },
+        pagination: {
+          total: templates.count,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          hasMore: templates.count > (parseInt(offset) + parseInt(limit))
+        }
+      });
+
+    } catch (error) {
+      console.error('Błąd wyszukiwania templat:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Nie udało się wyszukać szablonów',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
 }
 
 export default TemplatesController;

@@ -30,7 +30,7 @@ app.use(uploadRoutes);
 //veryfication of the token
 app.all('*', function(req, res, next) 
   {
-    //console.log("next: ", req.url )
+    console.log("🌐 Request:", req.method, req.url)
     if (req.originalUrl=="/auth/login") next()
     else{
       let authorized = false

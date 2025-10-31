@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import TemplatesController from  '../controller/TemplatesController.js';
 
 const router = express.Router();
@@ -9,7 +9,7 @@ const router = express.Router();
  * Base path: /mailing/templates
  */
 
-// GET /mailing/templates - Pobierz wszystkie dostępne templaty
+// GET /mailing/templates - Pobierz wszystkie dostÄ™pne templaty
 router.get('/', TemplatesController.getTemplates);
 
 // GET /mailing/templates/categories - Pobierz kategorie templat
@@ -18,25 +18,28 @@ router.get('/categories', TemplatesController.getCategories);
 // GET /mailing/templates/popular - Pobierz popularne templaty
 router.get('/popular', TemplatesController.getPopularTemplates);
 
-// POST /mailing/templates/generate-thumbnail - Generuj thumbnail dla bloków
+// POST /mailing/templates/generate-thumbnail - Generuj thumbnail dla blokĂłw
 router.post('/generate-thumbnail', TemplatesController.generateThumbnail);
+
+// GET /mailing/templates/search - Wyszukaj templaty z zaawansowanymi filtrami
+router.get('/search', TemplatesController.searchTemplates);
 
 // GET /mailing/templates/:id - Pobierz template po ID z blokami
 router.get('/:id', TemplatesController.getTemplateById);
 
-// POST /mailing/templates - Utwórz nowy template
+// POST /mailing/templates - UtwĂłrz nowy template
 router.post('/', TemplatesController.createTemplate);
 
 // PUT /mailing/templates/:id - Aktualizuj template
 router.put('/:id', TemplatesController.updateTemplate);
 
-// DELETE /mailing/templates/:id - Usuń template
+// DELETE /mailing/templates/:id - UsuĹ„ template
 router.delete('/:id', TemplatesController.deleteTemplate);
 
 // POST /mailing/templates/:id/duplicate - Duplikuj template
 router.post('/:id/duplicate', TemplatesController.duplicateTemplate);
 
-// POST /mailing/templates/:id/usage - Zwiększ licznik użycia
+// POST /mailing/templates/:id/usage - ZwiÄ™ksz licznik uĹĽycia
 router.post('/:id/usage', TemplatesController.incrementUsage);
 
 export default router;
@@ -44,24 +47,24 @@ export default router;
 /**
  * INSTRUKCJA INTEGRACJI:
  * 
- * Aby zintegrować te routes w głównej aplikacji Express:
+ * Aby zintegrowaÄ‡ te routes w gĹ‚Ăłwnej aplikacji Express:
  * 
- * 1. W głównym pliku app.js lub server.js dodaj:
+ * 1. W gĹ‚Ăłwnym pliku app.js lub server.js dodaj:
  * 
  *    const templatesRoutes = require('./routes/templates');
  *    app.use('/mailing/templates', templatesRoutes);
  * 
- * 2. Upewnij się że modele Sequelize są poprawnie załadowane
+ * 2. Upewnij siÄ™ ĹĽe modele Sequelize sÄ… poprawnie zaĹ‚adowane
  * 
  * 3. Uruchom migracje:
  * 
  *    npx sequelize-cli db:migrate
  * 
- * 4. Opcjonalnie uruchom seeders z przykładowymi danymi:
+ * 4. Opcjonalnie uruchom seeders z przykĹ‚adowymi danymi:
  * 
  *    npx sequelize-cli db:seed:all
  * 
- * PRZYKŁADOWE UŻYCIE API:
+ * PRZYKĹADOWE UĹ»YCIE API:
  * 
  * // Pobierz wszystkie templaty
  * GET /mailing/templates
@@ -70,15 +73,15 @@ export default router;
  * GET /mailing/templates?customerId=123&includeBlocks=true
  * 
  * // Wyszukaj templaty promocyjne
- * GET /mailing/templates?category=promocja&search=wyprzedaż
+ * GET /mailing/templates?category=promocja&search=wyprzedaĹĽ
  * 
  * // Pobierz template po ID
  * GET /mailing/templates/1
  * 
- * // Utwórz nowy template
+ * // UtwĂłrz nowy template
  * POST /mailing/templates
  * {
- *   "name": "Mój szablon",
+ *   "name": "MĂłj szablon",
  *   "description": "Opis szablonu",
  *   "category": "newsletter",
  *   "tags": ["newsletter", "firmowy"],
