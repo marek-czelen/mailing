@@ -8,13 +8,16 @@ import {
     generateMailContent,
     computeSpamRating,
     listModels,
+    importExcelToDatabase,
     getDatabasesList,
     getDatabaseById,
     createDatabase,
     updateDatabase,
     deleteDatabase,
     getDatabasesByCustomer,
-    getCustomerDatabasesStats
+    getCustomerDatabasesStats,
+    getDatabaseContacts,
+    unsubscribeContact
 } from '../controller/mailing.js';
 
 const router = express.Router();
@@ -38,6 +41,10 @@ router.post('/generateMailContent', generateMailContent);
 // Oblicz ocenę SPAM dla treści mailingu
 router.post('/computeSpamRating', computeSpamRating);
 
+// ============= EXCEL IMPORT =============
+// Importuj plik Excel do wskazanej bazy danych
+router.post('/importExcelToDatabase/:databaseId', importExcelToDatabase);
+
 // ============= DATABASES CRUD =============
 // Pobierz wszystkie bazy danych
 router.get('/getDatabasesList', getDatabasesList);
@@ -59,5 +66,11 @@ router.get('/getDatabasesByCustomer/:customerId', getDatabasesByCustomer);
 
 // Pobierz statystyki baz danych dla klienta
 router.get('/getCustomerDatabasesStats/:customerId', getCustomerDatabasesStats);
+
+// Pobierz kontakty przypisane do konkretnej bazy danych
+router.get('/getDatabaseContacts/:databaseId', getDatabaseContacts);
+
+// Wypisz kontakt ze wszystkich list mailingowych danego klienta
+router.get('/unsubscribe/:contactId', unsubscribeContact);
 
 export default router;

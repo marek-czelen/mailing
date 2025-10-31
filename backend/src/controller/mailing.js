@@ -8,10 +8,12 @@ import MarketingCampaniesMailing from '../models/marketingCampaniesMailing.model
 import Databases from '../models/databases.model.js';
 import Customers from '../models/customers.model.js';
 import sequelize from '../include/db.js';
+import { Op } from 'sequelize';
 import axios from 'axios';
 import OPENAI_API_KEY from '../config/openai.config.js';
 import OpenAI from "openai";
 import fetch from "node-fetch";
+import fs from 'fs';
 // Pobierz wszystkie kampanie
 export async function getCampaignsList(req, res) {
     try {
@@ -37,7 +39,7 @@ export async function getCampaignById(req, res) {
     }
 }
 
-// Utwórz nową kampanię i zaimportuj adresy e-mail z pliku
+// Utwórz nową kampanię
 export async function createCampaign(req, res) {
     try {
         let data = req.body;
@@ -46,57 +48,13 @@ export async function createCampaign(req, res) {
         data.progress = data.progress ? data.progress : 0;
         data.customerId = data.customerId ? data.customerId : 1;
 
-
         // Utwórz kampanię
         const newCampaign = await MarketingCampanies.create(data);
-
-        // Obsługa pliku z adresami e-mail (zakładamy, że plik jest w req.file)
-        let importedAddresses = [];
-        if (data.file) {
-            const workbook = XLSX.readFile(Path.join(UPLOAD_DIR,data.file));
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            const rows = XLSX.utils.sheet_to_json(sheet);
-
-            const t = await sequelize.transaction();
-            let errorList = [];
-            for (const row of rows) {
-                try{
-                    if (row.email) {
-                        // Dodaj adres e-mail do bazy
-                        const newMailRecord = await MailAddress.create(
-                            { 
-                                mailAddress: row.email, 
-                                miasto: row.miasto || null,
-                                rodzaj: row.rodzaj || null,
-                                active: 1,
-                                customerId: 1 
-                            }, { transaction: t });
-
-                        const record = await MarketingCampaniesMailing.create({
-                            marketingCampaniesId: newCampaign.id,
-                            mailAddressesId: newMailRecord.id,}, 
-                            { transaction: t });
-
-                        importedAddresses.push(record);
-                    }
-                }catch(err){
-                    await t.rollback();
-                    errorList.push(`Failed to import email ${row.email}: ${err.message}`);
-                }
-
-            }
-            await t.commit();
-        }
 
         // Automatycznie licz scoring i sugestie po utworzeniu kampanii
         await computeSpamRating({ body: { id: newCampaign.id } }, { send: () => {} });
         
-        res.send(new Response(
-            { campaign: newCampaign, importedAddresses },
-            true,
-            "Campaign created and mail addresses imported successfully."
-        ));
+        res.send(new Response(newCampaign, true, "Campaign created successfully."));
     } catch (error) {
         res.send(new Response(null, false, `Failed to create campaign. ${error.message}`));
     }
@@ -856,12 +814,193 @@ export async function computeSpamRating(req, res) {
     }
 }
 
+// ============= IMPORT EXCEL =============
+
+/**
+ * Importuj plik Excel do wskazanej bazy danych
+ * 
+ * WORKFLOW:
+ * 1. Najpierw wyślij plik przez POST /mailing/uploadFile (otrzymasz filename)
+ * 2. Następnie wywołaj ten endpoint z otrzymanym filename
+ * 
+ * Parametry:
+ * - databaseId (URL param): ID bazy danych do której importować
+ * - filename (body): nazwa pliku zwrócona przez /mailing/uploadFile
+ * - deleteAfterImport (body, opcjonalne): czy usunąć plik po imporcie (default: false)
+ * 
+ * Przykład użycia:
+ * POST /mailing/importExcelToDatabase/5
+ * {
+ *   "filename": "1698764123456-contacts.xlsx",
+ *   "deleteAfterImport": true
+ * }
+ */
+export async function importExcelToDatabase(req, res) {
+    try {
+        const { databaseId } = req.params;
+        const { filename } = req.body;
+
+        // Walidacja parametrów
+        if (!databaseId) {
+            return res.send(new Response(null, false, "Database ID is required."));
+        }
+
+        if (!filename) {
+            return res.send(new Response(null, false, "Filename is required."));
+        }
+
+        // Sprawdź czy plik fizycznie istnieje
+        const filePath = Path.join(UPLOAD_DIR, filename);
+        if (!fs.existsSync(filePath)) {
+            return res.send(new Response(null, false, "File not found on server. Please upload the file first using /mailing/uploadFile endpoint."));
+        }
+
+        // Sprawdź czy baza danych istnieje i nie jest usunięta
+        const database = await Databases.findOne({
+            where: {
+                id: databaseId,
+                deleted_at: null
+            },
+            include: [{
+                model: Customers,
+                as: 'Customer',
+                attributes: ['id', 'name']
+            }]
+        });
+
+        if (!database) {
+            return res.send(new Response(null, false, "Database not found or is deleted."));
+        }
+
+        // Wczytaj i przetwórz plik Excel
+        const workbook = XLSX.readFile(filePath);
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+
+        if (rows.length === 0) {
+            return res.send(new Response(null, false, "Excel file is empty or has no valid data."));
+        }
+
+        // Rozpocznij transakcję
+        const transaction = await sequelize.transaction();
+        let importedAddresses = [];
+        let errorList = [];
+        let successCount = 0;
+        let errorCount = 0;
+
+        try {
+            for (const row of rows) {
+                try {
+                    if (row.email) {
+                        // Sprawdź czy adres email już istnieje dla tego klienta
+                        const existingEmail = await MailAddress.findOne({
+                            where: {
+                                mailAddress: row.email,
+                                databaseId: databaseId
+
+                            },
+                            transaction
+                        });
+
+                        if (existingEmail) {
+                            errorCount++;
+                            errorList.push({
+                                email: row.email,
+                                error: "Email already exists for this customer",
+                                row: row
+                            });
+                            continue;
+                        }
+
+                        // Dodaj nowy adres e-mail do bazy
+                        const newMailRecord = await MailAddress.create({
+                            mailAddress: row.email,
+                            miasto: row.miasto || null,
+                            rodzaj: row.rodzaj || null,
+                            active: 1,
+                            customerId: database.customer_id,
+                            databaseId: databaseId
+                        }, { transaction });
+
+                        importedAddresses.push({
+                            id: newMailRecord.id,
+                            email: newMailRecord.mailAddress,
+                            miasto: newMailRecord.miasto,
+                            rodzaj: newMailRecord.rodzaj
+                        });
+                        successCount++;
+
+                    } else {
+                        errorCount++;
+                        errorList.push({
+                            email: 'N/A',
+                            error: "Missing email address",
+                            row: row
+                        });
+                    }
+                } catch (err) {
+                    errorCount++;
+                    errorList.push({
+                        email: row.email || 'N/A',
+                        error: err.message,
+                        row: row
+                    });
+                }
+            }
+
+            // Zatwierdź transakcję
+            await transaction.commit();
+
+            // Opcjonalnie usuń plik po pomyślnym imporcie (jeśli w body jest deleteAfterImport: true)
+            if (req.body.deleteAfterImport === true) {
+                try {
+                    fs.unlinkSync(filePath);
+                } catch (err) {
+                    console.warn(`Failed to delete file ${filename} after import:`, err.message);
+                }
+            }
+
+            const result = {
+                database: {
+                    id: database.id,
+                    name: database.name,
+                    customer: database.Customer
+                },
+                summary: {
+                    totalRows: rows.length,
+                    successCount,
+                    errorCount,
+                    importedAddresses: importedAddresses.length
+                },
+                importedAddresses: importedAddresses.slice(0, 100), // Ograniczenie do pierwszych 100 dla lepszej wydajności
+                errors: errorList.slice(0, 50), // Ograniczenie do pierwszych 50 błędów
+                fileDeleted: req.body.deleteAfterImport === true
+            };
+
+            const message = `Import completed. Successfully imported ${successCount} addresses, ${errorCount} errors.`;
+            res.send(new Response(result, true, message));
+
+        } catch (error) {
+            // Wycofaj transakcję w przypadku błędu
+            await transaction.rollback();
+            throw error;
+        }
+
+    } catch (error) {
+        res.send(new Response(null, false, `Failed to import Excel file. ${error.message}`));
+    }
+}
+
 // ============= CRUD DATABASES =============
 
-// Pobierz wszystkie bazy danych
+// Pobierz wszystkie nieusunięte bazy danych
 export async function getDatabasesList(req, res) {
     try {
         const databases = await Databases.findAll({
+            where: {
+                deleted_at: null
+            },
             include: [{
                 model: Customers,
                 as: 'Customer',
@@ -875,10 +1014,14 @@ export async function getDatabasesList(req, res) {
     }
 }
 
-// Pobierz jedną bazę danych po ID
+// Pobierz jedną nieusuniętą bazę danych po ID
 export async function getDatabaseById(req, res) {
     try {
-        const database = await Databases.findByPk(req.params.id, {
+        const database = await Databases.findOne({
+            where: {
+                id: req.params.id,
+                deleted_at: null
+            },
             include: [{
                 model: Customers,
                 as: 'Customer',
@@ -938,10 +1081,22 @@ export async function createDatabase(req, res) {
     }
 }
 
-// Aktualizuj bazę danych po ID
+// Aktualizuj nieusuniętą bazę danych po ID
 export async function updateDatabase(req, res) {
     try {
         const { name, description, tags, rodo_flag, export_enabled, customer_id } = req.body;
+        
+        // Sprawdź czy baza istnieje i nie jest usunięta
+        const existingDatabase = await Databases.findOne({
+            where: {
+                id: req.params.id,
+                deleted_at: null
+            }
+        });
+
+        if (!existingDatabase) {
+            return res.send(new Response(null, false, "Database not found or is deleted."));
+        }
         
         // Jeśli customer_id jest podany, sprawdź czy istnieje
         if (customer_id) {
@@ -959,15 +1114,22 @@ export async function updateDatabase(req, res) {
             export_enabled,
             customer_id
         }, {
-            where: { id: req.params.id }
+            where: { 
+                id: req.params.id,
+                deleted_at: null
+            }
         });
 
         if (!updated) {
-            return res.send(new Response(null, false, "Database not found."));
+            return res.send(new Response(null, false, "Database not found or is deleted."));
         }
 
         // Pobierz zaktualizowaną bazę z relacją Customer
-        const updatedDatabase = await Databases.findByPk(req.params.id, {
+        const updatedDatabase = await Databases.findOne({
+            where: {
+                id: req.params.id,
+                deleted_at: null
+            },
             include: [{
                 model: Customers,
                 as: 'Customer',
@@ -981,7 +1143,7 @@ export async function updateDatabase(req, res) {
     }
 }
 
-// Usuń bazę danych po ID
+// Oznacz bazę danych jako usuniętą (soft delete)
 export async function deleteDatabase(req, res) {
     try {
         const database = await Databases.findByPk(req.params.id);
@@ -989,8 +1151,12 @@ export async function deleteDatabase(req, res) {
             return res.send(new Response(null, false, "Database not found."));
         }
 
-        await Databases.destroy({
-            where: { id: req.params.id }
+        if (database.deleted_at) {
+            return res.send(new Response(null, false, "Database is already deleted."));
+        }
+
+        await database.update({
+            deleted_at: new Date()
         });
 
         res.send(new Response(null, true, "Database deleted successfully."));
@@ -999,13 +1165,16 @@ export async function deleteDatabase(req, res) {
     }
 }
 
-// Pobierz bazy danych dla konkretnego klienta
+// Pobierz nieusunięte bazy danych dla konkretnego klienta
 export async function getDatabasesByCustomer(req, res) {
     try {
         const { customerId } = req.params;
         
         const databases = await Databases.findAll({
-            where: { customer_id: customerId },
+            where: { 
+                customer_id: customerId,
+                deleted_at: null
+            },
             include: [{
                 model: Customers,
                 as: 'Customer',
@@ -1031,9 +1200,12 @@ export async function getCustomerDatabasesStats(req, res) {
             return res.send(new Response(null, false, "Customer not found."));
         }
 
-        // Pobierz podstawowe statystyki baz danych
+        // Pobierz podstawowe statystyki nieusuniętych baz danych
         const databases = await Databases.findAll({
-            where: { customer_id: customerId },
+            where: { 
+                customer_id: customerId,
+                deleted_at: null
+            },
             attributes: ['id', 'name', 'tags', 'rodo_flag', 'export_enabled'],
             order: [['id', 'ASC']]
         });
@@ -1181,5 +1353,148 @@ export async function getCustomerDatabasesStats(req, res) {
     } catch (error) {
         console.log(error);
         res.send(new Response(null, false, `Failed to fetch databases statistics. ${error.message}`));
+    }
+}
+
+// Pobierz wszystkie kontakty przypisane do konkretnej bazy danych
+export async function getDatabaseContacts(req, res) {
+    try {
+        const { databaseId } = req.params;
+
+        // Sprawdź czy baza danych istnieje i nie jest usunięta
+        const database = await Databases.findOne({
+            where: {
+                id: databaseId,
+                deleted_at: null
+            },
+            include: [{
+                model: Customers,
+                as: 'Customer',
+                attributes: ['id', 'name']
+            }]
+        });
+
+        if (!database) {
+            return res.send(new Response(null, false, "Database not found or is deleted."));
+        }
+
+        // Pobierz wszystkie adresy email przypisane do tej bazy danych
+        const contacts = await MailAddress.findAll({
+            where: {
+                databaseId: databaseId
+            },
+            include: [{
+                model: Customers,
+                as: 'Customer',
+                attributes: ['id', 'name']
+            }],
+            order: [['created_at', 'DESC']]
+        });
+
+        const result = {
+            database: {
+                id: database.id,
+                name: database.name,
+                customer: database.Customer
+            },
+            contacts: contacts.map(contact => ({
+                id: contact.id,
+                mailAddress: contact.mailAddress,
+                miasto: contact.miasto,
+                rodzaj: contact.rodzaj,
+                active: contact.active,
+                unsubscribesDate: contact.unsubscribesDate,
+                createdAt: contact.created_at,
+                updatedAt: contact.updated_at
+            })),
+            summary: {
+                totalContacts: contacts.length,
+                activeContacts: contacts.filter(c => c.active === 1).length,
+                inactiveContacts: contacts.filter(c => c.active === 0).length,
+                unsubscribedContacts: contacts.filter(c => c.unsubscribesDate !== null).length
+            }
+        };
+
+        res.send(new Response(result, true, "Database contacts retrieved successfully."));
+    } catch (error) {
+        console.log(error);
+        res.send(new Response(null, false, `Failed to fetch database contacts. ${error.message}`));
+    }
+}
+
+/**
+ * Wypisz kontakt ze wszystkich list mailingowych danego klienta
+ * 
+ * Endpoint: POST /mailing/unsubscribe/:contactId
+ * 
+ * Parametry:
+ * - contactId (URL param): ID kontaktu do wypisania
+ * - customerId (URL param): ID klienta dla weryfikacji przynależności
+ * 
+ * Funkcjonalność:
+ * 1. Sprawdza czy kontakt należy do danego klienta
+ * 2. Wypisuje główny kontakt (ustawia unsubscribesDate i active=0)
+ * 3. Znajduje i wypisuje wszystkie duplikaty tego samego emaila dla klienta
+ * 4. Zwraca szczegóły operacji
+ * 
+ * Przykład użycia:
+ * POST /mailing/unsubscribe/123
+ */
+export async function unsubscribeContact(req, res) {
+    try {
+        const { contactId  } = req.params;
+
+        // Walidacja parametrów
+        if (!contactId) {
+            return res.send(new Response(null, false, "Contact ID is required."));
+        }
+
+                // Znajdź kontakt należący do danego klienta
+        const contact = await MailAddress.findOne({
+            where: {
+                id: contactId,
+            }
+        });
+
+        // Sprawdź czy klient istnieje
+        const customer = await Customers.findByPk(contact.customerId);
+        if (!customer) {
+            return res.send(new Response(null, false, "Customer not found."));
+        }
+
+
+        if (!contact) {
+            return res.send(new Response(null, false, "Contact not found for this customer."));
+        }
+
+        // Wypisz kontakt - ustaw datę wypisania i zmień status na nieaktywny
+        const unsubscribeDate = new Date();
+
+        await MailAddress.update(
+            {
+                unsubscribesDate: unsubscribeDate,
+                active: 0
+            },
+            {
+                where: {
+                    mailAddress: contact.mailAddress,
+                    customerId: contact.customerId,
+                    unsubscribesDate: null
+                }
+            }
+        );
+        
+
+        const result = {
+            contact: contact,
+        };
+
+        const message =  `Contact unsubscribed successfully in all databases.`;
+
+        res.send(new Response(result, true, message));
+
+    } catch (error) {
+        console.log(error);
+        res.send(new Response(null, false, `Failed to unsubscribe contact. ${error.message}`));
     }
 }

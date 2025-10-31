@@ -49,59 +49,38 @@
       :items-per-page="25"
       :items-per-page-options="[10, 25, 50, 100]"
     >
-      <!-- Avatar Column -->
-      <template v-slot:item.avatar="{ item }">
-        <v-avatar size="36" color="primary">
-          <v-img v-if="item.avatar" :src="item.avatar" />
-          <span v-else class="text-white">
-            {{ getInitials(item.firstName, item.lastName) }}
-          </span>
-        </v-avatar>
-      </template>
-
-      <!-- Name Column -->
-      <template v-slot:item.fullName="{ item }">
-        <div class="name-cell">
-          <div class="name">{{ item.firstName }} {{ item.lastName }}</div>
+      <!-- Email Column -->
+      <template v-slot:item.email="{ item }">
+        <div class="email-cell">
           <div class="email">{{ item.email }}</div>
+          <div class="name">{{ item.firstName }} {{ item.lastName }}</div>
         </div>
       </template>
 
-      <!-- Status Column -->
-      <template v-slot:item.status="{ item }">
+      <!-- Unsubscribe Date Column -->
+      <template v-slot:item.unsubscribeDate="{ item }">
+        <div class="unsubscribe-cell">
+          <span v-if="item.unsubscribeDate" class="unsubscribe-date">
+            {{ formatDate(item.unsubscribeDate) }}
+          </span>
+          <span v-else class="no-unsubscribe">-</span>
+        </div>
+      </template>
+
+      <!-- Type Column -->
+      <template v-slot:item.type="{ item }">
         <v-chip
-          :color="getStatusColor(item.status)"
+          :color="getTypeColor(item.type)"
           size="small"
           variant="elevated"
         >
-          {{ getStatusLabel(item.status) }}
+          {{ getTypeLabel(item.type) }}
         </v-chip>
       </template>
 
-      <!-- Tags Column -->
-      <template v-slot:item.tags="{ item }">
-        <div class="tags-cell">
-          <v-chip
-            v-for="tag in item.tags?.slice(0, 2)"
-            :key="tag"
-            size="small"
-            variant="outlined"
-            class="mr-1"
-          >
-            {{ tag }}
-          </v-chip>
-          <span v-if="item.tags?.length > 2" class="more-tags">
-            +{{ item.tags.length - 2 }}
-          </span>
-        </div>
-      </template>
-
-      <!-- Last Activity Column -->
-      <template v-slot:item.lastActivity="{ item }">
-        <div class="activity-cell">
-          <div class="date">{{ formatDate(item.lastActivity) }}</div>
-          <div class="activity-type">{{ item.lastActivityType }}</div>
-        </div>
+      <!-- City Column -->
+      <template v-slot:item.city="{ item }">
+        <span>{{ item.city || '-' }}</span>
       </template>
 
       <!-- Actions Column -->
@@ -135,16 +114,16 @@
               </v-btn>
             </template>
             <v-list>
-              <v-list-item @click="duplicateContact(item)">
+              <v-list-item @click="unsubscribeContact(item)" v-if="item.unsubscribeDate === null">
                 <v-list-item-title>
-                  <v-icon left size="16">mdi-content-copy</v-icon>
-                  Duplikuj
+                  <v-icon left size="16">mdi-email-remove</v-icon>
+                  Wypisz z listy
                 </v-list-item-title>
               </v-list-item>
-              <v-list-item @click="addToSegment(item)">
+              <v-list-item @click="resubscribeContact(item)" v-if="item.unsubscribeDate !== null">
                 <v-list-item-title>
-                  <v-icon left size="16">mdi-filter-plus</v-icon>
-                  Dodaj do segmentu
+                  <v-icon left size="16">mdi-email-plus</v-icon>
+                  Zapisz na listę
                 </v-list-item-title>
               </v-list-item>
               <v-list-item @click="viewHistory(item)">
@@ -184,6 +163,7 @@
       :database="database"
       @save="saveContact"
       @close="closeContactDialog"
+      @contact-updated="handleContactUpdated"
     />
 
         <!-- Import Dialog -->
@@ -205,7 +185,7 @@ const props = defineProps({
   contacts: Array
 })
 
-const emit = defineEmits(['edit-contact', 'delete-contact'])
+const emit = defineEmits(['edit-contact', 'delete-contact', 'contact-updated'])
 
 // Reactive data
 const searchQuery = ref('')
@@ -217,12 +197,11 @@ const showImportDialog = ref(false)
 
 // Table headers
 const headers = [
-  { title: '', key: 'avatar', sortable: false, width: 60 },
-  { title: 'Imię i nazwisko', key: 'fullName', sortable: true },
-  { title: 'Telefon', key: 'phone', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Tagi', key: 'tags', sortable: false },
-  { title: 'Ostatnia aktywność', key: 'lastActivity', sortable: true },
+  { title: 'Email', key: 'mailAddress', sortable: true },
+  { title: 'Data wypisania', key: 'unsubscribesDate', sortable: true },
+  { title: 'Rodzaj', key: 'rodzaj', sortable: true },
+  { title: 'Miasto', key: 'miasto', sortable: true },
+  { title: 'Aktywny', key: 'active', sortable: true },
   { title: 'Akcje', key: 'actions', sortable: false, width: 120 }
 ]
 
@@ -247,30 +226,26 @@ const filteredContacts = computed(() => {
 })
 
 // Methods
-function getInitials(firstName, lastName) {
-  const first = firstName ? firstName.charAt(0).toUpperCase() : ''
-  const last = lastName ? lastName.charAt(0).toUpperCase() : ''
-  return first + last
-}
 
-function getStatusColor(status) {
+
+function getTypeColor(type) {
   const colors = {
-    active: 'success',
-    inactive: 'warning',
-    blocked: 'error',
-    unsubscribed: 'grey'
+    individual: 'primary',
+    business: 'success',
+    vip: 'warning',
+    partner: 'purple'
   }
-  return colors[status] || 'grey'
+  return colors[type] || 'grey'
 }
 
-function getStatusLabel(status) {
+function getTypeLabel(type) {
   const labels = {
-    active: 'Aktywny',
-    inactive: 'Nieaktywny',
-    blocked: 'Zablokowany',
-    unsubscribed: 'Wypisany'
+    individual: 'Indywidualny',
+    business: 'Biznesowy',
+    vip: 'VIP',
+    partner: 'Partner'
   }
-  return labels[status] || 'Nieznany'
+  return labels[type] || 'Nieznany'
 }
 
 function formatDate(date) {
@@ -306,18 +281,26 @@ function closeContactDialog() {
   editingContact.value = null
 }
 
-function duplicateContact(contact) {
-  const duplicate = {
-    ...contact,
-    id: Date.now(),
-    email: `copy_${contact.email}`,
-    firstName: `${contact.firstName} (kopia)`
+function unsubscribeContact(contact) {
+  if (confirm(`Czy na pewno chcesz wypisać kontakt ${contact.email} z listy mailingowej?`)) {
+    const updatedContact = {
+      ...contact,
+      unsubscribeDate: new Date().toISOString().split('T')[0],
+      status: 'unsubscribed'
+    }
+    emit('edit-contact', updatedContact)
   }
-  emit('edit-contact', duplicate)
 }
 
-function addToSegment(contact) {
-  console.log('Dodawanie do segmentu:', contact)
+function resubscribeContact(contact) {
+  if (confirm(`Czy na pewno chcesz ponownie zapisać kontakt ${contact.email} na listę mailingową?`)) {
+    const updatedContact = {
+      ...contact,
+      unsubscribeDate: null,
+      status: 'active'
+    }
+    emit('edit-contact', updatedContact)
+  }
 }
 
 function viewHistory(contact) {
@@ -342,6 +325,11 @@ function handleImportComplete(result) {
   console.log('Import zakończony:', result)
   showImportDialog.value = false
   emit('import-contacts', result)
+}
+
+function handleContactUpdated(updatedContact) {
+  console.log('Kontakt zaktualizowany:', updatedContact)
+  emit('contact-updated', updatedContact)
 }
 </script>
 
@@ -372,34 +360,22 @@ function handleImportComplete(result) {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
 }
 
-.name-cell .name {
+.email-cell .email {
   font-weight: 600;
   margin-bottom: 2px;
 }
 
-.name-cell .email {
+.email-cell .name {
   font-size: 0.85rem;
   color: #666;
 }
 
-.tags-cell {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.more-tags {
-  font-size: 0.8rem;
-  color: #666;
-}
-
-.activity-cell .date {
+.unsubscribe-cell .unsubscribe-date {
+  color: #e53e3e;
   font-weight: 500;
-  margin-bottom: 2px;
 }
 
-.activity-cell .activity-type {
-  font-size: 0.85rem;
+.unsubscribe-cell .no-unsubscribe {
   color: #666;
 }
 

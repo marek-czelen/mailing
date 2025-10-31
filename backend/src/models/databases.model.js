@@ -37,6 +37,11 @@ const Databases = sequelize.define('databases', {
             model: Customers,
             key: 'id'
         }
+  },
+  deleted_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null
   }
 }, {
     tableName: 'databases',

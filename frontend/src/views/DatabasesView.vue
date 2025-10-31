@@ -165,6 +165,24 @@
 
 
   </div>
+
+  <!-- Snackbar for notifications -->
+  <v-snackbar
+    v-model="snackbar.show"
+    :color="snackbar.color"
+    timeout="8000"
+    multi-line
+  >
+    {{ snackbar.message }}
+    <template v-slot:actions>
+      <v-btn
+        variant="text"
+        @click="snackbar.show = false"
+      >
+        Zamknij
+      </v-btn>
+    </template>
+  </v-snackbar>
 </template>
 
 <script setup>
@@ -188,6 +206,13 @@ const showDatabaseDialog = ref(false)
 
 const editingDatabase = ref(null)
 
+// Snackbar for notifications
+const snackbar = ref({
+  show: false,
+  message: '',
+  color: 'info'
+})
+
 // Computed
 const filteredDatabases = computed(() => {
   if (!searchQuery.value) return databases.value
@@ -198,10 +223,40 @@ const filteredDatabases = computed(() => {
   )
 })
 
+// Snackbar helper
+function showSnackbar(message, color = 'info') {
+  snackbar.value = {
+    show: true,
+    message,
+    color
+  }
+}
+
 // Methods
-function selectDatabase(database) {
+async function selectDatabase(database) {
   selectedDatabase.value = database
   activeTab.value = 'contacts'
+  
+  // Załaduj kontakty dla wybranej bazy danych
+  await loadDatabaseContacts(database.id)
+}
+
+async function loadDatabaseContacts(databaseId) {
+  try {
+    console.log('Ładowanie kontaktów dla bazy:', databaseId)
+    const contactsData = await Databases.getContacts(databaseId)
+    
+    if (selectedDatabase.value && selectedDatabase.value.id === databaseId) {
+      selectedDatabase.value.contacts = contactsData.contacts || []
+      selectedDatabase.value.contactsCount = contactsData.total || 0
+      console.log('Kontakty załadowane:', contactsData.contacts?.length || 0)
+    }
+  } catch (error) {
+    console.error('Błąd podczas ładowania kontaktów:', error)
+    if (selectedDatabase.value && selectedDatabase.value.id === databaseId) {
+      selectedDatabase.value.contacts = []
+    }
+  }
 }
 
 function openCreateDialog() {
@@ -346,9 +401,7 @@ async function deleteContact(contact) {
         await Databases.deleteContact(selectedDatabase.value.id, contact.id)
         
         // Odśwież dane kontaktów dla aktualnie wybranej bazy
-        const updatedContacts = await Databases.getContacts(selectedDatabase.value.id)
-        selectedDatabase.value.contacts = updatedContacts.contacts || []
-        selectedDatabase.value.contactsCount = updatedContacts.total || 0
+        await loadDatabaseContacts(selectedDatabase.value.id)
         
         console.log('Kontakt usunięty:', contact.email)
       }
@@ -462,23 +515,58 @@ async function exportContacts() {
 
 async function handleImportContacts(result) {
   try {
-    if (selectedDatabase.value && result.file) {
-      const importResult = await Databases.importContacts(selectedDatabase.value.id, result.file, {
-        mapping: result.mapping,
-        options: result.options
-      })
+    if (selectedDatabase.value) {
+      console.log('Import zakończony:', result)
       
-      // Odśwież dane kontaktów
-      const updatedContacts = await Databases.getContacts(selectedDatabase.value.id)
-      selectedDatabase.value.contacts = updatedContacts.contacts || []
-      selectedDatabase.value.contactsCount = updatedContacts.total || 0
-      
-      console.log('Import zakończony:', importResult)
-      alert(`Zaimportowano ${importResult.imported} kontaktów`)
+      if (result.success) {
+        // Odśwież dane kontaktów po pomyślnym imporcie
+        await loadDatabaseContacts(selectedDatabase.value.id)
+        
+        const imported = result.added || result.imported || 0
+        const updated = result.updated || 0
+        const errors = result.errors || 0
+        const total = imported + updated
+        
+        // Przygotuj szczegółowy komunikat
+        let message = `Import zakończony! `
+        message += `Zaimportowano: ${imported}, `
+        if (updated > 0) {
+          message += `zaktualizowano: ${updated}, `
+        }
+        if (errors > 0) {
+          message += `odrzucono: ${errors} rekordów. `
+          
+          if (result.errorDetails && result.errorDetails.length > 0) {
+            message += `Przykłady błędów: `
+            const maxErrors = Math.min(3, result.errorDetails.length)
+            for (let i = 0; i < maxErrors; i++) {
+              const error = result.errorDetails[i]
+              message += `${error.email} (${error.message})`
+              if (i < maxErrors - 1) message += ', '
+            }
+            if (result.errorDetails.length > 3) {
+              message += ` i ${result.errorDetails.length - 3} więcej błędów`
+            }
+          }
+        }
+        
+        // Wybierz kolor w zależności od wyników
+        let color = 'success'
+        if (total === 0 && errors > 0) {
+          color = 'error'
+          message += ' Wszystkie rekordy zostały odrzucone.'
+        } else if (errors > 0) {
+          color = 'warning'
+        }
+        
+        showSnackbar(message, color)
+      } else {
+        showSnackbar('Import nie powiódł się: ' + (result.message || 'Nieznany błąd'), 'error')
+      }
     }
   } catch (error) {
-    console.error('Błąd podczas importu kontaktów:', error)
-    alert('Nie udało się zaimportować kontaktów.')
+    console.error('Błąd podczas odświeżania danych po imporcie:', error)
+    showSnackbar('Import się zakończył, ale nie udało się odświeżyć listy kontaktów.', 'warning')
   }
 }
 
@@ -490,7 +578,7 @@ async function loadDatabases() {
     const data = await Databases.getList()
     databases.value = data || []
     if (databases.value.length > 0) {
-      selectedDatabase.value = databases.value[0]
+      await selectDatabase(databases.value[0])
     }
   } catch (error) {
     console.error('Błąd podczas ładowania baz danych:', error)

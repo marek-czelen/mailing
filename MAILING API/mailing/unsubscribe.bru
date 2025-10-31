@@ -1,0 +1,22 @@
+meta {
+  name: unsubscribe
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{backendUrl}}/mailing/unsubscribe/56/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "email": "user2@o.pl",
+    "password":"111"
+  }
+}

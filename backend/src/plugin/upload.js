@@ -22,7 +22,7 @@ router.post('/mailing/uploadFile', upload.single('file'), (req, res) => {
     return res.status(400).json({ message: 'Brak pliku!' });
   }
   // Zwróć fylko filename
-  res.json({ path: `${req.file.filename}` });
+  res.json({ filePath: `${req.file.filename}` });
 });
 
 

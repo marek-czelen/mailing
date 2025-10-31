@@ -194,7 +194,7 @@ export class Databases {
   }
 
   /**
-   * Importuj kontakty do bazy danych
+   * Importuj kontakty do bazy danych (stara wersja)
    * @param {number} id - ID bazy danych
    * @param {File} file - Plik CSV/Excel z kontaktami
    * @param {Object} options - Opcje importu
@@ -210,6 +210,54 @@ export class Databases {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data.data;
+  }
+
+  /**
+   * Importuj kontakty z pliku Excel do bazy danych (nowa wersja)
+   * @param {number} databaseId - ID bazy danych
+   * @param {Object|File} payload - Obiekt z nazwą pliku i opcjami lub plik (stara wersja)
+   */
+  static async importExcelToDatabase(databaseId, payload) {
+    // Sprawdź czy to nowy format z nazwą pliku czy stary z plikiem
+    if (payload instanceof File || payload instanceof FormData) {
+      // Stary format - plik bezpośrednio
+      const formData = payload instanceof FormData ? payload : new FormData();
+      if (payload instanceof File) {
+        formData.append('file', payload);
+      }
+      
+      const response = await axios.post(`/mailing/importExcelToDatabase/${databaseId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    } else {
+      // Nowy format - nazwa przesłanego pliku
+      const response = await axios.post(`/mailing/importExcelToDatabase/${databaseId}`, payload, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return response.data;
+    }
+  }
+
+  /**
+   * Prześlij plik na serwer do późniejszego importu
+   * @param {File} file - Plik do przesłania
+   * @returns {Promise<{success: boolean, filePath?: string, message?: string}>}
+   */
+  static async uploadFile(file) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await axios.post('/mailing/uploadFile', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Błąd uploadu pliku:', error);
+      throw new Error(error.response?.data?.message || 'Błąd podczas przesyłania pliku');
+    }
   }
 
   /**
@@ -362,6 +410,39 @@ export class Databases {
   static async deleteCustomField(databaseId, fieldId) {
     const response = await axios.delete(`/mailing/deleteDatabaseField/${databaseId}/${fieldId}`);
     return response.data;
+  }
+
+  // ============= WYPISYWANIE Z LISTY =============
+
+  /**
+   * Wypisz kontakt ze wszystkich list mailingowych klienta
+   * @param {number} contactId - ID kontaktu do wypisania
+   * @returns {Promise<Object>} - Wynik operacji wypisywania
+   */
+  static async unsubscribeContact(contactId) {
+    try {
+      const response = await axios.get(`/mailing/unsubscribe/${contactId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Błąd podczas wypisywania kontaktu:', error);
+      throw new Error(error.response?.data?.message || 'Błąd podczas wypisywania z listy');
+    }
+  }
+
+  /**
+   * Ponownie zapisz kontakt na listy mailingowe klienta
+   * @param {number} contactId - ID kontaktu do ponownego zapisania
+   * @returns {Promise<Object>} - Wynik operacji zapisywania
+   */
+  static async resubscribeContact(contactId) {
+    try {
+      const customer_id = await this._getCurrentCustomerId();
+      const response = await axios.post(`/mailing/resubscribe/${contactId}/${customer_id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Błąd podczas ponownego zapisywania kontaktu:', error);
+      throw new Error(error.response?.data?.message || 'Błąd podczas zapisywania na listę');
+    }
   }
 
   // ============= STATYSTYKI =============

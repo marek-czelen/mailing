@@ -34,7 +34,12 @@ const MailAddress = sequelize.define('mail_addresses', {
     unsubscribesDate:{
         type:DataTypes.DATE,
         field:"unsubscribes_date",
-    }  
+    },
+    databaseId:{
+      type: DataTypes.INTEGER,
+      field: "database_id",
+      allowNull: false,
+    }
   }, {
     tableName: 'mail_addresses',
     timestamps: true,

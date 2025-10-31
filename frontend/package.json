@@ -18,7 +18,8 @@
     "vue-email-editor": "^2.1.5",
     "vue-router": "^4.5.1",
     "vuetify": "^3.9.7",
-    "webfontloader": "^1.6.28"
+    "webfontloader": "^1.6.28",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",

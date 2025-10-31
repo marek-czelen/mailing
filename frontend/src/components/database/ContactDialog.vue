@@ -19,25 +19,10 @@
           <div class="section">
             <h3 class="section-title">Podstawowe informacje</h3>
             
-            <div class="name-row">
-              <v-text-field
-                v-model="formData.firstName"
-                label="Imię"
-                :rules="[rules.required]"
-                variant="outlined"
-                required
-              />
-              <v-text-field
-                v-model="formData.lastName"
-                label="Nazwisko"
-                :rules="[rules.required]"
-                variant="outlined"
-                required
-              />
-            </div>
 
             <v-text-field
               v-model="formData.email"
+              density="compact"
               label="Adres email"
               :rules="[rules.required, rules.email]"
               variant="outlined"
@@ -47,179 +32,79 @@
 
             <v-text-field
               v-model="formData.phone"
+              density="compact"
               label="Numer telefonu"
               variant="outlined"
               prepend-inner-icon="mdi-phone"
             />
           </div>
 
-          <!-- Address -->
+          <!-- Contact Details -->
           <div class="section">
-            <h3 class="section-title">Adres</h3>
+            <h3 class="section-title">Szczegóły kontaktu</h3>
             
-            <v-text-field
-              v-model="formData.address"
-              label="Ulica i numer"
-              variant="outlined"
-            />
-
-            <div class="address-row">
+            <div class="contact-row">
               <v-text-field
                 v-model="formData.city"
+                density="compact"
                 label="Miasto"
                 variant="outlined"
               />
               <v-text-field
-                v-model="formData.postalCode"
-                label="Kod pocztowy"
+                v-model="formData.type"
+                density="compact"
+                label="Rodzaj kontaktu"
                 variant="outlined"
               />
             </div>
-
-            <v-text-field
-              v-model="formData.country"
-              label="Kraj"
-              variant="outlined"
-            />
           </div>
 
-          <!-- Contact Preferences -->
-          <div class="section">
-            <h3 class="section-title">Preferencje</h3>
+          <!-- Unsubscribe Section -->
+          <div class="section" v-if="isEditing">
+            <h3 class="section-title">Zarządzanie subskrypcją</h3>
             
-            <v-select
-              v-model="formData.status"
-              :items="statusOptions"
-              label="Status kontaktu"
-              variant="outlined"
-              required
-            />
-
-            <v-combobox
-              v-model="formData.tags"
-              label="Tagi"
-              variant="outlined"
-              multiple
-              chips
-              closable-chips
-              hint="Naciśnij Enter, aby dodać nowy tag"
-              persistent-hint
-            >
-              <template v-slot:chip="{ props, item }">
-                <v-chip
-                  v-bind="props"
-                  :text="item"
-                  size="small"
-                  color="primary"
-                  variant="elevated"
-                />
-              </template>
-            </v-combobox>
-
-            <div class="preferences-checkboxes">
-              <v-switch
-                v-model="formData.preferences.newsletter"
-                label="Newsletter"
-                color="primary"
-                inset
-              />
-              <v-switch
-                v-model="formData.preferences.promotions"
-                label="Promocje"
-                color="primary"
-                inset
-              />
-              <v-switch
-                v-model="formData.preferences.sms"
-                label="SMS"
-                color="primary"
-                inset
-              />
+            <div class="unsubscribe-section">
+              <div v-if="formData.unsubscribeDate" class="unsubscribe-info">
+                <v-alert type="warning" variant="tonal">
+                  <v-icon>mdi-email-remove</v-icon>
+                  Kontakt wypisał się z listy mailingowej w dniu: 
+                  <strong>{{ formatDate(formData.unsubscribeDate) }}</strong>
+                </v-alert>
+                
+                <div class="unsubscribe-actions">
+                  <v-btn 
+                    color="success" 
+                    variant="outlined" 
+                    :loading="resubscribing"
+                    :disabled="resubscribing || unsubscribing"
+                    @click="resubscribeContact"
+                  >
+                    <v-icon left>mdi-email-plus</v-icon>
+                    Zapisz ponownie na listę
+                  </v-btn>
+                </div>
+              </div>
+              
+              <div v-else class="subscribe-info">
+                <v-alert type="success" variant="tonal">
+                  <v-icon>mdi-email-check</v-icon>
+                  Kontakt jest zapisany na liście mailingowej
+                </v-alert>
+                
+                <div class="unsubscribe-actions">
+                  <v-btn 
+                    color="warning" 
+                    variant="outlined" 
+                    :loading="unsubscribing"
+                    :disabled="unsubscribing || resubscribing"
+                    @click="unsubscribeContact"
+                  >
+                    <v-icon left>mdi-email-remove</v-icon>
+                    Wypisz z listy
+                  </v-btn>
+                </div>
+              </div>
             </div>
-          </div>
-
-          <!-- Custom Fields (if database has them) -->
-          <div v-if="database?.customFields?.length" class="section">
-            <h3 class="section-title">Dodatkowe informacje</h3>
-            
-            <div
-              v-for="field in database.customFields"
-              :key="field.id"
-              class="custom-field"
-            >
-              <v-text-field
-                v-if="field.type === 'text'"
-                v-model="formData.customFields[field.id]"
-                :label="field.name"
-                :required="field.required"
-                variant="outlined"
-              />
-              
-              <v-textarea
-                v-else-if="field.type === 'textarea'"
-                v-model="formData.customFields[field.id]"
-                :label="field.name"
-                :required="field.required"
-                variant="outlined"
-                rows="3"
-              />
-              
-              <v-text-field
-                v-else-if="field.type === 'email'"
-                v-model="formData.customFields[field.id]"
-                :label="field.name"
-                :required="field.required"
-                type="email"
-                variant="outlined"
-              />
-              
-              <v-text-field
-                v-else-if="field.type === 'number'"
-                v-model.number="formData.customFields[field.id]"
-                :label="field.name"
-                :required="field.required"
-                type="number"
-                variant="outlined"
-              />
-              
-              <v-text-field
-                v-else-if="field.type === 'date'"
-                v-model="formData.customFields[field.id]"
-                :label="field.name"
-                :required="field.required"
-                type="date"
-                variant="outlined"
-              />
-              
-              <v-select
-                v-else-if="field.type === 'select'"
-                v-model="formData.customFields[field.id]"
-                :items="field.options"
-                :label="field.name"
-                :required="field.required"
-                variant="outlined"
-              />
-              
-              <v-switch
-                v-else-if="field.type === 'boolean'"
-                v-model="formData.customFields[field.id]"
-                :label="field.name"
-                color="primary"
-                inset
-              />
-            </div>
-          </div>
-
-          <!-- Notes -->
-          <div class="section">
-            <h3 class="section-title">Notatki</h3>
-            <v-textarea
-              v-model="formData.notes"
-              label="Dodatkowe notatki"
-              variant="outlined"
-              rows="3"
-              counter="1000"
-            />
           </div>
         </v-form>
       </v-card-text>
@@ -244,6 +129,7 @@
 
 <script setup>
 import { ref, computed, watch, defineProps, defineEmits } from 'vue'
+import { Databases } from '../../services/databases'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -251,12 +137,14 @@ const props = defineProps({
   database: Object
 })
 
-const emit = defineEmits(['update:modelValue', 'save', 'close'])
+const emit = defineEmits(['update:modelValue', 'save', 'close', 'contact-updated'])
 
 // Reactive data
 const valid = ref(false)
 const saving = ref(false)
 const form = ref(null)
+const unsubscribing = ref(false)
+const resubscribing = ref(false)
 
 // Form data
 const formData = ref({
@@ -264,27 +152,17 @@ const formData = ref({
   lastName: '',
   email: '',
   phone: '',
-  address: '',
   city: '',
-  postalCode: '',
-  country: '',
-  status: 'active',
-  tags: [],
-  preferences: {
-    newsletter: true,
-    promotions: false,
-    sms: false
-  },
-  customFields: {},
-  notes: ''
+  type: 'individual',
+  unsubscribeDate: null
 })
 
-// Status options
-const statusOptions = [
-  { title: 'Aktywny', value: 'active' },
-  { title: 'Nieaktywny', value: 'inactive' },
-  { title: 'Zablokowany', value: 'blocked' },
-  { title: 'Wypisany', value: 'unsubscribed' }
+// Type options
+const typeOptions = [
+  { title: 'Indywidualny', value: 'individual' },
+  { title: 'Biznesowy', value: 'business' },
+  { title: 'VIP', value: 'vip' },
+  { title: 'Partner', value: 'partner' }
 ]
 
 // Validation rules
@@ -307,19 +185,9 @@ watch(() => props.contact, (newContact) => {
       lastName: newContact.lastName || '',
       email: newContact.email || '',
       phone: newContact.phone || '',
-      address: newContact.address || '',
       city: newContact.city || '',
-      postalCode: newContact.postalCode || '',
-      country: newContact.country || '',
-      status: newContact.status || 'active',
-      tags: [...(newContact.tags || [])],
-      preferences: {
-        newsletter: newContact.preferences?.newsletter !== false,
-        promotions: newContact.preferences?.promotions || false,
-        sms: newContact.preferences?.sms || false
-      },
-      customFields: { ...(newContact.customFields || {}) },
-      notes: newContact.notes || ''
+      type: newContact.type || 'individual',
+      unsubscribeDate: newContact.unsubscribeDate || null
     }
   } else {
     resetForm()
@@ -333,19 +201,94 @@ function resetForm() {
     lastName: '',
     email: '',
     phone: '',
-    address: '',
     city: '',
-    postalCode: '',
-    country: '',
-    status: 'active',
-    tags: [],
-    preferences: {
-      newsletter: true,
-      promotions: false,
-      sms: false
-    },
-    customFields: {},
-    notes: ''
+    type: 'individual',
+    unsubscribeDate: null
+  }
+}
+
+function formatDate(date) {
+  if (!date) return '-'
+  return new Date(date).toLocaleDateString('pl-PL')
+}
+
+async function unsubscribeContact() {
+  if (!props.contact?.id) {
+    alert('Brak ID kontaktu')
+    return
+  }
+  
+  const confirmed = confirm(
+    'Czy na pewno chcesz wypisać ten kontakt ze WSZYSTKICH list mailingowych tego klienta?\n\n' +
+    'Ta operacja wypisze kontakt ze wszystkich baz danych i jest nieodwracalna.'
+  )
+  
+  if (!confirmed) return
+  
+  unsubscribing.value = true
+  
+  try {
+    const result = await Databases.unsubscribeContact(props.contact.id)
+    
+    if (result.response.success) {
+      // Aktualizuj lokalny stan
+      formData.value.unsubscribeDate = new Date().toISOString().split('T')[0]
+      
+      // Powiadom rodzica o zmianie
+      emit('contact-updated', {
+        ...props.contact,
+        unsubscribeDate: formData.value.unsubscribeDate
+      })
+      
+      alert('Kontakt został pomyślnie wypisany ze wszystkich list mailingowych.')
+    } else {
+      throw new Error(result.message || 'Nieznany błąd')
+    }
+  } catch (error) {
+    console.error('Błąd podczas wypisywania kontaktu:', error)
+    alert('Błąd podczas wypisywania kontaktu: ' + error.message)
+  } finally {
+    unsubscribing.value = false
+  }
+}
+
+async function resubscribeContact() {
+  if (!props.contact?.id) {
+    alert('Brak ID kontaktu')
+    return
+  }
+  
+  const confirmed = confirm(
+    'Czy na pewno chcesz ponownie zapisać ten kontakt na listy mailingowe?\n\n' +
+    'Kontakt będzie mógł ponownie otrzymywać wiadomości e-mail.'
+  )
+  
+  if (!confirmed) return
+  
+  resubscribing.value = true
+  
+  try {
+    const result = await Databases.resubscribeContact(props.contact.id)
+    
+    if (result.success) {
+      // Aktualizuj lokalny stan
+      formData.value.unsubscribeDate = null
+      
+      // Powiadom rodzica o zmianie
+      emit('contact-updated', {
+        ...props.contact,
+        unsubscribeDate: null
+      })
+      
+      alert('Kontakt został pomyślnie zapisany ponownie na listy mailingowe.')
+    } else {
+      throw new Error(result.message || 'Nieznany błąd')
+    }
+  } catch (error) {
+    console.error('Błąd podczas ponownego zapisywania kontaktu:', error)
+    alert('Błąd podczas ponownego zapisywania kontaktu: ' + error.message)
+  } finally {
+    resubscribing.value = false
   }
 }
 
@@ -408,14 +351,14 @@ function close() {
 }
 
 .section {
-  margin-bottom: 32px;
+  margin-bottom: 12px;
 }
 
 .section-title {
   font-size: 1.2rem;
   font-weight: 600;
   color: #333;
-  margin-bottom: 16px;
+  margin-bottom: 5px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -430,21 +373,21 @@ function close() {
 }
 
 .name-row,
-.address-row {
+.contact-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 
-.preferences-checkboxes {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+.unsubscribe-section {
   margin-top: 16px;
 }
 
-.custom-field {
-  margin-bottom: 16px;
+.unsubscribe-actions,
+.subscribe-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
 }
 
 .dialog-actions {
@@ -473,11 +416,7 @@ function close() {
 
 @media (max-width: 768px) {
   .name-row,
-  .address-row {
-    grid-template-columns: 1fr;
-  }
-  
-  .preferences-checkboxes {
+  .contact-row {
     grid-template-columns: 1fr;
   }
 }

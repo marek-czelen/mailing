@@ -14,29 +14,50 @@
       </v-card-title>
 
       <v-card-text class="dialog-content">
-        <v-stepper v-model="step" class="import-stepper">
-          <v-stepper-header>
-            <v-stepper-item
-              title="Wybór pliku"
-              value="1"
-              :complete="step > 1"
-            />
-            <v-divider />
-            <v-stepper-item
-              title="Mapowanie"
-              value="2"
-              :complete="step > 2"
-            />
-            <v-divider />
-            <v-stepper-item
-              title="Import"
-              value="3"
-            />
-          </v-stepper-header>
+        <!-- Custom Stepper Header -->
+        <div class="custom-stepper-header">
+          <div class="stepper-steps">
+            <div class="stepper-step" :class="{ active: step === 1, completed: step > 1 }">
+              <div class="step-number">
+                <v-icon v-if="step > 1" color="success">mdi-check</v-icon>
+                <span v-else>1</span>
+              </div>
+              <span class="step-title">Parsowanie</span>
+            </div>
+            
+            <v-divider class="step-divider" />
+            
+            <div class="stepper-step" :class="{ active: step === 2, completed: step > 2 }">
+              <div class="step-number">
+                <v-icon v-if="step > 2" color="success">mdi-check</v-icon>
+                <span v-else>2</span>
+              </div>
+              <span class="step-title">Mapowanie</span>
+            </div>
+            
+            <v-divider class="step-divider" />
+            
+            <div class="stepper-step" :class="{ active: step === 3, completed: step > 3 }">
+              <div class="step-number">
+                <v-icon v-if="step > 3" color="success">mdi-check</v-icon>
+                <span v-else>3</span>
+              </div>
+              <span class="step-title">Upload</span>
+            </div>
+            
+            <v-divider class="step-divider" />
+            
+            <div class="stepper-step" :class="{ active: step === 4 }">
+              <div class="step-number">4</div>
+              <span class="step-title">Import</span>
+            </div>
+          </div>
+        </div>
 
-          <v-stepper-window>
+        <!-- Steps Content -->
+        <v-window v-model="step" class="import-window">
             <!-- Step 1: File Selection -->
-            <v-stepper-window-item value="1">
+            <v-window-item value="1">
               <div class="step-content">
                 <h3>Wybierz plik do importu</h3>
                 <p>Obsługiwane formaty: CSV, Excel (.xlsx, .xls)</p>
@@ -90,10 +111,10 @@
                   </p>
                 </div>
               </div>
-            </v-stepper-window-item>
+            </v-window-item>
 
             <!-- Step 2: Field Mapping -->
-            <v-stepper-window-item value="2">
+            <v-window-item value="2">
               <div class="step-content">
                 <h3>Mapowanie pól</h3>
                 <p>Dopasuj kolumny z pliku do pól w bazie danych</p>
@@ -125,6 +146,29 @@
                     </div>
                   </div>
                 </div>
+
+                <!-- Email Required Warning -->
+                <v-alert
+                  v-if="!hasEmailMapping"
+                  type="warning"
+                  variant="tonal"
+                  class="mapping-warning"
+                  :text="false"
+                >
+                  <v-icon>mdi-alert</v-icon>
+                  <strong>Wymagane pole email:</strong> Musisz zmapować przynajmniej jedną kolumnę na pole "Email", aby móc kontynuować import.
+                </v-alert>
+
+                <v-alert
+                  v-else
+                  type="success"
+                  variant="tonal"
+                  class="mapping-success"
+                  :text="false"
+                >
+                  <v-icon>mdi-check-circle</v-icon>
+                  <strong>Mapowanie prawidłowe:</strong> Kolumna email została zmapowana pomyślnie.
+                </v-alert>
 
                 <!-- Import Options -->
                 <div class="import-options">
@@ -168,17 +212,79 @@
                   />
                 </div>
               </div>
-            </v-stepper-window-item>
+            </v-window-item>
 
-            <!-- Step 3: Import Process -->
-            <v-stepper-window-item value="3">
+            <!-- Step 3: Upload File -->
+            <v-window-item value="3">
               <div class="step-content">
-                <div v-if="!importing && !importResult" class="import-summary">
-                  <h3>Podsumowanie importu</h3>
+                <div v-if="!uploading && !uploadedFilePath" class="upload-summary">
+                  <h3>Przesyłanie pliku na serwer</h3>
+                  <p>Plik zostanie przesłany na serwer i przygotowany do importu</p>
+                  
                   <div class="summary-stats">
                     <div class="stat-item">
                       <v-icon color="primary">mdi-file-document</v-icon>
-                      <span>{{ filePreview?.totalRows || 0 }} wierszy w pliku</span>
+                      <span>{{ getFileName() }}</span>
+                    </div>
+                    <div class="stat-item">
+                      <v-icon color="success">mdi-check-circle</v-icon>
+                      <span>{{ mappedFieldsCount }} pól zmapowanych</span>
+                    </div>
+                    <div class="stat-item">
+                      <v-icon color="info">mdi-database</v-icon>
+                      <span>{{ filePreview?.totalRows || 0 }} wierszy</span>
+                    </div>
+                  </div>
+                  
+                  <div class="upload-actions" style="margin-top: 20px;">
+                    <v-btn 
+                      color="primary" 
+                      @click="startUpload"
+                      :disabled="uploading"
+                    >
+                      <v-icon left>mdi-cloud-upload</v-icon>
+                      Prześlij plik na serwer
+                    </v-btn>
+                  </div>
+                </div>
+
+                <div v-if="uploading" class="upload-progress">
+                  <h3>Przesyłanie pliku...</h3>
+                  <v-progress-linear
+                    :model-value="uploadProgress"
+                    color="primary"
+                    height="20"
+                    rounded
+                  >
+                    <template v-slot:default>
+                      <strong>{{ uploadProgress }}%</strong>
+                    </template>
+                  </v-progress-linear>
+                  <p>{{ uploadStatus }}</p>
+                </div>
+
+                <div v-if="uploadedFilePath" class="upload-success">
+                  <div class="result-header">
+                    <v-icon size="48" color="success">mdi-cloud-upload</v-icon>
+                    <h3>Plik przesłany pomyślnie</h3>
+                  </div>
+                  <p>Plik został zapisany na serwerze jako: <code>{{ uploadedFilePath }}</code></p>
+                  <p>Możesz teraz przejść do importu danych.</p>
+                </div>
+              </div>
+            </v-window-item>
+
+            <!-- Step 4: Import Process -->
+            <v-window-item value="4">
+              <div class="step-content">
+                <div v-if="!importing && !importResult" class="import-summary">
+                  <h3>Import danych do bazy</h3>
+                  <p>Rozpocznij import danych z przesłanego pliku do wybranej bazy danych</p>
+                  
+                  <div class="summary-stats">
+                    <div class="stat-item">
+                      <v-icon color="primary">mdi-file-document</v-icon>
+                      <span>{{ getFileName() }}</span>
                     </div>
                     <div class="stat-item">
                       <v-icon color="success">mdi-check-circle</v-icon>
@@ -204,6 +310,12 @@
                     </template>
                   </v-progress-linear>
                   <p>{{ importStatus }}</p>
+                  <div class="progress-details" v-if="filePreview">
+                    <small>
+                      Plik: {{ getFileName() }} 
+                      ({{ filePreview.totalRows }} wierszy)
+                    </small>
+                  </div>
                 </div>
 
                 <div v-if="importResult" class="import-result">
@@ -216,77 +328,130 @@
                     </h3>
                   </div>
 
-                  <div v-if="importResult.success" class="result-stats">
-                    <div class="result-stat">
-                      <span class="stat-number">{{ importResult.added || 0 }}</span>
-                      <span class="stat-label">Dodanych</span>
+                  <div v-if="importResult.success" class="result-summary">
+                    <div class="result-message">
+                      <v-alert 
+                        type="info" 
+                        variant="tonal" 
+                        class="mb-4"
+                        :text="false"
+                      >
+                        <v-icon>mdi-information</v-icon>
+                        {{ importResult.message }}
+                      </v-alert>
                     </div>
-                    <div class="result-stat">
-                      <span class="stat-number">{{ importResult.updated || 0 }}</span>
-                      <span class="stat-label">Zaktualizowanych</span>
-                    </div>
-                    <div class="result-stat">
-                      <span class="stat-number">{{ importResult.skipped || 0 }}</span>
-                      <span class="stat-label">Pominiętych</span>
-                    </div>
-                    <div class="result-stat">
-                      <span class="stat-number">{{ importResult.errors || 0 }}</span>
-                      <span class="stat-label">Błędów</span>
+                    
+                    <div class="result-stats">
+                      <div class="result-stat success">
+                        <v-icon color="success" size="24">mdi-check-circle</v-icon>
+                        <span class="stat-number">{{ importResult.added || 0 }}</span>
+                        <span class="stat-label">Zaimportowane adresy</span>
+                      </div>
+                      <div class="result-stat error" v-if="importResult.errors > 0">
+                        <v-icon color="error" size="24">mdi-alert-circle</v-icon>
+                        <span class="stat-number">{{ importResult.errors || 0 }}</span>
+                        <span class="stat-label">Odrzucone rekordy</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div v-if="importResult.errors?.length" class="error-list">
-                    <h4>Błędy importu:</h4>
-                    <v-list>
-                      <v-list-item
-                        v-for="error in importResult.errors.slice(0, 10)"
-                        :key="error.row"
-                      >
-                        <v-list-item-title>
-                          Wiersz {{ error.row }}: {{ error.message }}
-                        </v-list-item-title>
-                      </v-list-item>
-                    </v-list>
-                    <p v-if="importResult.errors.length > 10">
-                      I {{ importResult.errors.length - 10 }} więcej błędów...
-                    </p>
+                  <!-- Szczegóły błędów tylko jeśli są błędy -->
+                  <div v-if="importResult.errors > 0" class="error-details">
+                    <v-expansion-panels>
+                      <v-expansion-panel>
+                        <v-expansion-panel-title>
+                          <v-icon color="error" class="mr-2">mdi-alert-circle</v-icon>
+                          Szczegóły błędów ({{ importResult.errors }})
+                        </v-expansion-panel-title>
+                        <v-expansion-panel-text>
+                          <div v-if="importResult.errorDetails?.length" class="error-list">
+                            <v-list>
+                              <v-list-item
+                                v-for="(error, index) in importResult.errorDetails.slice(0, 20)"
+                                :key="index"
+                                class="error-item"
+                              >
+                                <template v-slot:prepend>
+                                  <v-icon color="error" size="20">mdi-close-circle</v-icon>
+                                </template>
+                                <v-list-item-title class="error-title">
+                                  <strong>{{ error.email }}</strong> - {{ error.message }}
+                                </v-list-item-title>
+                                <v-list-item-subtitle v-if="error.data" class="error-data">
+                                  <div class="row-data">
+                                    <span v-for="(value, key) in error.data" :key="key" class="data-field">
+                                      <strong>{{ key }}:</strong> {{ value }}
+                                    </span>
+                                  </div>
+                                </v-list-item-subtitle>
+                              </v-list-item>
+                            </v-list>
+                            <p v-if="importResult.errorDetails.length > 20" class="error-more">
+                              I {{ importResult.errorDetails.length - 20 }} więcej błędów...
+                            </p>
+                          </div>
+                          <div v-else class="error-general">
+                            <p>Wystąpiły błędy podczas importu {{ importResult.errors }} rekordów.</p>
+                            <p class="error-hint">Sprawdź format danych w pliku oraz mapowanie pól.</p>
+                          </div>
+                        </v-expansion-panel-text>
+                      </v-expansion-panel>
+                    </v-expansion-panels>
+                  </div>
+
+                  <!-- Błędy ogólne gdy import się nie powiódł -->
+                  <div v-else-if="!importResult.success" class="error-general">
+                    <v-alert type="error" variant="tonal">
+                      <v-icon>mdi-alert-circle</v-icon>
+                      {{ importResult.message }}
+                    </v-alert>
                   </div>
                 </div>
               </div>
-            </v-stepper-window-item>
-          </v-stepper-window>
+            </v-window-item>
+        </v-window>
 
-          <v-stepper-actions
-            :disabled="importing"
-            @click:prev="prevStep"
-            @click:next="nextStep"
+        <!-- Custom Actions -->
+        <div class="stepper-actions" v-if="!importing || importResult">
+          <v-btn
+            v-if="step > 1"
+            variant="outlined"
+            @click="prevStep"
+            :disabled="importing || uploading"
           >
-            <template v-slot:next>
-              <v-btn
-                v-if="step < 3"
-                color="primary"
-                :disabled="!canProceed"
-                @click="nextStep"
-              >
-                Dalej
-              </v-btn>
-              <v-btn
-                v-else-if="step === 3 && !importing && !importResult"
-                color="primary"
-                @click="startImport"
-              >
-                Rozpocznij import
-              </v-btn>
-              <v-btn
-                v-else-if="importResult"
-                color="primary"
-                @click="finishImport"
-              >
-                Zakończ
-              </v-btn>
-            </template>
-          </v-stepper-actions>
-        </v-stepper>
+            <v-icon left>mdi-arrow-left</v-icon>
+            Wstecz
+          </v-btn>
+          
+          <v-spacer />
+          
+          <v-btn
+            v-if="step < 4"
+            color="primary"
+            :disabled="!canProceed || importing || uploading"
+            @click="nextStep"
+          >
+            Dalej
+            <v-icon right>mdi-arrow-right</v-icon>
+          </v-btn>
+          <v-btn
+            v-else-if="step === 4 && !importing && !importResult"
+            color="primary"
+            @click="startImport"
+          >
+            <v-icon left>mdi-database-import</v-icon>
+            Rozpocznij import
+          </v-btn>
+          <v-btn
+            v-else-if="importResult"
+            :color="importResult.success && importResult.errors === 0 ? 'success' : 'primary'"
+            @click="finishImport"
+          >
+            <v-icon left>{{ importResult.success && importResult.errors === 0 ? 'mdi-check' : 'mdi-close' }}</v-icon>
+            {{ importResult.success && importResult.errors === 0 ? 'Zakończ pomyślnie' : 'Zamknij dialog' }}
+          </v-btn>
+        </div>
+
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -294,6 +459,8 @@
 
 <script setup>
 import { ref, computed, defineProps, defineEmits } from 'vue'
+import * as XLSX from 'xlsx'
+import { Databases } from '../../services/databases'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -308,6 +475,14 @@ const selectedFile = ref(null)
 const filePreview = ref(null)
 const fieldMapping = ref({})
 const importMode = ref('add')
+
+// Upload state
+const uploading = ref(false)
+const uploadProgress = ref(0)
+const uploadStatus = ref('')
+const uploadedFilePath = ref(null)
+
+// Import state
 const importing = ref(false)
 const importProgress = ref(0)
 const importStatus = ref('')
@@ -325,13 +500,9 @@ const databaseFields = [
   { title: 'Imię', value: 'firstName' },
   { title: 'Nazwisko', value: 'lastName' },
   { title: 'Telefon', value: 'phone' },
-  { title: 'Adres', value: 'address' },
   { title: 'Miasto', value: 'city' },
-  { title: 'Kod pocztowy', value: 'postalCode' },
-  { title: 'Kraj', value: 'country' },
-  { title: 'Status', value: 'status' },
-  { title: 'Tagi', value: 'tags' },
-  { title: 'Notatki', value: 'notes' }
+  { title: 'Rodzaj kontaktu', value: 'type' },
+  { title: 'Data wypisania', value: 'unsubscribeDate' }
 ]
 
 const statusOptions = [
@@ -348,6 +519,12 @@ const canProceed = computed(() => {
   if (step.value === 2) {
     return mappedFieldsCount.value > 0 && hasEmailMapping.value
   }
+  if (step.value === 3) {
+    return uploadedFilePath.value !== null
+  }
+  if (step.value === 4) {
+    return uploadedFilePath.value !== null
+  }
   return true
 })
 
@@ -359,35 +536,199 @@ const hasEmailMapping = computed(() => {
   return Object.values(fieldMapping.value).includes('email')
 })
 
+const parsedFileData = computed(() => {
+  return filePreview.value || null
+})
+
 // Methods
-function handleFileSelect() {
-  if (selectedFile.value) {
-    // Simulate file parsing
-    setTimeout(() => {
-      filePreview.value = {
-        headers: ['email', 'first_name', 'last_name', 'phone', 'city'],
-        rows: [
-          ['jan@example.com', 'Jan', 'Kowalski', '123456789', 'Warszawa'],
-          ['anna@example.com', 'Anna', 'Nowak', '987654321', 'Kraków'],
-          ['piotr@example.com', 'Piotr', 'Wiśniewski', '555666777', 'Gdańsk']
-        ],
-        totalRows: 150
-      }
-      
-      // Auto-map some common fields
-      fieldMapping.value = {
-        0: 'email',
-        1: 'firstName',
-        2: 'lastName',
-        3: 'phone',
-        4: 'city'
-      }
-    }, 1000)
+async function handleFileSelect() {
+  if (!selectedFile.value) {
+    filePreview.value = null
+    return
   }
+
+  try {
+    const file = selectedFile.value[0] || selectedFile.value
+    console.log('Parsowanie pliku:', file.name)
+    
+    // Sprawdź rozmiar pliku (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Plik jest zbyt duży. Maksymalny rozmiar to 10MB.')
+      selectedFile.value = null
+      return
+    }
+    
+    let parsedData = null
+    
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      parsedData = await parseCSVFile(file)
+    } else if (file.name.toLowerCase().match(/\.(xlsx|xls)$/)) {
+      parsedData = await parseExcelFile(file)
+    } else {
+      alert('Nieobsługiwany format pliku. Wybierz plik CSV lub Excel.')
+      selectedFile.value = null
+      return
+    }
+    
+    if (!parsedData || !parsedData.headers || parsedData.headers.length === 0) {
+      alert('Nie udało się odczytać pliku lub plik jest pusty.')
+      return
+    }
+    
+    // Sprawdź czy jest kolumna email
+    const hasEmailColumn = parsedData.headers.some(header => 
+      header.toLowerCase().includes('email') || header.toLowerCase().includes('e-mail')
+    )
+    
+    if (!hasEmailColumn) {
+      const userConfirm = confirm('Nie znaleziono kolumny email. Czy chcesz kontynuować? Będziesz musiał ręcznie zmapować pole email.')
+      if (!userConfirm) {
+        selectedFile.value = null
+        return
+      }
+    }
+    
+    filePreview.value = parsedData
+    
+    // Auto-mapowanie popularnych pól
+    autoMapFields(parsedData.headers)
+    
+    console.log('Plik sparsowany:', parsedData.headers.length, 'kolumn,', parsedData.totalRows, 'wierszy')
+    
+  } catch (error) {
+    console.error('Błąd podczas parsowania pliku:', error)
+    alert('Błąd podczas odczytu pliku: ' + error.message)
+    selectedFile.value = null
+  }
+}
+
+async function parseCSVFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result
+        const lines = text.split('\n').filter(line => line.trim())
+        
+        if (lines.length === 0) {
+          reject(new Error('Plik CSV jest pusty'))
+          return
+        }
+        
+        // Parsowanie CSV (obsługa prostych przypadków)
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
+        const rows = []
+        
+        for (let i = 1; i < Math.min(lines.length, 6); i++) { // Tylko pierwsze 5 wierszy do podglądu
+          const row = lines[i].split(',').map(cell => cell.trim().replace(/"/g, ''))
+          if (row.length === headers.length) {
+            rows.push(row)
+          }
+        }
+        
+        resolve({
+          headers,
+          rows,
+          totalRows: lines.length - 1 // Bez nagłówka
+        })
+      } catch (error) {
+        reject(error)
+      }
+    }
+    reader.onerror = () => reject(new Error('Błąd podczas odczytu pliku'))
+    reader.readAsText(file)
+  })
+}
+
+async function parseExcelFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result)
+        const workbook = XLSX.read(data, { type: 'array' })
+        
+        // Pobierz pierwszy arkusz
+        const sheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[sheetName]
+        
+        // Konwertuj do JSON
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+        
+        if (jsonData.length === 0) {
+          reject(new Error('Arkusz Excel jest pusty'))
+          return
+        }
+        
+        const headers = jsonData[0].map(h => (h || '').toString().trim())
+        const rows = jsonData.slice(1, 6).filter(row => row.some(cell => cell !== undefined && cell !== ''))
+        
+        resolve({
+          headers,
+          rows: rows.map(row => row.map(cell => (cell || '').toString())),
+          totalRows: jsonData.length - 1
+        })
+      } catch (error) {
+        reject(error)
+      }
+    }
+    reader.onerror = () => reject(new Error('Błąd podczas odczytu pliku Excel'))
+    reader.readAsArrayBuffer(file)
+  })
+}
+
+function autoMapFields(headers) {
+  const mapping = {}
+  
+  headers.forEach((header, index) => {
+    const lowerHeader = header.toLowerCase()
+    
+    // Mapowanie email
+    if (lowerHeader.includes('email') || lowerHeader.includes('e-mail')) {
+      mapping[index] = 'email'
+    }
+    // Mapowanie imienia
+    else if (lowerHeader.includes('first') && lowerHeader.includes('name') || 
+             lowerHeader.includes('imię') || lowerHeader === 'imie') {
+      mapping[index] = 'firstName'
+    }
+    // Mapowanie nazwiska
+    else if (lowerHeader.includes('last') && lowerHeader.includes('name') || 
+             lowerHeader.includes('nazwisko') || lowerHeader.includes('surname')) {
+      mapping[index] = 'lastName'
+    }
+    // Mapowanie telefonu
+    else if (lowerHeader.includes('phone') || lowerHeader.includes('telefon') || 
+             lowerHeader.includes('tel') || lowerHeader.includes('mobile')) {
+      mapping[index] = 'phone'
+    }
+    // Mapowanie miasta
+    else if (lowerHeader.includes('city') || lowerHeader.includes('miasto')) {
+      mapping[index] = 'city'
+    }
+    // Mapowanie rodzaju
+    else if (lowerHeader.includes('type') || lowerHeader.includes('rodzaj') || 
+             lowerHeader.includes('typ')) {
+      mapping[index] = 'type'
+    }
+    // Mapowanie daty wypisania
+    else if (lowerHeader.includes('unsubscribe') || lowerHeader.includes('wypisanie') || 
+             lowerHeader.includes('wypisał')) {
+      mapping[index] = 'unsubscribeDate'
+    }
+  })
+  
+  fieldMapping.value = mapping
 }
 
 function getFieldExample(index) {
   return filePreview.value?.rows[0]?.[index] || ''
+}
+
+function getFileName() {
+  if (!selectedFile.value) return 'nieznany'
+  const file = selectedFile.value[0] || selectedFile.value
+  return file.name || 'nieznany'
 }
 
 function getModeLabel(mode) {
@@ -406,40 +747,154 @@ function prevStep() {
 }
 
 function nextStep() {
-  if (canProceed.value && step.value < 3) {
+  console.log('nextStep wywołane, step:', step.value, 'canProceed:', canProceed.value)
+  
+  if (canProceed.value && step.value < 4) {
     step.value++
+    console.log('Przeszedłem do kroku:', step.value)
+    
+    // Jeśli właśnie przeszliśmy do kroku 3, automatycznie uruchom upload
+    if (step.value === 3 && !uploadedFilePath.value) {
+      console.log('Uruchamiam automatyczny upload w kroku 3')
+      startUpload()
+    }
+  } else {
+    console.log('Nie można przejść dalej, canProceed:', canProceed.value, 'step:', step.value)
   }
 }
 
-function startImport() {
+async function startUpload() {
+  console.log('startUpload wywołane, selectedFile:', selectedFile.value)
+  
+  if (!selectedFile.value) {
+    alert('Nie wybrano pliku')
+    return
+  }
+  
+  uploading.value = true
+  uploadProgress.value = 0
+  uploadStatus.value = 'Przygotowywanie pliku...'
+  
+  try {
+    const file = selectedFile.value[0] || selectedFile.value
+    
+    uploadProgress.value = 20
+    uploadStatus.value = 'Przesyłanie na serwer...'
+    
+    // Wywołaj metodę z serwisu Databases
+    const result = await Databases.uploadFile(file)
+    
+    uploadProgress.value = 80
+    uploadStatus.value = 'Przetwarzanie odpowiedzi...'
+    
+    if (result?.filePath) {
+      uploadedFilePath.value = result.filePath
+      uploadProgress.value = 100
+      uploading.value = false
+      
+      console.log('Plik przesłany pomyślnie:', result.filePath)
+      
+      // Automatycznie przejdź do następnego kroku
+      setTimeout(() => {
+        step.value = 4
+      }, 1500)
+      
+    } else {
+      throw new Error(result?.message || 'Brak ścieżki pliku w odpowiedzi')
+    }
+    
+  } catch (error) {
+    console.error('Błąd podczas przesyłania pliku:', error)
+    uploading.value = false
+    uploadProgress.value = 0
+    alert('Błąd podczas przesyłania pliku: ' + error.message)
+  }
+}
+
+
+async function startImport() {
+  if (!props.database?.id) {
+    alert('Nie wybrano bazy danych')
+    return
+  }
+  
+  if (!uploadedFilePath.value) {
+    alert('Nie przesłano pliku na serwer')
+    return
+  }
+  
+  if (!hasEmailMapping.value) {
+    alert('Musisz zmapować pole email')
+    return
+  }
+  
   importing.value = true
   importProgress.value = 0
-  importStatus.value = 'Przygotowywanie importu...'
+  importStatus.value = 'Rozpoczynanie importu...'
   
-  // Simulate import process
-  const interval = setInterval(() => {
-    importProgress.value += 10
+  try {
+    importProgress.value = 10
+    importStatus.value = 'Przygotowywanie danych...'
     
-    if (importProgress.value <= 30) {
-      importStatus.value = 'Walidacja danych...'
-    } else if (importProgress.value <= 70) {
-      importStatus.value = 'Importowanie kontaktów...'
-    } else if (importProgress.value <= 90) {
-      importStatus.value = 'Finalizowanie...'
+    // Przygotuj payload z nazwą przesłanego pliku i mapowaniem
+    const payload = {
+      filename: uploadedFilePath.value,
+      fieldMapping: fieldMapping.value,
+      importMode: importMode.value,
+      options: importOptions.value,
+      deleteAfterImport: true
     }
     
-    if (importProgress.value >= 100) {
-      clearInterval(interval)
-      importing.value = false
+    importProgress.value = 30
+    importStatus.value = 'Importowanie danych...'
+    
+    // Wywołaj API z przesłanym plikiem
+    const result = await Databases.importExcelToDatabase(props.database.id, payload)
+    
+    importProgress.value = 100
+    importing.value = false
+    
+    console.log('Odpowiedź z serwera:', result)
+    
+    // Użyj danych z result.data.summary
+    const summary = result.data?.summary
+    const errors = result.data?.errors || []
+    
+    if (summary) {
+      // Stwórz komunikat na podstawie danych z summary
+      const successMessage = `Import zakończony. Pomyślnie zaimportowano ${summary.importedAddresses} adresów z ${summary.totalRows} wierszy.`
+      const errorMessage = summary.errorCount > 0 ? ` ${summary.errorCount} rekordów zostało odrzuconych z powodu błędów.` : ''
+      const fullMessage = successMessage + errorMessage
+      
       importResult.value = {
         success: true,
-        added: 125,
-        updated: 15,
-        skipped: 8,
-        errors: 2
+        added: summary.importedAddresses || 0,
+        updated: 0, // Backend nie zwraca tej informacji
+        skipped: 0, // Backend nie zwraca tej informacji
+        errors: summary.errorCount || 0,
+        totalRows: summary.totalRows || 0,
+        message: fullMessage,
+        errorDetails: errors.map(err => ({
+          row: err.row,
+          email: err.email,
+          message: err.error,
+          data: err.row // Dodatkowe dane wiersza
+        }))
       }
+      console.log('Import zakończony pomyślnie:', importResult.value)
+    } else {
+      throw new Error('Brak danych w odpowiedzi serwera')
     }
-  }, 500)
+    
+  } catch (error) {
+    console.error('Błąd podczas importu:', error)
+    importing.value = false
+    importResult.value = {
+      success: false,
+      message: error.message || 'Wystąpił błąd podczas importu',
+      errors: [{ row: 0, message: error.message }]
+    }
+  }
 }
 
 function finishImport() {
@@ -456,6 +911,13 @@ function close() {
   importing.value = false
   importProgress.value = 0
   importResult.value = null
+  importStatus.value = ''
+  importMode.value = 'add'
+  importOptions.value = {
+    skipDuplicates: true,
+    validateEmails: true,
+    defaultStatus: 'active'
+  }
   
   emit('update:modelValue', false)
 }
@@ -489,8 +951,84 @@ function close() {
   padding: 0 !important;
 }
 
-.import-stepper {
+/* Custom Stepper Styles */
+.custom-stepper-header {
+  padding: 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fafafa;
+}
+
+.stepper-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.stepper-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  text-align: center;
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.stepper-step.active .step-number {
+  background: #1976d2;
+  color: white;
+}
+
+.stepper-step.completed .step-number {
+  background: #4caf50;
+  color: white;
+}
+
+.step-title {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.stepper-step.active .step-title {
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.stepper-step.completed .step-title {
+  color: #4caf50;
+}
+
+.step-divider {
+  flex: 1;
+  margin: 0 16px;
+}
+
+.import-window {
   box-shadow: none !important;
+}
+
+.stepper-actions {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  border-top: 1px solid #e0e0e0;
+  background: #fafafa;
 }
 
 .step-content {
@@ -620,6 +1158,15 @@ function close() {
   color: #666;
 }
 
+.progress-details {
+  margin-top: 12px;
+}
+
+.progress-details small {
+  color: #888;
+  font-size: 0.85rem;
+}
+
 .import-result {
   text-align: center;
 }
@@ -632,22 +1179,44 @@ function close() {
   margin-top: 16px;
 }
 
+.result-summary {
+  margin-bottom: 24px;
+}
+
+.result-message {
+  margin-bottom: 20px;
+}
+
 .result-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 32px;
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 24px;
 }
 
 .result-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   padding: 20px;
   background: #f8f9fa;
-  border-radius: 8px;
+  border-radius: 12px;
   text-align: center;
+  min-width: 140px;
+}
+
+.result-stat.success {
+  background: #f1f8e9;
+  border: 1px solid #c8e6c9;
+}
+
+.result-stat.error {
+  background: #ffebee;
+  border: 1px solid #ffcdd2;
 }
 
 .stat-number {
-  display: block;
   font-size: 2rem;
   font-weight: 700;
   color: #333;
@@ -656,23 +1225,85 @@ function close() {
 .stat-label {
   font-size: 0.9rem;
   color: #666;
+  font-weight: 500;
+}
+
+.error-details {
+  margin-top: 20px;
 }
 
 .error-list {
   text-align: left;
-  background: #fff3f3;
-  border: 1px solid #ffcdd2;
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 16px;
 }
 
-.error-list h4 {
-  margin-bottom: 12px;
-  color: #d32f2f;
+.error-item {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 12px 0;
+}
+
+.error-item:last-child {
+  border-bottom: none;
+}
+
+.error-title {
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.error-data {
+  margin-top: 8px;
+}
+
+.row-data {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.data-field {
+  font-size: 0.85rem;
+  color: #666;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.data-field strong {
+  color: #333;
+}
+
+.error-more {
+  text-align: center;
+  font-style: italic;
+  color: #666;
+  margin-top: 12px;
+}
+
+.error-general {
+  margin-top: 20px;
+}
+
+.error-hint {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 8px;
 }
 
 @media (max-width: 768px) {
+  .stepper-steps {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .step-divider {
+    display: none;
+  }
+  
+  .stepper-step {
+    flex-direction: row;
+    gap: 12px;
+  }
+  
   .mapping-row {
     grid-template-columns: 1fr;
     text-align: center;
@@ -685,6 +1316,11 @@ function close() {
   
   .result-stats {
     grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .stepper-actions {
+    flex-direction: column;
+    gap: 12px;
   }
 }
 </style>
