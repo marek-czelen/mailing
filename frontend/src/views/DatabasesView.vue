@@ -15,7 +15,7 @@
           </div>
         </v-card-title>
 
-        <v-card-text class="pa-0">
+        <v-card-text class="pa-0 database-list-content">
           <!-- Search -->
           <div class="search-section">
             <v-text-field v-model="searchQuery" placeholder="Wyszukaj bazę..." prepend-inner-icon="mdi-magnify"
@@ -207,7 +207,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import ContactsTable from '../components/database/ContactsTable.vue'
 import SegmentsManager from '../components/database/SegmentsManager.vue'
 import FieldsManager from '../components/database/FieldsManager.vue'
@@ -609,8 +609,10 @@ async function handleImportContacts(result) {
   }
 }
 
-function handleContactUpdated(updatedContact) {
-  console.log('Kontakt zaktualizowany:', updatedContact)
+async function handleContactUpdated(updatedContact) {
+  console.log('Kontakt zaktualizowany/dodany:', updatedContact)
+  console.log('selectedDatabase.value:', selectedDatabase.value)
+  console.log('selectedDatabase.value.contacts:', selectedDatabase.value?.contacts)
   
   if (selectedDatabase.value && selectedDatabase.value.contacts) {
     // Znajdź index kontaktu w liście
@@ -618,16 +620,30 @@ function handleContactUpdated(updatedContact) {
       contact => contact.id === updatedContact.id
     )
     
+    console.log('contactIndex:', contactIndex)
+    
     if (contactIndex !== -1) {
-      // Aktualizuj kontakt w liście
+      // Aktualizuj istniejący kontakt w liście
       selectedDatabase.value.contacts[contactIndex] = {
         ...selectedDatabase.value.contacts[contactIndex],
         ...updatedContact
       }
       console.log('Kontakt zaktualizowany w liście:', selectedDatabase.value.contacts[contactIndex])
     } else {
-      console.warn('Nie znaleziono kontaktu do aktualizacji:', updatedContact.id)
+      // Dodaj nowy kontakt do listy
+      console.log('Dodawanie nowego kontaktu do listy...')
+      selectedDatabase.value.contacts.unshift(updatedContact)
+      console.log('Nowy kontakt dodany do listy. Długość listy:', selectedDatabase.value.contacts.length)
     }
+    
+    // Aktualizuj licznik kontaktów
+    selectedDatabase.value.contactsCount = selectedDatabase.value.contacts.length
+    
+    // Force reactivity update
+    await nextTick()
+    console.log('Reaktywność zaktualizowana')
+  } else {
+    console.error('selectedDatabase lub contacts nie istnieje!')
   }
 }
 
@@ -710,14 +726,42 @@ onMounted(async () => {
   border: 1px solid rgba(234, 220, 246, 0.3) !important;
 }
 
+.database-list-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .search-section {
   padding: 16px;
   border-bottom: 1px solid #eee;
+  flex-shrink: 0;
 }
 
 .database-list {
   flex: 1;
   overflow-y: auto;
+  min-height: 0; /* Important for flex scrolling */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(81, 91, 173, 0.3) transparent;
+}
+
+.database-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.database-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.database-list::-webkit-scrollbar-thumb {
+  background: rgba(81, 91, 173, 0.3);
+  border-radius: 3px;
+}
+
+.database-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(81, 91, 173, 0.5);
 }
 
 .database-item {

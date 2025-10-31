@@ -476,6 +476,36 @@ export class Databases {
     }
   }
 
+  /**
+   * Dodaj nowy kontakt do bazy danych
+   * @param {Object} contactData - Dane nowego kontaktu
+   * @returns {Promise<Object>} - Wynik operacji dodawania
+   */
+  static async addContactToDatabase(contactData) {
+    try {
+      const customer_id = await this._getCurrentCustomerId();
+      
+      const payload = {
+        mailAddress: contactData.mailAddress, // wymagane
+        databaseId: contactData.databaseId,   // wymagane
+        miasto: contactData.miasto || '',     // opcjonalne
+        rodzaj: contactData.rodzaj || '',     // opcjonalne
+        phone: contactData.phone || '',       // opcjonalne
+        active: contactData.active !== undefined ? contactData.active : 1, // opcjonalne (domyślnie 1)
+        customerId: customer_id
+      };
+      
+      const response = await axios.post('/mailing/contactAdd', payload, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Błąd podczas dodawania kontaktu:', error);
+      throw new Error(error.response?.data?.message || 'Błąd podczas dodawania kontaktu');
+    }
+  }
+
   // ============= STATYSTYKI =============
 
   /**

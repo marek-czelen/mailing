@@ -6,9 +6,9 @@
     persistent
   >
     <v-card class="contact-dialog">
-      <!-- Loading Overlay for unsubscribe operations -->
+      <!-- Loading Overlay for operations -->
       <v-overlay
-        :model-value="unsubscribing || resubscribing"
+        :model-value="unsubscribing || resubscribing || saving"
         class="align-center justify-center"
         contained
         persistent
@@ -20,7 +20,7 @@
             color="primary"
           ></v-progress-circular>
           <h3 class="loading-title">
-            {{ unsubscribing ? 'Wypisywanie z listy...' : 'Zapisywanie na listę...' }}
+            {{ saving ? 'Zapisywanie kontaktu...' : unsubscribing ? 'Wypisywanie z listy...' : 'Zapisywanie na listę...' }}
           </h3>
           <p class="loading-subtitle">
             Proszę czekać
@@ -30,7 +30,7 @@
 
       <v-card-title class="dialog-header">
         <h2>{{ isEditing ? 'Edytuj kontakt' : 'Nowy kontakt' }}</h2>
-        <v-btn icon variant="text" @click="close" class="close-btn" :disabled="unsubscribing || resubscribing">
+        <v-btn icon variant="text" @click="close" class="close-btn" :disabled="unsubscribing || resubscribing || saving">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
@@ -450,12 +450,51 @@ async function save() {
         throw new Error(result.message || 'Nieznany błąd')
       }
     } else {
-      // Create new contact - emit event for parent to handle
-      emit('save', { 
-        ...formData.value,
-        lastActivity: new Date(),
-        lastActivityType: 'Utworzono'
-      })
+      // Create new contact via backend
+      if (!props.database?.id) {
+        throw new Error('Brak ID bazy danych')
+      }
+      
+      const newContactData = {
+        mailAddress: formData.value.mailAddress,
+        databaseId: props.database.id,
+        miasto: formData.value.miasto,
+        phone: formData.value.phone,
+        rodzaj: formData.value.rodzaj,
+        active: 1 // Nowe kontakty są domyślnie aktywne
+      }
+      
+      const result = await Databases.addContactToDatabase(newContactData)
+      
+      console.log('Wynik dodawania kontaktu:', result)
+      
+      if (result.success || result.response?.success || result.data) {
+        showSnackbar('Kontakt został pomyślnie dodany', 'success')
+        
+        // Powiadom rodzica o nowym kontakcie - używaj danych z odpowiedzi API
+        const apiContact = result.data || result.contact
+        const newContact = apiContact || {
+          id: Date.now(), // Fallback ID jeśli API nie zwróci ID
+          mailAddress: newContactData.mailAddress,
+          email: newContactData.mailAddress, // Dla kompatybilności z tabelą
+          miasto: newContactData.miasto,
+          phone: newContactData.phone,
+          rodzaj: newContactData.rodzaj,
+          active: newContactData.active,
+          unsubscribesDate: null, // Nowy kontakt nie jest wypisany
+          lastActivity: new Date(),
+          lastActivityType: 'Utworzono'
+        }
+        
+        console.log('Emitowanie contact-updated:', newContact)
+        emit('contact-updated', newContact)
+        
+        // Zamknij dialog
+        close()
+      } else {
+        console.error('Błąd walidacji sukcesu:', result)
+        throw new Error(result.message || 'Nieznany błąd podczas dodawania kontaktu')
+      }
     }
   } catch (error) {
     console.error('Błąd podczas zapisywania:', error)

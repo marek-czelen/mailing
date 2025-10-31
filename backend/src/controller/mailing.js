@@ -14,6 +14,7 @@ import OPENAI_API_KEY from '../config/openai.config.js';
 import OpenAI from "openai";
 import fetch from "node-fetch";
 import fs from 'fs';
+import Auth from '../include/auth.js';
 // Pobierz wszystkie kampanie
 export async function getCampaignsList(req, res) {
     try {
@@ -1560,12 +1561,13 @@ export async function contactUpdate(req, res) {
                 where: {
                     mailAddress: mailAddress,
                     customerId: existingContact.customerId,
+                    databaseId: existingContact.databaseId || databaseId,
                     id: { [Op.ne]: id } // Wyklucz aktualny kontakt
                 }
             });
 
             if (emailExists) {
-                return res.send(new Response(null, false, "Email address already exists for this customer."));
+                return res.send(new Response(null, false, "Email address already exists for this customer in database."));
             }
         }
 
@@ -1634,5 +1636,142 @@ export async function contactUpdate(req, res) {
     } catch (error) {
         console.log(error);
         res.send(new Response(null, false, `Failed to update contact. ${error.message}`));
+    }
+}
+
+/**
+ * Dodaj nowy kontakt do wybranej bazy danych
+ * 
+ * Endpoint: POST /mailing/contactAdd
+ * 
+ * Parametry (body JSON):
+ * - mailAddress: string - adres email (wymagane)
+ * - databaseId: number - ID bazy danych (wymagane)
+ * - miasto: string - miasto (opcjonalne)
+ * - rodzaj: string - rodzaj kontaktu (opcjonalne)
+ * - phone: string - telefon (opcjonalne)
+ * - active: number (0/1) - status aktywności (domyślnie 1)
+ * 
+ * Uwaga: ID klienta jest pobierane z tokena JWT
+ * 
+ * Przykład użycia:
+ * POST /mailing/contactAdd
+ * Authorization: Bearer <token>
+ * {
+ *   "mailAddress": "new.user@example.com",
+ *   "databaseId": 5,
+ *   "miasto": "Warszawa",
+ *   "rodzaj": "lead"
+ * }
+ */
+export async function contactAdd(req, res) {
+    try {
+        const { mailAddress, databaseId, miasto, rodzaj, phone, active = 1 } = req.body;
+
+        // Walidacja wymaganych parametrów
+        if (!mailAddress || !databaseId) {
+            return res.send(new Response(null, false, "Email address and database ID are required."));
+        }
+
+        // Walidacja formatu email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(mailAddress)) {
+            return res.send(new Response(null, false, "Invalid email address format."));
+        }
+
+        // Pobierz ID klienta z tokena
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.send(new Response(null, false, "Authorization token required."));
+        }
+
+        const token = authHeader.substring(7);
+        let decodedToken;
+        try {
+            decodedToken = Auth.decodeToken(token);
+        } catch (err) {
+            return res.send(new Response(null, false, "Invalid or expired token."));
+        }
+
+        // Pobierz użytkownika i jego klienta z bazy danych
+        const user = await Auth.getUserByEmail(decodedToken.data.userEmail);
+        if (!user || !user.Customer) {
+            return res.send(new Response(null, false, "User not found or not assigned to any customer."));
+        }
+
+        const customerId = user.Customer.id;
+
+        // Sprawdź czy baza danych istnieje i należy do tego klienta
+        const database = await Databases.findOne({
+            where: {
+                id: databaseId,
+                deleted_at: null,
+                customer_id: customerId
+            }
+        });
+
+        if (!database) {
+            return res.send(new Response(null, false, "Database not found or does not belong to your customer account."));
+        }
+
+        // Sprawdź czy email już istnieje dla tego klienta
+        const existingEmail = await MailAddress.findOne({
+            where: {
+                mailAddress: mailAddress,
+                databaseId: databaseId,
+                customerId: customerId
+            }
+        });
+
+        if (existingEmail) {
+            return res.send(new Response(null, false, "Email address already exists for this customer."));
+        }
+
+        // Utwórz nowy kontakt
+        const newContact = await MailAddress.create({
+            mailAddress,
+            miasto: miasto || null,
+            rodzaj: rodzaj || null,
+            phone: phone || null,
+            active: active,
+            customerId: customerId,
+            databaseId: databaseId
+        });
+
+        // Pobierz utworzony kontakt z relacjami
+        const createdContact = await MailAddress.findByPk(newContact.id, {
+            include: [{
+                model: Customers,
+                as: 'Customer',
+                attributes: ['id', 'name']
+            }]
+        });
+
+        const result = {
+            contact: {
+                id: createdContact.id,
+                mailAddress: createdContact.mailAddress,
+                miasto: createdContact.miasto,
+                rodzaj: createdContact.rodzaj,
+                phone: createdContact.phone,
+                active: createdContact.active,
+                databaseId: createdContact.databaseId,
+                customerId: createdContact.customerId,
+                unsubscribesDate: createdContact.unsubscribesDate,
+                createdAt: createdContact.created_at,
+                updatedAt: createdContact.updated_at
+            },
+            customer: createdContact.Customer,
+            database: {
+                id: database.id,
+                name: database.name
+            }
+        };
+
+        res.send(new Response(result, true, "Contact added successfully."));
+
+    } catch (error) {
+        console.log(error);
+        res.send(new Response(null, false, `Failed to add contact. ${error.message}`));
     }
 }

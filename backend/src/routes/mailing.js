@@ -18,7 +18,8 @@ import {
     getCustomerDatabasesStats,
     getDatabaseContacts,
     unsubscribeContact,
-    contactUpdate
+    contactUpdate,
+    contactAdd
 } from '../controller/mailing.js';
 
 const router = express.Router();
@@ -77,5 +78,8 @@ router.get('/unsubscribe/:contactId', unsubscribeContact);
 // ============= CONTACTS MANAGEMENT =============
 // Aktualizuj dane kontaktu
 router.post('/contactUpdate', contactUpdate);
+
+// Dodaj nowy kontakt do bazy danych (wymaga tokena JWT)
+router.post('/contactAdd', contactAdd);
 
 export default router;

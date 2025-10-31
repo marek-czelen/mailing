@@ -27,7 +27,7 @@
             <v-icon left>mdi-upload</v-icon>
             Importuj
             </v-btn>
-        <v-btn v-if="false" color="primary" @click="addContact">
+        <v-btn  color="primary" @click="addContact">
           <v-icon left>mdi-plus</v-icon>
           Dodaj kontakt
         </v-btn>
