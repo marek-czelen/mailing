@@ -36,11 +36,6 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
     allowNull: true,
     field: "from"
   },
-  unsubscribe: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    field: "unsubscribe"
-  },
   textContent: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -76,6 +71,11 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
       type: DataTypes.JSON,
       allowNull: true,
       field: "suggestions"
+    },
+    databaseId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: "database_id"
     }
   }, {
     tableName: 'marketing_campanies',

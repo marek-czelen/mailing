@@ -26,8 +26,8 @@
           <!-- Email Header -->
           <div class="email-header">
             <div class="email-from">
-              <strong>Od:</strong> {{ campaign.senderName || 'Nazwa nadawcy' }} 
-              &lt;{{ campaign.senderEmail || 'email@example.com' }}&gt;
+              <strong>Od:</strong> {{ campaign.from || 'Nazwa nadawcy' }} 
+              &lt;{{ campaign.from || 'email@example.com' }}&gt;
             </div>
             <div class="email-subject">
               <strong>Temat:</strong> {{ campaign.subject || 'Brak tematu' }}
@@ -40,70 +40,15 @@
           <!-- Email Content Preview -->
           <div class="email-preview">
             <div class="preview-frame">
-              <div v-if="campaign.template" class="template-preview">
+              <div v-if="campaign.htmlContent" class="template-preview">
                 <!-- Template Preview -->
-                <div class="template-header">
-                  <h2>{{ campaign.subject }}</h2>
-                </div>
                 <div class="template-content">
-                  <p>To jest podgląd treści kampanii bazującej na szablonie: <strong>{{ campaign.template }}</strong></p>
-                  
-                  <!-- Sample content based on template -->
-                  <div v-if="campaign.template === 'promo1'" class="promo-content">
-                    <div class="hero-section">
-                      <h3>🎉 Specjalna promocja tylko dla Ciebie!</h3>
-                      <p>Skorzystaj z naszej limitowanej oferty i zaoszczędź nawet do 50%</p>
-                      <div class="cta-button">Sprawdź ofertę</div>
-                    </div>
-                    <div class="products-section">
-                      <h4>Wybrane produkty</h4>
-                      <div class="product-grid">
-                        <div class="product-item">Produkt 1</div>
-                        <div class="product-item">Produkt 2</div>
-                        <div class="product-item">Produkt 3</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div v-else-if="campaign.template === 'newsletter1'" class="newsletter-content">
-                    <div class="newsletter-header">
-                      <h3>📰 Najnowsze aktualności</h3>
-                    </div>
-                    <div class="news-items">
-                      <div class="news-item">
-                        <h4>Artykuł 1</h4>
-                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit...</p>
-                      </div>
-                      <div class="news-item">
-                        <h4>Artykuł 2</h4>
-                        <p>Sed do eiusmod tempor incididunt ut labore et dolore...</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div v-else-if="campaign.template === 'welcome1'" class="welcome-content">
-                    <div class="welcome-header">
-                      <h3>👋 Witaj w naszej społeczności!</h3>
-                      <p>Dziękujemy za dołączenie do nas. Oto co możesz zrobić jako następne:</p>
-                    </div>
-                    <div class="welcome-steps">
-                      <div class="step">1. Uzupełnij swój profil</div>
-                      <div class="step">2. Przeglądaj nasze produkty</div>
-                      <div class="step">3. Skontaktuj się z nami</div>
-                    </div>
-                  </div>
-
-                  <div v-else class="generic-content">
-                    <p>Treść kampanii zostanie wygenerowana na podstawie wybranego szablonu.</p>
-                  </div>
-                </div>
-
-                <div class="template-footer">
-                  <p>© 2025 Twoja Firma. Wszystkie prawa zastrzeżone.</p>
-                  <div class="unsubscribe-link">
-                    <a href="#" @click.prevent>Wypisz się z newslettera</a>
-                  </div>
-                </div>
+                  <iframe
+                    :srcdoc="campaign.htmlContent"
+                    frameborder="0"
+                    style="width: 100%; height: 600px; border: none;"
+                  ></iframe>
+               </div>
               </div>
 
               <div v-else class="no-template">

@@ -14,12 +14,16 @@ export class Campaigns {
   }
   
   static async create(campaign) {
-    // Wyślij dane kampanii jako JSON (plik = ścieżka)
+    // Wyślij dane kampanii jako JSON
     const payload = {
       name: campaign.name,
-      date: campaign.date,
-      mailContent: campaign.mailContent,
-      file: campaign.file // tu jest ścieżka pliku z FileDrop
+      subject: campaign.subject,
+      description: campaign.description,
+      databaseId: campaign.databaseId,
+      htmlContent: campaign.htmlContent,
+      senderName: campaign.senderName,
+      from: campaign.senderEmail,
+      dateStart: campaign.scheduledAt,
     };
     const response = await axios.post('/mailing/createCampaign', payload, {
       headers: { 'Content-Type': 'application/json' }
@@ -31,9 +35,13 @@ export class Campaigns {
     // Aktualizuj kampanię
     const payload = {
       name: campaign.name,
-      date: campaign.date,
-      mailContent: campaign.mailContent,
-      file: campaign.file
+      subject: campaign.subject,
+      description: campaign.description,
+      databaseId: campaign.databaseId,
+      htmlContent: campaign.htmlContent,
+      senderName: campaign.senderName,
+      from: campaign.senderEmail,
+      dateStart: campaign.scheduledAt,
     };
     const response = await axios.put(`/mailing/updateCampaign/${id}`, payload, {
       headers: { 'Content-Type': 'application/json' }
@@ -45,5 +53,13 @@ export class Campaigns {
     // Usuń kampanię po id
     const response = await axios.delete(`/mailing/deleteCampaign/${id}`);
     return response.data;
+  }
+
+  static async send(id) {
+    // Wyślij kampanię natychmiast
+    const response = await axios.post(`/mailing/sendCampaign/${id}`, {}, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return response.data.data;
   }
 }

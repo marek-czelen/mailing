@@ -11,7 +11,11 @@ import usersRouter from './routes/users.js';
 import adminRouter from "./routes/admin.js";
 import mailinngRouter from "./routes/mailing.js";
 import uploadRoutes from './plugin/upload.js';
+import templateRoutes from './routes/templates.js';
 import cors from 'cors'
+
+// Inicjalizuj modele i asocjacje
+import './models/index.js';
 
 var app = express();
 
@@ -26,6 +30,7 @@ app.use(uploadRoutes);
 //veryfication of the token
 app.all('*', function(req, res, next) 
   {
+    //console.log("next: ", req.url )
     if (req.originalUrl=="/auth/login") next()
     else{
       let authorized = false
@@ -51,6 +56,7 @@ app.use('/auth', authRouter);
 app.use('/users', usersRouter);
 app.use('/admin', adminRouter);
 app.use('/mailing', mailinngRouter);
+app.use('/templates', templateRoutes);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

@@ -404,14 +404,32 @@
         <v-divider></v-divider>
         
         <v-card-text class="pa-4">
-          <v-row>
-            <v-col 
-              v-for="template in availableTemplates" 
-              :key="template.id"
-              cols="12" 
-              md="6" 
-              lg="4"
-            >
+          <!-- Loading state -->
+          <div v-if="templatesLoading" class="text-center py-8">
+            <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
+            <p class="mt-4 text-body-2">Ładowanie szablonów z bazy danych...</p>
+          </div>
+          
+          <!-- Error state -->
+          <div v-else-if="templatesError" class="text-center py-8">
+            <v-icon size="64" color="error">mdi-alert-circle-outline</v-icon>
+            <p class="mt-4 text-body-1">{{ templatesError }}</p>
+            <v-btn @click="loadTemplates" color="primary" class="mt-2">
+              <v-icon left>mdi-refresh</v-icon>
+              Spróbuj ponownie
+            </v-btn>
+          </div>
+          
+          <!-- Templates grid -->
+          <div v-else-if="availableTemplates.length > 0">
+            <v-row>
+              <v-col 
+                v-for="template in availableTemplates" 
+                :key="template.id"
+                cols="12" 
+                md="6" 
+                lg="4"
+              >
               <v-card 
                 class="template-card" 
                 :class="{ 'template-selected': selectedTemplate === template.id }"
@@ -458,6 +476,14 @@
               </v-card>
             </v-col>
           </v-row>
+          </div>
+          
+          <!-- Empty state -->
+          <div v-else class="text-center py-8">
+            <v-icon size="64" color="grey-lighten-2">mdi-file-document-multiple-outline</v-icon>
+            <p class="mt-4 text-body-1">Brak dostępnych szablonów</p>
+            <p class="text-body-2 text-medium-emphasis">Utwórz swój pierwszy szablon zapisując aktualną treść</p>
+          </div>
         </v-card-text>
         
         <v-divider></v-divider>
@@ -576,8 +602,8 @@ import ButtonProperties from './properties/ButtonProperties.vue';
 import ImageProperties from './properties/ImageProperties.vue';
 import SpacerProperties from './properties/SpacerProperties.vue';
 
-// Import szablonów
-import templatesIndex from '@/templates/index.json';
+// Import serwisu templat
+import { Templates } from '@/services/templates.js';
 
 export default {
   name: 'BlockEmailEditor',
@@ -625,7 +651,9 @@ export default {
       // Szablony
       showTemplateDialog: false,
       selectedTemplate: null,
-      availableTemplates: [...templatesIndex],
+      availableTemplates: [],
+      templatesLoading: false,
+      templatesError: null,
 
       // Zapisywanie szablonów
       showSaveTemplateDialog: false,
@@ -1025,64 +1053,58 @@ export default {
       this.selectedTemplate = template.id;
     },
 
+    async loadTemplates() {
+      this.templatesLoading = true;
+      this.templatesError = null;
+      
+      try {
+        // Pobierz templaty z API wraz z blokami
+        this.availableTemplates = await Templates.getTemplates({
+          includeBlocks: true
+        });
+        console.log('Załadowano templaty z API:', this.availableTemplates.length);
+      } catch (error) {
+        console.error('Błąd podczas ładowania templat:', error);
+        this.templatesError = 'Nie udało się załadować szablonów';
+        
+        // Fallback do pustej listy
+        this.availableTemplates = [];
+      } finally {
+        this.templatesLoading = false;
+      }
+    },
+
     async loadSelectedTemplate() {
       if (!this.selectedTemplate) return;
       
       try {
-        // Znajdź szablon w dostępnych szablonach
-        const template = this.availableTemplates.find(t => t.id === this.selectedTemplate);
-        if (!template) {
-          console.error('Szablon nie został znaleziony');
+        // Pobierz pełne dane templatu z API
+        const templateData = await Templates.getTemplateById(this.selectedTemplate);
+        
+        if (!templateData) {
+          console.error('Szablon nie został znaleziony:', this.selectedTemplate);
           return;
         }
 
-        let templateData;
-
-        // Sprawdź czy to szablon niestandardowy
-        if (template.isCustom) {
-          // Ładuj z localStorage
-          const customTemplates = JSON.parse(localStorage.getItem('customTemplates') || '{}');
-          const customTemplate = customTemplates[template.id];
-          if (!customTemplate) {
-            console.error('Niestandardowy szablon nie został znaleziony:', template.id);
-            return;
-          }
-          templateData = { default: customTemplate };
-        } else {
-          // Mapowanie plików szablonów - Vite wymaga statycznych ścieżek
-          const templateModules = {
-            'newsletter-basic.json': () => import('@/templates/newsletter-basic.json'),
-            'promo-sale.json': () => import('@/templates/promo-sale.json'),
-            'notification-welcome.json': () => import('@/templates/notification-welcome.json'),
-            'event-invitation.json': () => import('@/templates/event-invitation.json'),
-            'education-offer.json': () => import('@/templates/education-offer.json'),
-            'kindergarten-offer.json': () => import('@/templates/kindergarten-offer.json'),
-            'school-lab-offer.json': () => import('@/templates/school-lab-offer.json'),
-            'primary-school-tablets.json': () => import('@/templates/primary-school-tablets.json'),
-            'highschool-projectors.json': () => import('@/templates/highschool-projectors.json'),
-            'university-software.json': () => import('@/templates/university-software.json')
-          };
-
-          // Załaduj odpowiedni szablon
-          const loadTemplate = templateModules[template.file];
-          if (!loadTemplate) {
-            console.error('Plik szablonu nie został znaleziony:', template.file);
-            return;
-          }
-
-          templateData = await loadTemplate();
-        }
+        // Zwiększ licznik użycia
+        await Templates.incrementUsage(this.selectedTemplate);
         
         // Wyczyść obecne bloki
         this.emailBlocks = [];
         this.selectedBlockId = null;
         
         // Załaduj bloki z szablonu
-        if (templateData.default && templateData.default.blocks) {
-          templateData.default.blocks.forEach((blockData, index) => {
+        if (templateData.blocks && Array.isArray(templateData.blocks)) {
+          templateData.blocks.forEach((blockData) => {
             const block = {
-              ...blockData,
-              id: this.nextBlockId++
+              id: this.nextBlockId++,
+              type: blockData.blockType,
+              content: blockData.content || {},
+              style: blockData.style || {
+                marginTop: 0,
+                marginBottom: 0,
+                textAlign: 'left'
+              }
             };
             this.emailBlocks.push(block);
           });
@@ -1092,9 +1114,11 @@ export default {
         this.showTemplateDialog = false;
         this.selectedTemplate = null;
         
-        console.log('Szablon został załadowany pomyślnie');
+        console.log('Szablon został załadowany pomyślnie:', templateData.name);
       } catch (error) {
         console.error('Błąd podczas ładowania szablonu:', error);
+        // Można dodać toast notification
+        alert('Nie udało się załadować szablonu: ' + error.message);
       }
     },
 
@@ -1108,14 +1132,30 @@ export default {
       };
     },
 
-    saveAsTemplate() {
+    async saveAsTemplate() {
       if (!this.saveTemplateValid || this.emailBlocks.length === 0) {
         return;
       }
 
       try {
-        // Generuj ID dla nowego szablonu
-        const templateId = 'custom-' + Date.now();
+        // Generuj thumbnail na podstawie bloków
+        let thumbnailSvg;
+        try {
+          thumbnailSvg = await Templates.generateThumbnail(this.emailBlocks);
+        } catch (error) {
+          console.warn('Nie udało się wygenerować thumbnail, używam domyślny:', error);
+          thumbnailSvg = `data:image/svg+xml;base64,${btoa(`
+            <svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150">
+              <rect width="200" height="150" fill="#f5f5f5"/>
+              <text x="100" y="75" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">
+                ${this.newTemplate.name}
+              </text>
+              <text x="100" y="95" text-anchor="middle" font-family="Arial" font-size="10" fill="#999">
+                ${this.emailBlocks.length} blok(ów)
+              </text>
+            </svg>
+          `)}`;
+        }
         
         // Przygotuj dane szablonu
         const templateData = {
@@ -1123,62 +1163,51 @@ export default {
           description: this.newTemplate.description,
           category: this.newTemplate.category,
           tags: this.newTemplate.tags,
-          author: "Użytkownik",
-          createdAt: new Date().toISOString(),
-          blocks: this.emailBlocks.map(block => {
-            // Usuwamy ID z bloku dla szablonu (będzie generowane na nowo przy ładowaniu)
-            const { id, ...blockWithoutId } = block;
-            return blockWithoutId;
-          })
-        };
-
-        // Generuj prosty podgląd (można rozszerzyć w przyszłości)
-        const thumbnailSvg = `data:image/svg+xml;base64,${btoa(`
-          <svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150">
-            <rect width="200" height="150" fill="#f5f5f5"/>
-            <text x="100" y="75" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">
-              ${this.newTemplate.name}
-            </text>
-            <text x="100" y="95" text-anchor="middle" font-family="Arial" font-size="10" fill="#999">
-              ${this.emailBlocks.length} blok(ów)
-            </text>
-          </svg>
-        `)}`;
-
-        // Dodaj do listy dostępnych szablonów
-        const newTemplate = {
-          id: templateId,
-          name: this.newTemplate.name,
-          description: this.newTemplate.description,
-          category: this.newTemplate.category,
-          tags: this.newTemplate.tags,
           thumbnail: thumbnailSvg,
-          file: `${templateId}.json`, // W prawdziwej aplikacji byłoby zapisane na serwerze
           author: "Użytkownik",
-          isCustom: true
+          blocks: this.emailBlocks.map(block => ({
+            blockType: block.type,
+            content: block.content || {},
+            style: block.style || {
+              marginTop: 0,
+              marginBottom: 0,
+              textAlign: 'left'
+            }
+          })),
+          metadata: {
+            blocks: this.emailBlocks.length,
+            estimatedHeight: this.emailBlocks.reduce((height, block) => {
+              // Szacunkowa wysokość na podstawie typu bloku
+              const blockHeights = {
+                'text': 50,
+                'button': 60,
+                'image': 200,
+                'spacer': block.content?.height || 40
+              };
+              return height + (blockHeights[block.type] || 50) + 
+                     (block.style?.marginTop || 0) + 
+                     (block.style?.marginBottom || 0);
+            }, 0),
+            createdWith: 'BlockEmailEditor',
+            version: '2.0'
+          }
         };
 
-        this.availableTemplates.unshift(newTemplate);
-
-        // W prawdziwej aplikacji tutaj byłoby wywołanie API do zapisania szablonu
-        console.log('Szablon zapisany:', {
-          template: newTemplate,
-          data: templateData
-        });
-
-        // Symulacja zapisu do localStorage (dla celów demo)
-        const customTemplates = JSON.parse(localStorage.getItem('customTemplates') || '{}');
-        customTemplates[templateId] = templateData;
-        localStorage.setItem('customTemplates', JSON.stringify(customTemplates));
+        // Zapisz szablon przez API
+        const createdTemplate = await Templates.createTemplate(templateData);
+        
+        // Dodaj do listy dostępnych szablonów
+        this.availableTemplates.unshift(createdTemplate);
 
         // Zamknij dialog i pokaż komunikat
         this.closeSaveTemplateDialog();
         
-        // W prawdziwej aplikacji można dodać toast/snackbar
-        console.log('Szablon został zapisany pomyślnie!');
-
+        console.log('Szablon został zapisany pomyślnie w bazie danych:', createdTemplate);
+        // Można dodać toast/snackbar notification
+        
       } catch (error) {
         console.error('Błąd podczas zapisywania szablonu:', error);
+        alert('Nie udało się zapisać szablonu: ' + (error.response?.data?.message || error.message));
       }
     },
 
@@ -1196,6 +1225,41 @@ export default {
           }
         }
       });
+    },
+
+    // Dodaj nową metodę do migracji starych templat
+    async migrateLegacyTemplates() {
+      try {
+        const customTemplates = JSON.parse(localStorage.getItem('customTemplates') || '{}');
+        
+        if (Object.keys(customTemplates).length > 0) {
+          console.log('Znaleziono lokalne templaty do migracji:', Object.keys(customTemplates).length);
+          
+          for (const [templateId, templateData] of Object.entries(customTemplates)) {
+            try {
+              // Konwertuj stary format do nowego
+              const convertedTemplate = Templates.convertLegacyTemplate(templateData);
+              
+              // Sprawdź czy template już nie istnieje w API (po nazwie)
+              const existingTemplates = await Templates.searchTemplates(convertedTemplate.name);
+              const exists = existingTemplates.find(t => t.name === convertedTemplate.name);
+              
+              if (!exists) {
+                // Zapisz template w API
+                const migratedTemplate = await Templates.createTemplate(convertedTemplate);
+                console.log('Zmigrowano template:', migratedTemplate.name);
+              }
+            } catch (error) {
+              console.error('Błąd migracji template:', templateId, error);
+            }
+          }
+          
+          // Po migracji można wyczyścić localStorage (opcjonalnie)
+          // localStorage.removeItem('customTemplates');
+        }
+      } catch (error) {
+        console.error('Błąd podczas migracji lokalnych templat:', error);
+      }
     }
   },
 
@@ -1221,45 +1285,12 @@ export default {
     }
   },
 
-  mounted() {
-    // Ładuj niestandardowe szablony z localStorage
-    try {
-      const customTemplates = JSON.parse(localStorage.getItem('customTemplates') || '{}');
-      
-      Object.keys(customTemplates).forEach(templateId => {
-        const templateData = customTemplates[templateId];
-        
-        // Sprawdź czy szablon już nie istnieje na liście
-        const exists = this.availableTemplates.find(t => t.id === templateId);
-        if (!exists) {
-          const customTemplate = {
-            id: templateId,
-            name: templateData.name,
-            description: templateData.description,
-            category: templateData.category || 'Inne',
-            tags: templateData.tags || [],
-            thumbnail: `data:image/svg+xml;base64,${btoa(`
-              <svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150">
-                <rect width="200" height="150" fill="#f0f0f0"/>
-                <text x="100" y="75" text-anchor="middle" font-family="Arial" font-size="12" fill="#666">
-                  ${templateData.name}
-                </text>
-                <text x="100" y="95" text-anchor="middle" font-family="Arial" font-size="10" fill="#999">
-                  Szablon użytkownika
-                </text>
-              </svg>
-            `)}`,
-            file: `${templateId}.json`,
-            author: templateData.author || "Użytkownik",
-            isCustom: true
-          };
-          
-          this.availableTemplates.unshift(customTemplate);
-        }
-      });
-    } catch (error) {
-      console.error('Błąd podczas ładowania niestandardowych szablonów:', error);
-    }
+  async mounted() {
+    // Załaduj templaty z API
+    await this.loadTemplates();
+
+    // Migracja: Sprawdź czy są niestandardowe szablony w localStorage i przenieś je do API
+    await this.migrateLegacyTemplates();
 
     // Sprawdź przewijanie po załadowaniu komponentu
     this.checkScrollable();

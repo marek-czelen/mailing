@@ -85,13 +85,16 @@
             <p>Wybierz bazę danych i segmenty</p>
 
             <v-select
-              v-model="formData.database"
+              v-model="formData.databaseId"
               :items="availableDatabases"
               density="compact"
               label="Baza danych"
               variant="outlined"
               prepend-inner-icon="mdi-database"
               :rules="[rules.required]"
+              :loading="loadingDatabases"
+              :disabled="loadingDatabases"
+              :placeholder="loadingDatabases ? 'Ładowanie baz danych...' : 'Wybierz bazę danych'"
               required
             />
 
@@ -105,10 +108,17 @@
               multiple
               chips
               closable-chips
-              :disabled="!formData.database"
+              :disabled="!formData.databaseId"
             />
 
-            <div v-if="formData.database" class="recipients-preview">
+            <div v-if="availableDatabases.length === 0 && !loadingDatabases" class="no-databases-warning">
+              <v-alert type="warning" variant="tonal">
+                <v-icon>mdi-database-alert</v-icon>
+                Brak dostępnych baz danych. Przed utworzeniem kampanii musisz utworzyć przynajmniej jedną bazę danych kontaktów.
+              </v-alert>
+            </div>
+
+            <div v-if="formData.databaseId" class="recipients-preview">
               <h4>Szacowana liczba odbiorców</h4>
               <div class="preview-stats">
                 <div class="stat-box">
@@ -125,23 +135,49 @@
           <!-- Step 3: Content -->
           <div v-if="step === 3">
             <h3>Treść kampanii</h3>
-            <p>Wybierz szablon lub utwórz treść</p>
+            <p>Wybierz sposób tworzenia treści</p>
 
             <v-radio-group v-model="contentMode" density="compact">
               <v-radio label="Użyj szablonu" value="template" />
+              <v-radio label="Użyj HTML" value="html" />
               <v-radio label="Bez szablonu" value="no-template" />
             </v-radio-group>
 
-            <v-select
-              v-if="contentMode === 'template'"
-              v-model="formData.template"
-              :items="availableTemplates"
-              density="compact"
-              label="Szablon email"
-              variant="outlined"
-              prepend-inner-icon="mdi-email-variant"
-              :rules="contentMode === 'template' ? [rules.required] : []"
-            />
+            <!-- Template Selection -->
+            <div v-if="contentMode === 'template'">
+              <v-select
+                v-model="formData.template"
+                :items="availableTemplates"
+                :loading="loadingTemplates"
+                density="compact"
+                label="Szablon email"
+                variant="outlined"
+                prepend-inner-icon="mdi-email-variant"
+                :rules="[rules.required]"
+                required
+              />
+            </div>
+
+            <!-- HTML Content -->
+            <div v-if="contentMode === 'html'">
+              <div class="html-editor-container">
+                <label class="editor-label">Treść HTML</label>
+                <QuillEditor
+                  v-model:content="formData.htmlContent"
+                  contentType="html"
+                  theme="snow"
+                  placeholder="Wprowadź lub wklej kod HTML swojego emaila..."
+                  :toolbar="quillToolbarOptions"
+                  style="min-height: 300px;"
+                />
+              </div>
+              <div class="html-helper">
+                <v-alert type="info" variant="tonal" density="compact">
+                  <v-icon>mdi-information</v-icon>
+                  Możesz używać edytora WYSIWYG lub przełączyć się na tryb HTML w pasku narzędzi. Pamiętaj o używaniu inline CSS dla lepszej kompatybilności z klientami email.
+                </v-alert>
+              </div>
+            </div>
 
             <div class="sender-info">
               <h4>Informacje o nadawcy</h4>
@@ -239,8 +275,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Databases } from '../../services/databases.js'
+import { Campaigns } from '../../services/campaigns.js'
+import templatesIndex from '../../templates/index.json'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -260,9 +299,10 @@ const formData = ref({
   name: '',
   subject: '',
   description: '',
-  database: null,
+  databaseId: null,
   segments: [],
   template: null,
+  htmlContent: '',
   senderName: '',
   senderEmail: '',
   sendMode: 'draft',
@@ -271,12 +311,13 @@ const formData = ref({
   trackClicks: true
 })
 
-// Sample data
-const availableDatabases = ref([
-  { title: 'Klienci Premium', value: 'premium' },
-  { title: 'Newsletter Subskrybenci', value: 'newsletter' },
-  { title: 'Potencjalni Klienci', value: 'leads' }
-])
+// Database data from API
+const availableDatabases = ref([])
+const loadingDatabases = ref(false)
+
+// Template data
+const availableTemplates = ref([])
+const loadingTemplates = ref(false)
 
 const availableSegments = ref([
   { title: 'Bardzo aktywni', value: 'very_active' },
@@ -284,11 +325,17 @@ const availableSegments = ref([
   { title: 'VIP', value: 'vip' }
 ])
 
-const availableTemplates = ref([
-  { title: 'Szablon promocyjny', value: 'promo1' },
-  { title: 'Newsletter standardowy', value: 'newsletter1' },
-  { title: 'Szablon powitalny', value: 'welcome1' }
-])
+// VueQuill configuration
+const quillToolbarOptions = [
+  [{ header: [1, 2, 3, 4, 5, 6, false] }],
+  ['bold', 'italic', 'underline', 'strike'],
+  [{ color: [] }, { background: [] }],
+  [{ list: 'ordered' }, { list: 'bullet' }],
+  [{ align: [] }],
+  ['link', 'image'],
+  ['code-block'],
+  ['clean']
+]
 
 // Validation rules
 const rules = {
@@ -307,11 +354,15 @@ const canProceed = computed(() => {
     case 1:
       return formData.value.name && formData.value.subject
     case 2:
-      return formData.value.database
+      return formData.value.databaseId && availableDatabases.value.length > 0
     case 3:
-      return (contentMode.value === 'template' && formData.value.template) ||
-             (contentMode.value === 'create') ||
-             (formData.value.senderName && formData.value.senderEmail)
+      const hasValidContent = (
+        (contentMode.value === 'template' && formData.value.template) ||
+        (contentMode.value === 'html' && formData.value.htmlContent) ||
+        (contentMode.value === 'no-template')
+      )
+      const hasValidSender = formData.value.senderName && formData.value.senderEmail
+      return hasValidContent && hasValidSender
     case 4:
       return true
     default:
@@ -320,8 +371,15 @@ const canProceed = computed(() => {
 })
 
 const estimatedRecipients = computed(() => {
-  if (!formData.value.database) return '0'
-  return '1,247' // Sample data
+  if (!formData.value.databaseId) return '0'
+  
+  // Find selected database
+  const selectedDb = availableDatabases.value.find(db => db.value === formData.value.databaseId)
+  if (selectedDb) {
+    return selectedDb.contactsCount.toLocaleString('pl-PL')
+  }
+  
+  return '0'
 })
 
 // Methods
@@ -371,14 +429,42 @@ async function save() {
   try {
     const campaignData = {
       ...formData.value,
+      contentType: contentMode.value,
       recipientsCount: parseInt(estimatedRecipients.value.replace(',', '')) || 0,
       createdAt: props.campaign?.createdAt || new Date(),
       updatedAt: new Date()
     }
     
-    emit('save', campaignData)
+    // Process content (generate HTML from template + add GDPR footer)
+    const processedCampaignData = await processCampaignContent(campaignData)
+    
+    let result
+    if (props.campaign?.id) {
+      // Update existing campaign
+      result = await Campaigns.update(props.campaign.id, processedCampaignData)
+    } else {
+      // Create new campaign
+      result = await Campaigns.create(processedCampaignData)
+    }
+    
+    // Emit success event with result from API
+    emit('save', result || campaignData)
+    
+    // Close dialog on success
+    close()
+    
   } catch (error) {
     console.error('Błąd podczas zapisywania kampanii:', error)
+    
+    // Format error message for user
+    let errorMessage = 'Wystąpił błąd podczas zapisywania kampanii.'
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+    
+    alert(errorMessage)
   } finally {
     saving.value = false
   }
@@ -387,7 +473,240 @@ async function save() {
 function close() {
   emit('close')
   emit('update:modelValue', false)
+  // Reset form state
   step.value = 1
+  contentMode.value = 'template'
+  saving.value = false
+}
+
+// Generate HTML from template blocks
+function generateHtmlFromTemplate(template) {
+  if (!template || !template.blocks) {
+    return ''
+  }
+
+  let html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${formData.value.subject || 'Email Campaign'}</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f4f4f4; }
+        .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="email-container">`
+
+  template.blocks.forEach(block => {
+    switch (block.type) {
+      case 'text':
+        html += `
+        <div style="
+          margin-top: ${block.style.marginTop || 0}px;
+          margin-bottom: ${block.style.marginBottom || 0}px;
+          text-align: ${block.style.textAlign || 'left'};
+          font-size: ${block.content.fontSize || 16}px;
+          color: ${block.content.color || '#333333'};
+          font-weight: ${block.content.fontWeight || 'normal'};
+          font-style: ${block.content.fontStyle || 'normal'};
+          line-height: 1.5;
+        ">${block.content.text.replace(/\n/g, '<br>')}</div>`
+        break
+
+      case 'image':
+        html += `
+        <div style="
+          margin-top: ${block.style.marginTop || 0}px;
+          margin-bottom: ${block.style.marginBottom || 0}px;
+          text-align: ${block.style.textAlign || 'center'};
+        ">
+          <img src="${block.content.src}" 
+               alt="${block.content.alt || ''}"
+               style="
+                 width: ${block.content.width || 'auto'}px;
+                 height: ${block.content.height || 'auto'}px;
+                 border-radius: ${block.content.borderRadius || 0}px;
+                 max-width: 100%;
+               "
+               ${block.content.url ? `onclick="window.open('${block.content.url}')"` : ''}>
+        </div>`
+        break
+
+      case 'button':
+        html += `
+        <div style="
+          margin-top: ${block.style.marginTop || 0}px;
+          margin-bottom: ${block.style.marginBottom || 0}px;
+          text-align: ${block.style.textAlign || 'center'};
+        ">
+          <a href="${block.content.url || '#'}" 
+             style="
+               display: inline-block;
+               background-color: ${block.content.backgroundColor || '#007bff'};
+               color: ${block.content.textColor || '#ffffff'};
+               text-decoration: none;
+               padding: ${block.content.padding || '12px 24px'};
+               border-radius: ${block.content.borderRadius || 4}px;
+               font-weight: bold;
+             ">${block.content.text}</a>
+        </div>`
+        break
+
+      case 'spacer':
+        html += `
+        <div style="
+          height: ${block.content.height || 20}px;
+          margin-top: ${block.style.marginTop || 0}px;
+          margin-bottom: ${block.style.marginBottom || 0}px;
+          background-color: ${block.content.backgroundColor || 'transparent'};
+        "></div>`
+        break
+    }
+  })
+
+  html += `
+    </div>
+</body>
+</html>`
+
+  return html
+}
+
+// Generate GDPR-compliant footer
+function generateGdprFooter() {
+  return `
+<div style="
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+  font-size: 12px;
+  color: #666666;
+  text-align: center;
+  line-height: 1.4;
+">
+  <p>Ta wiadomość została wysłana do Ciebie, ponieważ wyraziłeś zgodę na otrzymywanie informacji marketingowych.</p>
+  
+  <p>Zgodnie z RODO, informujemy że:</p>
+  <ul style="text-align: left; display: inline-block; margin: 10px 0;">
+    <li>Administratorem Twoich danych osobowych jest ${formData.value.senderName || '[Nazwa firmy]'}</li>
+    <li>Twoje dane są przetwarzane w celu prowadzenia marketingu bezpośredniego</li>
+    <li>Masz prawo do wycofania zgody w dowolnym momencie</li>
+    <li>Masz prawo dostępu, sprostowania, usunięcia lub ograniczenia przetwarzania swoich danych</li>
+  </ul>
+  
+  <p>
+    <a href="{{UNSUBSCRIBE_URL}}?contactId={{CONTACT_ID}}" 
+       style="color: #007bff; text-decoration: underline;">
+      Wypisz się z listy mailingowej
+    </a>
+  </p>
+  
+  <p style="margin-top: 15px; font-size: 11px; color: #999999;">
+    ${formData.value.senderName || '[Nazwa firmy]'} | ${formData.value.senderEmail || '[email]'}
+  </p>
+</div>`
+}
+
+// Process campaign data before sending to API
+async function processCampaignContent(campaignData) {
+  let finalHtmlContent = campaignData.htmlContent || ''
+
+  // If template is selected, generate HTML from template
+  if (campaignData.contentType === 'template' && campaignData.template) {
+    try {
+      // Load template file via fetch
+      const templateResponse = await fetch(`/src/templates/${campaignData.template}`)
+      const templateData = await templateResponse.json()
+      finalHtmlContent = generateHtmlFromTemplate(templateData)
+    } catch (error) {
+      console.error('Błąd ładowania szablonu:', error)
+      // Fallback to empty content if template fails
+      finalHtmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${campaignData.subject || 'Email Campaign'}</title>
+</head>
+<body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1>Treść kampanii</h1>
+        <p>Szablon nie mógł zostać załadowany.</p>
+    </div>
+</body>
+</html>`
+    }
+  }
+
+  // Add GDPR footer to all content
+  const gdprFooter = generateGdprFooter()
+  
+  // Insert footer before closing body tag or append if no body tag
+  if (finalHtmlContent.includes('</body>')) {
+    finalHtmlContent = finalHtmlContent.replace('</body>', gdprFooter + '</body>')
+  } else {
+    finalHtmlContent += gdprFooter
+  }
+
+  return {
+    ...campaignData,
+    htmlContent: finalHtmlContent
+  }
+}
+
+// Load databases from API
+async function loadDatabases() {
+  loadingDatabases.value = true
+  try {
+    console.log('Ładowanie baz danych...')
+    const databases = await Databases.getList()
+    console.log('Pobrane bazy danych:', databases)
+    
+    // Transform to select format
+    availableDatabases.value = databases.map(db => ({
+      title: `${db.name} (${db.contactsCount || 0} kontaktów)`,
+      value: db.id,
+      contactsCount: db.contactsCount || 0,
+      name: db.name
+    }))
+    
+    console.log('Dostępne bazy danych:', availableDatabases.value)
+  } catch (error) {
+    console.error('Błąd podczas ładowania baz danych:', error)
+    // Fallback to empty array
+    availableDatabases.value = []
+  } finally {
+    loadingDatabases.value = false
+  }
+}
+
+// Load templates from local file
+function loadTemplates() {
+  loadingTemplates.value = true
+  try {
+    console.log('Ładowanie szablonów...')
+    
+    // Transform templates to select format
+    availableTemplates.value = templatesIndex.map(template => ({
+      title: template.name,
+      value: template.id,
+      description: template.description,
+      category: template.category,
+      file: template.file,
+      tags: template.tags
+    }))
+    
+    console.log('Dostępne szablony:', availableTemplates.value)
+  } catch (error) {
+    console.error('Błąd podczas ładowania szablonów:', error)
+    // Fallback to empty array
+    availableTemplates.value = []
+  } finally {
+    loadingTemplates.value = false
+  }
 }
 
 // Watch for campaign changes
@@ -397,9 +716,11 @@ watch(() => props.campaign, (newCampaign) => {
       name: newCampaign.name || '',
       subject: newCampaign.subject || '',
       description: newCampaign.description || '',
-      database: newCampaign.database || null,
+      databaseId: newCampaign.databaseId || null,
       segments: newCampaign.segments || [],
       template: newCampaign.template || null,
+      contentType: newCampaign.contentType || 'template',
+      htmlContent: newCampaign.htmlContent || '',
       senderName: newCampaign.senderName || '',
       senderEmail: newCampaign.senderEmail || '',
       sendMode: newCampaign.sendMode || 'draft',
@@ -407,16 +728,20 @@ watch(() => props.campaign, (newCampaign) => {
       trackOpens: newCampaign.trackOpens !== false,
       trackClicks: newCampaign.trackClicks !== false
     }
+    contentMode.value = newCampaign.contentType || 'template'
   } else {
     // Reset form
     step.value = 1
+    contentMode.value = 'template'
     formData.value = {
       name: '',
       subject: '',
       description: '',
-      database: null,
+      databaseId: null,
       segments: [],
       template: null,
+      contentType: 'template',
+      htmlContent: '',
       senderName: '',
       senderEmail: '',
       sendMode: 'draft',
@@ -426,6 +751,12 @@ watch(() => props.campaign, (newCampaign) => {
     }
   }
 }, { immediate: true })
+
+// Load data on component mount
+onMounted(() => {
+  loadDatabases()
+  loadTemplates()
+})
 </script>
 
 <style scoped>
@@ -547,6 +878,11 @@ watch(() => props.campaign, (newCampaign) => {
   color: #666;
 }
 
+/* No databases warning */
+.no-databases-warning {
+  margin: 24px 0;
+}
+
 /* Recipients Preview */
 .recipients-preview {
   margin: 10px 0 10px 0;
@@ -594,22 +930,15 @@ watch(() => props.campaign, (newCampaign) => {
 }
 
 /* Sender Info */
-.sender-info {
-}
-
 .sender-info h4 {
-  margin: 0 0 16px 0;
+  margin: 24px 0 16px 0;
   font-weight: 600;
   color: #333;
 }
 
 /* Tracking Options */
-.tracking-options {
-
-}
-
 .tracking-options h4 {
-  margin: 0 0 16px 0;
+  margin: 24px 0 16px 0;
   font-weight: 600;
   color: #333;
 }
@@ -621,6 +950,48 @@ watch(() => props.campaign, (newCampaign) => {
   padding: 24px 32px;
   border-top: 1px solid #e0e0e0;
   background: #fafafa;
+}
+
+/* HTML Editor Styles */
+.html-editor-container {
+  margin-bottom: 16px;
+}
+
+.editor-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.html-editor-container :deep(.ql-toolbar) {
+  border: 1px solid rgba(0, 0, 0, 0.23);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: #fafafa;
+}
+
+.html-editor-container :deep(.ql-container) {
+  border: 1px solid rgba(0, 0, 0, 0.23);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 14px;
+}
+
+.html-editor-container :deep(.ql-editor) {
+  min-height: 250px;
+  padding: 16px;
+}
+
+.html-editor-container :deep(.ql-editor.ql-blank::before) {
+  font-style: normal;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.html-helper {
+  margin-top: 8px;
 }
 
 /* Responsive */

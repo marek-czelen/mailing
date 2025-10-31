@@ -220,29 +220,7 @@
             </div>
           </div>
 
-          <!-- Test Sending -->
-          <div class="test-section">
-            <v-divider class="my-4"></v-divider>
-            <h4>Wysyłka testowa</h4>
-            <v-text-field
-              v-model="testEmail"
-              label="Email testowy"
-              placeholder="test@example.com"
-              variant="outlined"
-              density="compact"
-              :rules="emailRules"
-            ></v-text-field>
-            <v-btn 
-              color="info" 
-              variant="outlined" 
-              size="small"
-              @click="sendTest"
-              :disabled="!isValidEmail(testEmail)"
-            >
-              <v-icon left>mdi-email-send</v-icon>
-              Wyślij test
-            </v-btn>
-          </div>
+
         </v-card-text>
       </v-card>
     </div>
@@ -493,9 +471,7 @@ function sendTest() {
 // Initialize with campaign segments
 onMounted(() => {
   // Load campaign segments if available
-  if (campaign.segments) {
-    selectedSegments.value = campaign.segments
-  }
+
 })
 </script>
 

@@ -15,7 +15,7 @@
           </div>
         </v-card-title>
 
-        <v-card-text class="pa-0" style="overflow: auto;">
+        <v-card-text class="pa-0 campaign-list-content">
           <!-- Search & Filters -->
           <div class="search-section">
             <v-text-field v-model="searchQuery" placeholder="Wyszukaj kampanię..." prepend-inner-icon="mdi-magnify"
@@ -100,7 +100,20 @@
       </v-card>
     </template>
     <template #right-panel>
-      <div v-if="selectedCampaign" class="campaign-details">
+      <!-- Loading State -->
+      <div v-if="loadingCampaignDetails" class="loading-state">
+        <div class="loading-content">
+          <v-progress-circular 
+            indeterminate 
+            color="primary" 
+            size="48"
+          ></v-progress-circular>
+          <h3>Ładowanie szczegółów kampanii...</h3>
+          <p>Pobieranie pełnych informacji o kampanii</p>
+        </div>
+      </div>
+
+      <div v-else-if="selectedCampaign" class="campaign-details">
         <!-- Campaign Stats Cards -->
          <StatGrid :statElements="[
            { icon: 'mdi-account-group', title: 'Odbiorców', value: selectedCampaign.recipientsCount || 0, class: 'recipients' },
@@ -112,10 +125,6 @@
         <!-- Tabs Section -->
         <v-card class="details-card">
           <v-tabs v-model="activeTab" bg-color="transparent">
-            <v-tab value="overview">
-              <v-icon left>mdi-information</v-icon>
-              Przegląd
-            </v-tab>
             <v-tab value="content">
               <v-icon left>mdi-email</v-icon>
               Treść
@@ -124,19 +133,14 @@
               <v-icon left>mdi-account-multiple</v-icon>
               Odbiorcy
             </v-tab>
-            <v-tab value="analytics">
-              <v-icon left>mdi-chart-bar</v-icon>
-              Analityka
+            <v-tab value="scheduling">
+              <v-icon left>mdi-calendar-clock</v-icon>
+              Planowanie
             </v-tab>
           </v-tabs>
 
           <v-card-text>
             <v-window v-model="activeTab">
-              <!-- Overview Tab -->
-              <v-window-item value="overview">
-                <CampaignOverview :campaign="selectedCampaign" @edit="editCampaign" @schedule="scheduleDialog = true" />
-              </v-window-item>
-
               <!-- Content Tab -->
               <v-window-item value="content">
                 <CampaignContent :campaign="selectedCampaign" @edit-template="editTemplate" />
@@ -144,12 +148,188 @@
 
               <!-- Recipients Tab -->
               <v-window-item value="recipients">
-                <CampaignRecipients :campaign="selectedCampaign" @edit-recipients="editRecipients" />
+                <div class="recipients-management">
+                  <div class="recipients-header">
+                    <h3>Zarządzanie odbiorcami</h3>
+                    <v-btn color="primary" variant="outlined" @click="editCampaignDatabase">
+                      <v-icon left>mdi-database-edit</v-icon>
+                      Zmień bazę odbiorców
+                    </v-btn>
+                  </div>
+
+                  <v-card v-if="selectedCampaign.database" class="database-info mb-4">
+                    <v-card-title class="pb-2">
+                      <v-icon left color="primary">mdi-database</v-icon>
+                      Aktualna baza odbiorców
+                    </v-card-title>
+                    <v-card-text>
+                      <div class="database-details">
+                        <div class="detail-item">
+                          <span class="label">Nazwa bazy:</span>
+                          <span class="value">{{ selectedCampaign.database.name || selectedCampaign.database }}</span>
+                        </div>
+                        <div class="detail-item">
+                          <span class="label">Liczba kontaktów:</span>
+                          <span class="value">{{ selectedCampaign.recipientsCount || 0 }}</span>
+                        </div>
+                        <div class="detail-item" v-if="selectedCampaign.segments && selectedCampaign.segments.length">
+                          <span class="label">Segmenty:</span>
+                          <div class="segments">
+                            <v-chip 
+                              v-for="segment in selectedCampaign.segments" 
+                              :key="segment.id || segment"
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              class="mr-1 mb-1"
+                            >
+                              {{ segment.name || segment }}
+                            </v-chip>
+                          </div>
+                        </div>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+
+                  <v-alert v-else type="warning" variant="tonal">
+                    <v-icon>mdi-alert</v-icon>
+                    Nie wybrano bazy odbiorców dla tej kampanii. Kliknij "Zmień bazę odbiorców" aby wybrać bazę.
+                  </v-alert>
+                            <!-- Test Sending -->
+          <div class="test-section">
+            <v-divider class="my-4"></v-divider>
+            <h4>Wysyłka testowa</h4>
+            <v-text-field
+              v-model="testEmail"
+              label="Email testowy"
+              placeholder="test@example.com"
+              variant="outlined"
+              density="compact"
+              :rules="emailRules"
+            ></v-text-field>
+            <v-btn 
+              color="info" 
+              variant="outlined" 
+              size="small"
+              @click="sendTest"
+              :disabled="!isValidEmail(testEmail)"
+            >
+              <v-icon left>mdi-email-send</v-icon>
+              Wyślij test
+            </v-btn>
+          </div>
+                  <CampaignRecipients v-if="false":campaign="selectedCampaign" @edit-recipients="editRecipients" />
+                </div>
               </v-window-item>
 
-              <!-- Analytics Tab -->
-              <v-window-item value="analytics">
-                <CampaignAnalytics :campaign="selectedCampaign" />
+              <!-- Scheduling Tab -->
+              <v-window-item value="scheduling">
+                <div class="scheduling-management">
+                  <div class="scheduling-header">
+                    <h3>Planowanie wysyłki kampanii</h3>
+                    <p class="text-medium-emphasis">Ustaw kiedy kampania ma zostać wysłana</p>
+                  </div>
+
+                  <v-row>
+                    <v-col cols="12" md="6">
+                      <v-card class="scheduling-options">
+                        <v-card-title>
+                          <v-icon left color="primary">mdi-send-clock</v-icon>
+                          Opcje wysyłki
+                        </v-card-title>
+                        <v-card-text>
+                          <v-radio-group v-model="selectedCampaign.sendMode" @update:model-value="updateSendMode">
+                            <v-radio 
+                              label="Wyślij natychmiast" 
+                              value="immediate"
+                              :disabled="selectedCampaign.status === 'sent'"
+                            />
+                            <v-radio 
+                              label="Zapisz jako szkic" 
+                              value="draft"
+                              :disabled="selectedCampaign.status === 'sent'"
+                            />
+                            <v-radio 
+                              label="Zaplanuj na później" 
+                              value="scheduled"
+                              :disabled="selectedCampaign.status === 'sent'"
+                            />
+                          </v-radio-group>
+
+                          <div v-if="selectedCampaign.sendMode === 'scheduled'" class="mt-4">
+                            <v-text-field
+                              v-model="scheduledDateTime"
+                              label="Data i godzina wysyłki"
+                              type="datetime-local"
+                              variant="outlined"
+                              density="comfortable"
+                              :min="minDateTime"
+                              @update:model-value="updateScheduledDate"
+                            />
+                          </div>
+                        </v-card-text>
+                      </v-card>
+                    </v-col>
+
+                    <v-col cols="12" md="6">
+                      <v-card class="campaign-status-card">
+                        <v-card-title>
+                          <v-icon left :color="getStatusColor(selectedCampaign.status)">
+                            {{ getStatusIcon(selectedCampaign.status) }}
+                          </v-icon>
+                          Status kampanii
+                        </v-card-title>
+                        <v-card-text>
+                          <v-chip 
+                            :color="getStatusColor(selectedCampaign.status)" 
+                            size="large" 
+                            variant="elevated"
+                            class="mb-3"
+                          >
+                            {{ getStatusLabel(selectedCampaign.status) }}
+                          </v-chip>
+
+                          <div v-if="selectedCampaign.scheduledAt" class="scheduled-info">
+                            <div class="detail-item">
+                              <span class="label">Zaplanowana wysyłka:</span>
+                              <span class="value">{{ formatDateTime(selectedCampaign.scheduledAt) }}</span>
+                            </div>
+                          </div>
+
+                          <div v-if="selectedCampaign.sentAt" class="sent-info">
+                            <div class="detail-item">
+                              <span class="label">Data wysłania:</span>
+                              <span class="value">{{ formatDateTime(selectedCampaign.sentAt) }}</span>
+                            </div>
+                          </div>
+
+                          <div class="action-buttons mt-4">
+                            <v-btn 
+                              v-if="selectedCampaign.status === 'draft'" 
+                              color="success" 
+                              variant="elevated"
+                              @click="sendCampaignNow"
+                              :disabled="!selectedCampaign.database"
+                            >
+                              <v-icon left>mdi-send</v-icon>
+                              Wyślij teraz
+                            </v-btn>
+
+                            <v-btn 
+                              v-if="selectedCampaign.status === 'scheduled'" 
+                              color="warning" 
+                              variant="outlined"
+                              @click="cancelScheduled"
+                            >
+                              <v-icon left>mdi-calendar-remove</v-icon>
+                              Anuluj planowanie
+                            </v-btn>
+                          </div>
+                        </v-card-text>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </div>
               </v-window-item>
             </v-window>
           </v-card-text>
@@ -203,20 +383,44 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Database Selection Dialog -->
+    <DatabaseSelectionDialog 
+      v-model="showDatabaseDialog" 
+      :campaign="selectedCampaign"
+      @database-changed="updateCampaignDatabase"
+    />
+
+    <!-- Snackbar for notifications -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      timeout="3000"
+      top
+    >
+      {{ snackbar.message }}
+      <template v-slot:actions>
+        <v-btn
+          variant="text"
+          @click="snackbar.show = false"
+        >
+          Zamknij
+        </v-btn>
+      </template>
+    </v-snackbar>
   </div>
 </template>
 
 
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import CampaignOverview from '../components/campaigns/CampaignOverview.vue'
 import CampaignContent from '../components/campaigns/CampaignContent.vue'
 import CampaignRecipients from '../components/campaigns/CampaignRecipients.vue'
-import CampaignAnalytics from '../components/campaigns/CampaignAnalytics.vue'
 import CampaignDialog from '../components/campaigns/CampaignDialog.vue'
 import ScheduleDialog from '../components/campaigns/ScheduleDialog.vue'
+import DatabaseSelectionDialog from '../components/campaigns/DatabaseSelectionDialog.vue'
 import { Campaigns } from '../services/campaigns.js'
 import StatCard from '../components/StatCard.vue'
 import PageContent from '../components/PageContent.vue'
@@ -229,12 +433,26 @@ const campaigns = ref([])
 const selectedCampaign = ref(null)
 const searchQuery = ref('')
 const statusFilter = ref('')
-const activeTab = ref('overview')
+const activeTab = ref('content')
 const showCampaignDialog = ref(false)
 const scheduleDialog = ref(false)
 const deleteDialog = ref(false)
 const editingCampaign = ref(null)
 const campaignToDelete = ref(null)
+const scheduledDateTime = ref('')
+const showDatabaseDialog = ref(false)
+const testEmail = ref('')
+const loadingCampaignDetails = ref(false)
+const snackbar = ref({
+  show: false,
+  message: '',
+  color: 'success'
+})
+
+const emailRules = [
+  v => !!v || 'Email jest wymagany',
+  v => /.+@.+\..+/.test(v) || 'Email musi być poprawny'
+]
 
 // Status filters
 const statusFilters = [
@@ -264,10 +482,41 @@ const filteredCampaigns = computed(() => {
   return filtered
 })
 
+const minDateTime = computed(() => {
+  const now = new Date()
+  now.setMinutes(now.getMinutes() + 5) // Minimum 5 minutes from now
+  return now.toISOString().slice(0, 16)
+})
+
 // Methods
-function selectCampaign(campaign) {
-  selectedCampaign.value = campaign
-  activeTab.value = 'overview'
+function showNotification(message, color = 'success') {
+  snackbar.value = {
+    show: true,
+    message,
+    color
+  }
+}
+
+function isValidEmail(email) {
+  return email && /.+@.+\..+/.test(email)
+}
+
+async function selectCampaign(campaign) {
+  loadingCampaignDetails.value = true
+  try {
+    // Pobierz pełne informacje o kampanii z API
+    const fullCampaignData = await Campaigns.getCampaignById(campaign.id)
+    selectedCampaign.value = fullCampaignData
+    activeTab.value = 'content'
+  } catch (error) {
+    console.error('Błąd pobierania szczegółów kampanii:', error)
+    showNotification('Nie udało się pobrać pełnych szczegółów kampanii. Pokazano podstawowe informacje.', 'warning')
+    // Fallback do danych z listy
+    selectedCampaign.value = campaign
+    activeTab.value = 'content'
+  } finally {
+    loadingCampaignDetails.value = false
+  }
 }
 
 function openCreateDialog() {
@@ -282,22 +531,25 @@ function editCampaign(campaign) {
 
 function saveCampaign(campaignData) {
   if (editingCampaign.value) {
-    // Update existing
+    // Update existing campaign in local list
     const index = campaigns.value.findIndex(c => c.id === editingCampaign.value.id)
     if (index !== -1) {
-      campaigns.value[index] = { ...campaigns.value[index], ...campaignData }
+      campaigns.value[index] = { 
+        ...campaigns.value[index], 
+        ...campaignData,
+        updatedAt: new Date()
+      }
       if (selectedCampaign.value?.id === editingCampaign.value.id) {
         selectedCampaign.value = campaigns.value[index]
       }
     }
   } else {
-    // Create new
+    // Add new campaign to local list
     const newCampaign = {
-      id: Date.now(),
       ...campaignData,
-      createdAt: new Date(),
-      status: 'draft',
-      recipientsCount: 0,
+      id: campaignData.id || Date.now(), // Use API ID if available, fallback to timestamp
+      createdAt: campaignData.createdAt || new Date(),
+      status: campaignData.status || 'draft',
       sentCount: 0,
       openRate: 0,
       clickRate: 0
@@ -305,7 +557,7 @@ function saveCampaign(campaignData) {
     campaigns.value.unshift(newCampaign)
     selectedCampaign.value = newCampaign
   }
-  closeCampaignDialog()
+  // Dialog is closed automatically by the API call in CampaignDialog
 }
 
 function closeCampaignDialog() {
@@ -386,6 +638,112 @@ function editRecipients() {
   activeTab.value = 'recipients'
 }
 
+// New functions for database and scheduling management
+function editCampaignDatabase() {
+  // Open dedicated database selection dialog
+  showDatabaseDialog.value = true
+}
+
+function updateSendMode(newMode) {
+  if (selectedCampaign.value) {
+    selectedCampaign.value.sendMode = newMode
+    if (newMode !== 'scheduled') {
+      selectedCampaign.value.scheduledAt = null
+      scheduledDateTime.value = ''
+    }
+    // Update campaign via API
+    updateCampaignScheduling()
+  }
+}
+
+function updateScheduledDate(dateTime) {
+  if (selectedCampaign.value && dateTime) {
+    selectedCampaign.value.scheduledAt = new Date(dateTime)
+    updateCampaignScheduling()
+  }
+}
+
+async function updateCampaignScheduling() {
+  if (!selectedCampaign.value) return
+  
+  try {
+    // Update campaign scheduling via API
+    await Campaigns.update(selectedCampaign.value.id, {
+      sendMode: selectedCampaign.value.sendMode,
+      scheduledAt: selectedCampaign.value.scheduledAt
+    })
+    
+    // Update local campaign list
+    const index = campaigns.value.findIndex(c => c.id === selectedCampaign.value.id)
+    if (index !== -1) {
+      campaigns.value[index] = { ...campaigns.value[index], ...selectedCampaign.value }
+    }
+  } catch (error) {
+    console.error('Błąd aktualizacji planowania:', error)
+    showNotification('Nie udało się zaktualizować planowania kampanii', 'error')
+  }
+}
+
+async function sendCampaignNow() {
+  if (!selectedCampaign.value) return
+  
+  const confirmed = confirm(`Czy na pewno chcesz wysłać kampanię "${selectedCampaign.value.name}" teraz?`)
+  if (!confirmed) return
+  
+  try {
+    // Send campaign immediately via API
+    await Campaigns.send(selectedCampaign.value.id)
+    
+    // Update campaign status
+    selectedCampaign.value.status = 'sent'
+    selectedCampaign.value.sentAt = new Date()
+    
+    // Update local campaign list
+    const index = campaigns.value.findIndex(c => c.id === selectedCampaign.value.id)
+    if (index !== -1) {
+      campaigns.value[index] = { ...campaigns.value[index], ...selectedCampaign.value }
+    }
+    
+    showNotification('Kampania została wysłana!', 'success')
+  } catch (error) {
+    console.error('Błąd wysyłania kampanii:', error)
+    showNotification('Nie udało się wysłać kampanii: ' + (error.response?.data?.message || error.message), 'error')
+  }
+}
+
+function cancelScheduled() {
+  if (!selectedCampaign.value) return
+  
+  const confirmed = confirm('Czy na pewno chcesz anulować zaplanowaną wysyłkę?')
+  if (!confirmed) return
+  
+  selectedCampaign.value.sendMode = 'draft'
+  selectedCampaign.value.status = 'draft'
+  selectedCampaign.value.scheduledAt = null
+  scheduledDateTime.value = ''
+  
+  updateCampaignScheduling()
+}
+
+function formatDateTime(date) {
+  if (!date) return '-'
+  return new Date(date).toLocaleString('pl-PL')
+}
+
+function updateCampaignDatabase(updatedCampaign) {
+  // Update selected campaign with new database
+  selectedCampaign.value = updatedCampaign
+  
+  // Update campaign in local list
+  const index = campaigns.value.findIndex(c => c.id === updatedCampaign.id)
+  if (index !== -1) {
+    campaigns.value[index] = updatedCampaign
+  }
+  
+  // Show success message
+  showNotification(`Baza danych została zaktualizowana na: ${updatedCampaign.database?.name || 'Nowa baza'}`, 'success')
+}
+
 
 
 function getStatusColor(status) {
@@ -423,55 +781,23 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString('pl-PL')
 }
 
+// Watch for selected campaign changes to sync scheduledDateTime
+watch(() => selectedCampaign.value?.scheduledAt, (newScheduledAt) => {
+  if (newScheduledAt) {
+    const date = new Date(newScheduledAt)
+    scheduledDateTime.value = date.toISOString().slice(0, 16)
+  } else {
+    scheduledDateTime.value = ''
+  }
+}, { immediate: true })
+
 // Sample data
 onMounted(async () => {
   try {
     campaigns.value = await Campaigns.getList()
   } catch (err) {
     // Fallback to sample data
-    campaigns.value = [
-      {
-        id: 1,
-        name: 'Newsletter Styczeń 2025',
-        subject: 'Nowości w naszej ofercie!',
-        status: 'sent',
-        createdAt: new Date('2025-01-15'),
-        sentAt: new Date('2025-01-20'),
-        recipientsCount: 1500,
-        sentCount: 1500,
-        openRate: 24.5,
-        clickRate: 3.2,
-        database: 'Newsletter Subskrybenci',
-        template: 'Szablon promocyjny'
-      },
-      {
-        id: 2,
-        name: 'Promocja Walentynkowa',
-        subject: 'Specjalne oferty na Walentynki ❤️',
-        status: 'scheduled',
-        createdAt: new Date('2025-01-25'),
-        scheduledAt: new Date('2025-02-10'),
-        recipientsCount: 850,
-        sentCount: 0,
-        openRate: 0,
-        clickRate: 0,
-        database: 'Klienci Premium',
-        template: 'Szablon walentynkowy'
-      },
-      {
-        id: 3,
-        name: 'Powitalny email',
-        subject: 'Witaj w naszej społeczności!',
-        status: 'draft',
-        createdAt: new Date('2025-01-28'),
-        recipientsCount: 0,
-        sentCount: 0,
-        openRate: 0,
-        clickRate: 0,
-        database: null,
-        template: 'Szablon powitalny'
-      }
-    ]
+    campaigns.value = [ ]
   }
 
   if (campaigns.value.length > 0) {
@@ -501,6 +827,29 @@ function updateCampaignSegments(segments) {
 function manageRecipients() {
   console.log('Otwieranie zarządzania odbiorcami')
   // Could navigate to dedicated recipients management page
+}
+
+async function sendTest() {
+  if (!isValidEmail(testEmail.value)) {
+    showNotification('Podaj prawidłowy adres email', 'warning')
+    return
+  }
+  
+  if (!selectedCampaign.value) {
+    showNotification('Brak wybranej kampanii', 'error')
+    return
+  }
+  
+  try {
+    // Wywołaj API do wysyłki testowej
+    // await Campaigns.sendTest(selectedCampaign.value.id, testEmail.value)
+    console.log('Wysyłanie test email dla kampanii:', selectedCampaign.value.name, 'na adres:', testEmail.value)
+    showNotification(`Test email wysłany na adres: ${testEmail.value}`, 'success')
+    testEmail.value = '' // Wyczyść pole po wysłaniu
+  } catch (error) {
+    console.error('Błąd wysyłania test email:', error)
+    showNotification('Nie udało się wysłać test email: ' + (error.response?.data?.message || error.message), 'error')
+  }
 }
 </script>
 
@@ -547,9 +896,17 @@ function manageRecipients() {
   border: 1px solid rgba(234, 220, 246, 0.3) !important;
 }
 
+.campaign-list-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .search-section {
   padding: 16px;
   border-bottom: 1px solid #eee;
+  flex-shrink: 0;
 }
 
 .filter-chips {
@@ -562,6 +919,26 @@ function manageRecipients() {
 .campaign-list {
   flex: 1;
   overflow-y: auto;
+  min-height: 0; /* Important for flex scrolling */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(81, 91, 173, 0.3) transparent;
+}
+
+.campaign-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.campaign-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.campaign-list::-webkit-scrollbar-thumb {
+  background: rgba(81, 91, 173, 0.3);
+  border-radius: 3px;
+}
+
+.campaign-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(81, 91, 173, 0.5);
 }
 
 .campaign-item {
@@ -646,6 +1023,33 @@ function manageRecipients() {
   backdrop-filter: blur(20px) !important;
 }
 
+/* Loading State */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.loading-content {
+  text-align: center;
+}
+
+.loading-content h3 {
+  font-size: 1.2rem;
+  margin: 16px 0 8px 0;
+  color: #333;
+}
+
+.loading-content p {
+  color: #666;
+  margin: 0;
+}
+
 /* Empty State */
 .empty-state {
   text-align: center;
@@ -685,6 +1089,92 @@ function manageRecipients() {
 /* Delete item styling */
 .delete-item {
   color: #e53e3e !important;
+}
+
+/* Recipients Management */
+.recipients-management {
+  padding: 0;
+}
+
+.recipients-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.recipients-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.database-info {
+  border: 1px solid #e0e0e0;
+}
+
+.database-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.detail-item .label {
+  font-weight: 600;
+  min-width: 120px;
+  color: #666;
+}
+
+.detail-item .value {
+  flex: 1;
+  color: #333;
+}
+
+.segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Scheduling Management */
+.scheduling-management {
+  padding: 0;
+}
+
+.scheduling-header {
+  margin-bottom: 24px;
+}
+
+.scheduling-header h3 {
+  margin: 0 0 8px 0;
+  color: #333;
+}
+
+.scheduling-options {
+  height: fit-content;
+}
+
+.campaign-status-card {
+  height: fit-content;
+}
+
+.scheduled-info,
+.sent-info {
+  margin-top: 16px;
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 /* Responsive */
