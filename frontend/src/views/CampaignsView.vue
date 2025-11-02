@@ -60,7 +60,7 @@
               <div class="campaign-actions">
                 <v-menu>
                   <template v-slot:activator="{ props }">
-                    <v-btn icon size="small" variant="text" v-bind="props" >
+                    <v-btn icon size="small" variant="text" v-bind="props">
                       <v-icon>mdi-dots-vertical</v-icon>
                     </v-btn>
                   </template>
@@ -95,7 +95,7 @@
               </div>
             </div>
           </div>
-       
+
         </v-card-text>
       </v-card>
     </template>
@@ -103,11 +103,7 @@
       <!-- Loading State -->
       <div v-if="loadingCampaignDetails" class="loading-state">
         <div class="loading-content">
-          <v-progress-circular 
-            indeterminate 
-            color="primary" 
-            size="48"
-          ></v-progress-circular>
+          <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
           <h3>Ładowanie szczegółów kampanii...</h3>
           <p>Pobieranie pełnych informacji o kampanii</p>
         </div>
@@ -115,12 +111,12 @@
 
       <div v-else-if="selectedCampaign" class="campaign-details">
         <!-- Campaign Stats Cards -->
-         <StatGrid :statElements="[
-           { icon: 'mdi-account-group', title: 'Odbiorców', value: selectedCampaign.recipientsCount || 0, class: 'recipients' },
-           { icon: 'mdi-email-send', title: 'Wysłanych', value: selectedCampaign.sentCount || 0, class: 'sent' },
-           { icon: 'mdi-email-open', title: 'Otwartych', value: selectedCampaign.openRate || 0, class: 'opened' },
-           { icon: 'mdi-cursor-pointer', title: 'Kliknięć', value: selectedCampaign.clickRate || 0, class: 'clicks' }
-         ]" />
+        <StatGrid :statElements="[
+          { icon: 'mdi-account-group', title: 'Odbiorców', value: selectedCampaign.recipientsCount || 0, class: 'recipients' },
+          { icon: 'mdi-email-send', title: 'Wysłanych', value: selectedCampaign.sentCount || 0, class: 'sent' },
+          { icon: 'mdi-email-open', title: 'Otwartych', value: selectedCampaign.openRate || 0, class: 'opened' },
+          { icon: 'mdi-cursor-pointer', title: 'Kliknięć', value: selectedCampaign.clickRate || 0, class: 'clicks' }
+        ]" />
 
         <!-- Tabs Section -->
         <v-card class="details-card">
@@ -143,7 +139,8 @@
             <v-window v-model="activeTab">
               <!-- Content Tab -->
               <v-window-item value="content">
-                <CampaignContent :campaign="selectedCampaign" @edit-template="editTemplate" @edit-content="editHtmlContent" />
+                <CampaignContent :campaign="selectedCampaign" @edit-template="editTemplate"
+                  @edit-content="editHtmlContent" />
               </v-window-item>
 
               <!-- Recipients Tab -->
@@ -175,14 +172,8 @@
                         <div class="detail-item" v-if="selectedCampaign.segments && selectedCampaign.segments.length">
                           <span class="label">Segmenty:</span>
                           <div class="segments">
-                            <v-chip 
-                              v-for="segment in selectedCampaign.segments" 
-                              :key="segment.id || segment"
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                              class="mr-1 mb-1"
-                            >
+                            <v-chip v-for="segment in selectedCampaign.segments" :key="segment.id || segment"
+                              size="small" color="primary" variant="outlined" class="mr-1 mb-1">
                               {{ segment.name || segment }}
                             </v-chip>
                           </div>
@@ -195,30 +186,19 @@
                     <v-icon>mdi-alert</v-icon>
                     Nie wybrano bazy odbiorców dla tej kampanii. Kliknij "Zmień bazę odbiorców" aby wybrać bazę.
                   </v-alert>
-                            <!-- Test Sending -->
-          <div class="test-section">
-            <v-divider class="my-4"></v-divider>
-            <h4>Wysyłka testowa</h4>
-            <v-text-field
-              v-model="testEmail"
-              label="Email testowy"
-              placeholder="test@example.com"
-              variant="outlined"
-              density="compact"
-              :rules="emailRules"
-            ></v-text-field>
-            <v-btn 
-              color="info" 
-              variant="outlined" 
-              size="small"
-              @click="sendTest"
-              :disabled="!isValidEmail(testEmail)"
-            >
-              <v-icon left>mdi-email-send</v-icon>
-              Wyślij test
-            </v-btn>
-          </div>
-                  <CampaignRecipients v-if="false":campaign="selectedCampaign" @edit-recipients="editRecipients" />
+                  <!-- Test Sending -->
+                  <div class="test-section">
+                    <v-divider class="my-4"></v-divider>
+                    <h4>Wysyłka testowa</h4>
+                    <v-text-field v-model="testEmail" label="Email testowy" placeholder="test@example.com"
+                      variant="outlined" density="compact" :rules="emailRules"></v-text-field>
+                    <v-btn color="info" variant="outlined" size="small" @click="sendTest"
+                      :disabled="!isValidEmail(testEmail)">
+                      <v-icon left>mdi-email-send</v-icon>
+                      Wyślij test
+                    </v-btn>
+                  </div>
+                  <CampaignRecipients v-if="false" :campaign="selectedCampaign" @edit-recipients="editRecipients" />
                 </div>
               </v-window-item>
 
@@ -239,33 +219,18 @@
                         </v-card-title>
                         <v-card-text>
                           <v-radio-group v-model="selectedCampaign.sendMode" @update:model-value="updateSendMode">
-                            <v-radio 
-                              label="Wyślij natychmiast" 
-                              value="immediate"
-                              :disabled="selectedCampaign.status === 'sent'"
-                            />
-                            <v-radio 
-                              label="Zapisz jako szkic" 
-                              value="draft"
-                              :disabled="selectedCampaign.status === 'sent'"
-                            />
-                            <v-radio 
-                              label="Zaplanuj na później" 
-                              value="scheduled"
-                              :disabled="selectedCampaign.status === 'sent'"
-                            />
+                            <v-radio label="Wyślij natychmiast" value="immediate"
+                              :disabled="selectedCampaign.status === 'sent'" />
+                            <v-radio label="Zapisz jako szkic" value="draft"
+                              :disabled="selectedCampaign.status === 'sent'" />
+                            <v-radio label="Zaplanuj na później" value="scheduled"
+                              :disabled="selectedCampaign.status === 'sent'" />
                           </v-radio-group>
 
                           <div v-if="selectedCampaign.sendMode === 'scheduled'" class="mt-4">
-                            <v-text-field
-                              v-model="scheduledDateTime"
-                              label="Data i godzina wysyłki"
-                              type="datetime-local"
-                              variant="outlined"
-                              density="comfortable"
-                              :min="minDateTime"
-                              @update:model-value="updateScheduledDate"
-                            />
+                            <v-text-field v-model="scheduledDateTime" label="Data i godzina wysyłki"
+                              type="datetime-local" variant="outlined" density="comfortable" :min="minDateTime"
+                              @update:model-value="updateScheduledDate" />
                           </div>
                         </v-card-text>
                       </v-card>
@@ -280,12 +245,8 @@
                           Status kampanii
                         </v-card-title>
                         <v-card-text>
-                          <v-chip 
-                            :color="getStatusColor(selectedCampaign.status)" 
-                            size="large" 
-                            variant="elevated"
-                            class="mb-3"
-                          >
+                          <v-chip :color="getStatusColor(selectedCampaign.status)" size="large" variant="elevated"
+                            class="mb-3">
                             {{ getStatusLabel(selectedCampaign.status) }}
                           </v-chip>
 
@@ -304,23 +265,14 @@
                           </div>
 
                           <div class="action-buttons mt-4">
-                            <v-btn 
-                              v-if="selectedCampaign.status === 'draft'" 
-                              color="success" 
-                              variant="elevated"
-                              @click="sendCampaignNow"
-                              :disabled="!selectedCampaign.database"
-                            >
+                            <v-btn v-if="selectedCampaign.status === 'draft'" color="success" variant="elevated"
+                              @click="sendCampaignNow" :disabled="!selectedCampaign.database">
                               <v-icon left>mdi-send</v-icon>
                               Wyślij teraz
                             </v-btn>
 
-                            <v-btn 
-                              v-if="selectedCampaign.status === 'scheduled'" 
-                              color="warning" 
-                              variant="outlined"
-                              @click="cancelScheduled"
-                            >
+                            <v-btn v-if="selectedCampaign.status === 'scheduled'" color="warning" variant="outlined"
+                              @click="cancelScheduled">
                               <v-icon left>mdi-calendar-remove</v-icon>
                               Anuluj planowanie
                             </v-btn>
@@ -385,11 +337,8 @@
     </v-dialog>
 
     <!-- Database Selection Dialog -->
-    <DatabaseSelectionDialog 
-      v-model="showDatabaseDialog" 
-      :campaign="selectedCampaign"
-      @database-changed="updateCampaignDatabase"
-    />
+    <DatabaseSelectionDialog v-model="showDatabaseDialog" :campaign="selectedCampaign"
+      @database-changed="updateCampaignDatabase" />
 
     <!-- HTML Content Editor Dialog -->
     <v-dialog v-model="showHtmlEditor" max-width="1200px" persistent>
@@ -402,37 +351,26 @@
             </v-btn>
           </div>
         </v-card-title>
-        
+
         <v-card-text class="pa-0">
           <div class="editor-container">
-            <!-- QuillEditor zgodnie z oficjalną dokumentacją -->
-            <QuillEditor
+            <editor
               :key="editorKey"
-              v-model:content="htmlEditorContent"
-              contentType="html"
-              :toolbar="toolbarOptions"
-              placeholder="Wprowadź treść kampanii email..."
-              theme="snow"
-              @ready="onEditorReady"
-              @update:content="onContentUpdate"
+              api-key="2p3hkyrffhcego8910cy6tydhz46fsjjz1jst5bidxga9e58"
+              v-model="htmlEditorContent"
+              :init="editorConfig"
+              :inline="false"
               style="height: 500px;"
             />
-          </div>
+             </div>
         </v-card-text>
-        
+
         <v-card-actions class="pa-4">
           <v-spacer />
-          <v-btn 
-            variant="text" 
-            @click="cancelHtmlEdit"
-          >
+          <v-btn variant="text" @click="cancelHtmlEdit">
             Anuluj
           </v-btn>
-          <v-btn 
-            color="primary" 
-            variant="elevated"
-            @click="saveHtmlContent"
-          >
+          <v-btn color="primary" variant="elevated" @click="saveHtmlContent">
             <v-icon left>mdi-content-save</v-icon>
             Zapisz treść
           </v-btn>
@@ -441,18 +379,10 @@
     </v-dialog>
 
     <!-- Snackbar for notifications -->
-    <v-snackbar
-      v-model="snackbar.show"
-      :color="snackbar.color"
-      timeout="3000"
-      top
-    >
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" top>
       {{ snackbar.message }}
       <template v-slot:actions>
-        <v-btn
-          variant="text"
-          @click="snackbar.show = false"
-        >
+        <v-btn variant="text" @click="snackbar.show = false">
           Zamknij
         </v-btn>
       </template>
@@ -465,8 +395,6 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { QuillEditor } from '@vueup/vue-quill'
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import CampaignContent from '../components/campaigns/CampaignContent.vue'
 import CampaignRecipients from '../components/campaigns/CampaignRecipients.vue'
 import CampaignDialog from '../components/campaigns/CampaignDialog.vue'
@@ -476,6 +404,7 @@ import { Campaigns } from '../services/campaigns.js'
 import StatCard from '../components/StatCard.vue'
 import PageContent from '../components/PageContent.vue'
 import StatGrid from '../components/StatGrid.vue'
+import Editor  from '@tinymce/tinymce-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -496,13 +425,32 @@ const showDatabaseDialog = ref(false)
 const testEmail = ref('')
 const loadingCampaignDetails = ref(false)
 const showHtmlEditor = ref(false)
-const htmlEditorContent = ref('')
+const htmlEditorContent = ref('<p>Wprowadź treść kampanii...</p>')
 const editorKey = ref(0)
 const snackbar = ref({
   show: false,
   message: '',
   color: 'success'
 })
+const editorConfig = {
+  height: 500,
+  menubar: false,
+  readonly: false,
+  setup: (editor) => {
+      editor.on('init', () => {
+        editor.setMode('design')   // 🔥 to wymusza tryb edycji
+      })
+    },
+  plugins: [
+    'advlist autolink lists link charmap preview anchor',
+    'searchreplace visualblocks code insertdatetime table'
+  ],
+  toolbar: 'undo redo | bold italic underline | alignleft aligncenter alignright | bullist numlist | link table | code',
+  content_style: `
+    body { font-family: Arial, sans-serif; font-size: 14px; }
+    .email-container { max-width: 600px; margin: 0 auto; }
+  `
+}
 
 const emailRules = [
   v => !!v || 'Email jest wymagany',
@@ -607,8 +555,8 @@ function saveCampaign(campaignData) {
     // Update existing campaign in local list
     const index = campaigns.value.findIndex(c => c.id === editingCampaign.value.id)
     if (index !== -1) {
-      campaigns.value[index] = { 
-        ...campaigns.value[index], 
+      campaigns.value[index] = {
+        ...campaigns.value[index],
         ...campaignData,
         updatedAt: new Date()
       }
@@ -710,43 +658,42 @@ function editTemplate() {
 async function editHtmlContent() {
   if (selectedCampaign.value) {
     console.log('Otwieranie edytora HTML dla kampanii:', selectedCampaign.value.name)
-    console.log('Aktualna zawartość HTML:', selectedCampaign.value.htmlContent)
     
-    // Ustaw zawartość przed pokazaniem dialogu
-    const content = selectedCampaign.value.htmlContent || '<p>Wprowadź treść kampanii...</p>'
-    htmlEditorContent.value = content
+    // Wyciągnij treść <body> lub użyj całej zawartości, jeśli nie ma <body>
+    htmlEditorContent.value = selectedCampaign.value.htmlContent || '<p>Wprowadź treść kampanii...</p>'
     
-    // Zwiększ klucz edytora żeby go przeładować
+    // Zwiększ klucz edytora, aby wymusić ponowne renderowanie
     editorKey.value++
-    
-    // Pokaż dialog
+    await nextTick()
+    // Pokaż dialog/modal (jeśli używasz)
     showHtmlEditor.value = true
-    
-    console.log('Ustawiono zawartość edytora:', content)
+
+
+    console.log('Ustawiono zawartość edytora:', htmlEditorContent.value)
   }
 }
 
 async function saveHtmlContent() {
   if (!selectedCampaign.value) return
-  
+
   try {
-    // VueQuill automatycznie synchronizuje z v-model:content
+
     const htmlContent = htmlEditorContent.value
-    
+
     // Aktualizuj kampanię z nową zawartością HTML
     const updatedCampaign = await Campaigns.update(selectedCampaign.value.id, {
       htmlContent: htmlContent
     })
-    
+
     // Aktualizuj lokalną kopię kampanii
     selectedCampaign.value.htmlContent = htmlContent
-    
+
     // Aktualizuj kampanię w liście
     const index = campaigns.value.findIndex(c => c.id === selectedCampaign.value.id)
     if (index !== -1) {
       campaigns.value[index] = { ...campaigns.value[index], ...updatedCampaign }
     }
-    
+
     showHtmlEditor.value = false
     showNotification('Treść kampanii została zaktualizowana', 'success')
   } catch (error) {
@@ -760,17 +707,9 @@ function cancelHtmlEdit() {
   htmlEditorContent.value = ''
 }
 
-function onEditorReady(quill) {
-  console.log('VueQuill editor ready')
-  // Jeśli jest zawartość do ustawienia, ustaw ją teraz gdy edytor jest gotowy
-  if (htmlEditorContent.value && htmlEditorContent.value !== '<p>Wprowadź treść kampanii...</p>') {
-    quill.root.innerHTML = htmlEditorContent.value
-  }
-}
 
-function onContentUpdate(content) {
-  console.log('Content updated:', content.length, 'characters')
-}
+
+
 
 
 
@@ -809,14 +748,14 @@ function updateScheduledDate(dateTime) {
 
 async function updateCampaignScheduling() {
   if (!selectedCampaign.value) return
-  
+
   try {
     // Update campaign scheduling via API
     await Campaigns.update(selectedCampaign.value.id, {
       sendMode: selectedCampaign.value.sendMode,
       scheduledAt: selectedCampaign.value.scheduledAt
     })
-    
+
     // Update local campaign list
     const index = campaigns.value.findIndex(c => c.id === selectedCampaign.value.id)
     if (index !== -1) {
@@ -830,24 +769,24 @@ async function updateCampaignScheduling() {
 
 async function sendCampaignNow() {
   if (!selectedCampaign.value) return
-  
+
   const confirmed = confirm(`Czy na pewno chcesz wysłać kampanię "${selectedCampaign.value.name}" teraz?`)
   if (!confirmed) return
-  
+
   try {
     // Send campaign immediately via API
     await Campaigns.send(selectedCampaign.value.id)
-    
+
     // Update campaign status
     selectedCampaign.value.status = 'sent'
     selectedCampaign.value.sentAt = new Date()
-    
+
     // Update local campaign list
     const index = campaigns.value.findIndex(c => c.id === selectedCampaign.value.id)
     if (index !== -1) {
       campaigns.value[index] = { ...campaigns.value[index], ...selectedCampaign.value }
     }
-    
+
     showNotification('Kampania została wysłana!', 'success')
   } catch (error) {
     console.error('Błąd wysyłania kampanii:', error)
@@ -857,15 +796,15 @@ async function sendCampaignNow() {
 
 function cancelScheduled() {
   if (!selectedCampaign.value) return
-  
+
   const confirmed = confirm('Czy na pewno chcesz anulować zaplanowaną wysyłkę?')
   if (!confirmed) return
-  
+
   selectedCampaign.value.sendMode = 'draft'
   selectedCampaign.value.status = 'draft'
   selectedCampaign.value.scheduledAt = null
   scheduledDateTime.value = ''
-  
+
   updateCampaignScheduling()
 }
 
@@ -877,13 +816,13 @@ function formatDateTime(date) {
 function updateCampaignDatabase(updatedCampaign) {
   // Update selected campaign with new database
   selectedCampaign.value = updatedCampaign
-  
+
   // Update campaign in local list
   const index = campaigns.value.findIndex(c => c.id === updatedCampaign.id)
   if (index !== -1) {
     campaigns.value[index] = updatedCampaign
   }
-  
+
   // Show success message
   showNotification(`Baza danych została zaktualizowana na: ${updatedCampaign.database?.name || 'Nowa baza'}`, 'success')
 }
@@ -941,7 +880,7 @@ onMounted(async () => {
     campaigns.value = await Campaigns.getList()
   } catch (err) {
     // Fallback to sample data
-    campaigns.value = [ ]
+    campaigns.value = []
   }
 
   // Sprawdź czy jest parametr selectedCampaign z query
@@ -951,7 +890,7 @@ onMounted(async () => {
     const campaignToSelect = campaigns.value.find(c => c.id.toString() === selectedCampaignId.toString());
     if (campaignToSelect) {
       await selectCampaign(campaignToSelect);
-      
+
       // Pokaż komunikat o aktualizacji treści jeśli jest parametr contentUpdated
       if (route.query.contentUpdated) {
         console.log('Treść kampanii została zaktualizowana pomyślnie');
@@ -992,12 +931,12 @@ async function sendTest() {
     showNotification('Podaj prawidłowy adres email', 'warning')
     return
   }
-  
+
   if (!selectedCampaign.value) {
     showNotification('Brak wybranej kampanii', 'error')
     return
   }
-  
+
   try {
     // Wywołaj API do wysyłki testowej
     // await Campaigns.sendTest(selectedCampaign.value.id, testEmail.value)
@@ -1077,7 +1016,8 @@ async function sendTest() {
 .campaign-list {
   flex: 1;
   overflow-y: auto;
-  min-height: 0; /* Important for flex scrolling */
+  min-height: 0;
+  /* Important for flex scrolling */
   scrollbar-width: thin;
   scrollbar-color: rgba(81, 91, 173, 0.3) transparent;
 }

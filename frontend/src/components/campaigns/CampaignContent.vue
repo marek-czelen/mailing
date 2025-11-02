@@ -176,7 +176,7 @@
               variant="outlined" 
               size="small"
               @click="testSend"
-              :disabled="!campaign.template && !campaign.content"
+              :disabled="false"
             >
               <v-icon left>mdi-email-send-outline</v-icon>
               Test email
@@ -195,12 +195,25 @@
       </v-card>
     </div>
   </div>
+    <v-snackbar
+    v-model="snackbar"
+    :color="snackbarColor"
+    timeout="4000"
+  >
+    {{ snackbarText }}
+    <template v-slot:actions>
+      <v-btn color="white" variant="text" @click="snackbar = false">
+        Zamknij
+      </v-btn>
+    </template>
+  </v-snackbar>
 </template>
 
 <script setup>
 import { ref, defineProps, defineEmits } from 'vue'
+import MailingService from '../../services/mailing.js'
 
-defineProps({
+const props = defineProps({
   campaign: {
     type: Object,
     required: true
@@ -209,10 +222,21 @@ defineProps({
 
 defineEmits(['edit-template', 'edit-content'])
 
+// Snackbar
+const snackbar = ref(false)
+const snackbarText = ref('')
+const snackbarColor = ref('success')
+
 // Reactive data
 const previewDevice = ref('desktop')
 
 // Methods
+function showSnackbar(text, color = 'success') {
+  snackbarText.value = text
+  snackbarColor.value = color
+  snackbar.value = true
+}
+
 function formatDate(date) {
   if (!date) return '-'
   return new Date(date).toLocaleDateString('pl-PL')
@@ -262,8 +286,20 @@ function getSendModeLabel(sendMode) {
 }
 
 function testSend() {
-  console.log('Wysyłanie test email dla kampanii:', campaign.name)
-  // Implement test email functionality
+  console.log('Wysyłanie test email dla kampanii:', props.campaign.name)
+
+  MailingService.sendTestEmail(
+    "czelen@verx.pl",
+    props.campaign.subject || "Testowy email",
+    props.campaign.htmlContent || "<p>Brak treści do wysłania</p>"
+  )
+  .then(response => {
+    console.log('Test email wysłany pomyślnie:', response)
+    showSnackbar( 'Testowy email został wysłany', 'success')
+  })
+  .catch(error => {
+    console.error('Błąd podczas wysyłania testowego e-maila:', error)
+  })
 }
 
 function previewInBrowser() {

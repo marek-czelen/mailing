@@ -22,6 +22,8 @@ import {
     contactAdd
 } from '../controller/mailing.js';
 
+import { sendEmail } from '../controller/mailProcessing.js';
+
 const router = express.Router();
 
 // Pobierz wszystkie kampanie
@@ -81,5 +83,7 @@ router.post('/contactUpdate', contactUpdate);
 
 // Dodaj nowy kontakt do bazy danych (wymaga tokena JWT)
 router.post('/contactAdd', contactAdd);
+
+router.post('/sendEmail', sendEmail);
 
 export default router;

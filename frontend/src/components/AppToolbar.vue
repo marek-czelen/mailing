@@ -74,20 +74,44 @@
             </template>
             <v-list-item-title>Wyloguj</v-list-item-title>
           </v-list-item>
+          <v-list-item @click="settings" class="menu-item">
+            <template v-slot:prepend>
+              <svg viewBox="0 0 24 24" width="20" height="20">
+                <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.63l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.36 7.36 0 0 0-1.66-.96l-.36-2.57A.5.5 0 0 0 13.6 2h-3.2a.5.5 0 0 0-.49.42L9.55 5a7.36 7.36 0 0 0-1.66.96l-2.39-.96a.5.5 0 0 0-.6.22L2.98 9.5a.5.5 0 0 0 .12.63l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L3.1 15.2a.5.5 0 0 0-.12.63l1.92 3.32c.14.24.43.34.68.25l2.39-.96c.5.29 1.02.52 1.66.7l.36 2.57c.05.27.28.42.49.42h3.2c.25 0 .45-.15.49-.42l.36-2.57c.64-.18 1.16-.41 1.66-.7l2.39.96c.25.09.54-.01.68-.25l1.92-3.32a.5.5 0 0 0-.12-.63l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/>
+              </svg>
+            </template>
+            <v-list-item-title>Ustawienia</v-list-item-title>
+          </v-list-item>          
         </v-list>
+        
       </v-menu>
     </div>
   </div>
 </div>
+
+<!-- User Settings Dialog -->
+<UserSettingsDialog
+  v-model="showSettingsDialog"
+  v-model:user="currentUser"
+  v-model:customer-settings="customerSettings"
+  @settings-saved="onSettingsSaved"
+/>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Account } from '../services/account';
+import { CustomerService } from '../services/customer';
+import UserSettingsDialog from './UserSettingsDialog.vue';
 
 const router = useRouter();
 const isMobile = ref(false);
+
+// Dialog state
+const showSettingsDialog = ref(false);
+const currentUser = ref(null);
+const customerSettings = ref(null);
 
 // Define emits
 const emit = defineEmits(['toggle-drawer']);
@@ -97,9 +121,17 @@ function checkMobile() {
   isMobile.value = window.innerWidth < 768;
 }
 
-onMounted(() => {
+onMounted(async () => {
   checkMobile();
   window.addEventListener('resize', checkMobile);
+  
+  // Pobierz ID bieżącego klienta
+  try {
+    customerSettings.value = await  CustomerService.getCurrentCustomerSettings();
+    currentUser.value = await Account.getCurrentUser();
+  } catch (error) {
+    console.warn('Nie udało się pobrać danych bieżącego klienta:', error);
+  }
 });
 
 onUnmounted(() => {
@@ -109,6 +141,18 @@ onUnmounted(() => {
 function logout() {
   Account.logout();
   router.push('/login');
+}
+
+function settings() {
+  // Otwórz dialog ustawień zamiast przekierowania
+  showSettingsDialog.value = true;
+}
+
+function onSettingsSaved(settingsData) {
+  // Odśwież cache ustawień klienta
+  CustomerService.clearCustomerSettingsCache();
+  
+  console.log('Ustawienia zostały zapisane:', settingsData);
 }
 </script>
 
@@ -280,6 +324,11 @@ function logout() {
 
 .logout-item {
   color: #e53e3e;
+  transition: all 0.3s ease;
+}
+
+.menu-item {
+  color: #010101;
   transition: all 0.3s ease;
 }
 

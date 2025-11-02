@@ -7,7 +7,7 @@ import {unauthorized} from './include/errors.js';
 import MailingTask from './tasks/mailingTask.js';
 
 import authRouter from './routes/auth.js';
-import usersRouter from './routes/users.js';
+import customerRouter from './routes/customers.js';
 import adminRouter from "./routes/admin.js";
 import mailinngRouter from "./routes/mailing.js";
 import uploadRoutes from './plugin/upload.js';
@@ -53,7 +53,7 @@ app.all('*', function(req, res, next)
 
 //router
 app.use('/auth', authRouter);
-app.use('/users', usersRouter);
+app.use('/customers', customerRouter);
 app.use('/admin', adminRouter);
 app.use('/mailing', mailinngRouter);
 app.use('/templates', templateRoutes);

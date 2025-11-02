@@ -167,7 +167,6 @@
                   contentType="html"
                   theme="snow"
                   placeholder="Wprowadź lub wklej kod HTML swojego emaila..."
-                  :toolbar="quillToolbarOptions"
                   style="min-height: 300px;"
                 />
               </div>
@@ -325,17 +324,6 @@ const availableSegments = ref([
   { title: 'VIP', value: 'vip' }
 ])
 
-// VueQuill configuration
-const quillToolbarOptions = [
-  [{ header: [1, 2, 3, 4, 5, 6, false] }],
-  ['bold', 'italic', 'underline', 'strike'],
-  [{ color: [] }, { background: [] }],
-  [{ list: 'ordered' }, { list: 'bullet' }],
-  [{ align: [] }],
-  ['link', 'image'],
-  ['code-block'],
-  ['clean']
-]
 
 // Validation rules
 const rules = {

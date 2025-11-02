@@ -38,10 +38,35 @@ const Customers = sequelize.define('customers', {
       field: "smtp_from",
       allowNull: true
     },
-    unsubscribeUrl: {
+    rodoFooter: {
       type: DataTypes.STRING,
-      field: "unsubscribe_url",
+      field: "rodo_footer",
       allowNull: true
+    },
+    internalMailServer: {
+      type: DataTypes.BOOLEAN,
+      field: "use_internal_mail_server",
+      allowNull: true
+    },
+    companyName:{
+      type: DataTypes.STRING,
+      field: "company_name"
+    },
+    companyAddressLine1:{
+      type: DataTypes.STRING,
+      field: "company_address_line_1"
+    },
+    companyAddressLine2:{
+      type: DataTypes.STRING,
+      field: "company_address_line_2"
+    },
+    companyAddressCity:{
+      type: DataTypes.STRING,
+      field: "company_address_city"
+    },
+    companyAddressPostalCode:{
+      type: DataTypes.STRING,
+      field: "company_address_postal_code"
     },
     active:{
       type: DataTypes.BOOLEAN,

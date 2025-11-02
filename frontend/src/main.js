@@ -28,11 +28,10 @@ import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'
 import vuetify from './plugins/vuetify'
-import { QuillEditor } from '@vueup/vue-quill'
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import WebFont from 'webfontloader';
 
 import '@mdi/font/css/materialdesignicons.css';
+
 
 WebFont.load({
 	google: {
@@ -42,5 +41,4 @@ WebFont.load({
 createApp(App)
 	.use(router)
 	.use(vuetify)
-	.component('QuillEditor', QuillEditor)
 	.mount('#app')

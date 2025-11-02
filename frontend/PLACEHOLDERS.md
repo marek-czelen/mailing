@@ -38,6 +38,18 @@ Ten dokument opisuje dostępne placeholdery używane w kampaniach email marketin
 - **Użycie**: W stopkach i nagłówkach
 - **Przykład**: `© {{COMPANY_NAME}} - Wszystkie prawa zastrzeżone`
 
+### `{{COMPANY_ADDRESS}}`
+- **Opis**: Pełny adres firmy nadawcy
+- **Użycie**: W stopkach RODO i formalnych dokumentach
+- **Przykład**: `Adres: {{COMPANY_ADDRESS}}`
+- **Format**: Łączy wszystkie części adresu (ulica, miasto, kod pocztowy)
+
+### `{{UNSUBSCRIBE_LINK}}`
+- **Opis**: Gotowy link HTML do wypisania się z listy mailingowej
+- **Użycie**: W stopkach RODO jako klikalne łącze
+- **Przykład**: `{{UNSUBSCRIBE_LINK}}` (renderuje się jako pełny link HTML)
+- **Format**: `<a href="URL_DO_WYPISANIA">Wypisz się z listy mailingowej</a>`
+
 ### `{{CAMPAIGN_NAME}}`
 - **Opis**: Nazwa kampanii
 - **Użycie**: W temacie lub treści dla identyfikacji
@@ -56,13 +68,34 @@ Ten dokument opisuje dostępne placeholdery używane w kampaniach email marketin
 <div style="font-size: 12px; color: #666; text-align: center;">
   <p>Otrzymujesz ten email, ponieważ wyraziłeś zgodę na otrzymywanie informacji od {{COMPANY_NAME}}.</p>
   <p>Twoje dane są przetwarzane zgodnie z RODO.</p>
-  <p>
-    <a href="{{UNSUBSCRIBE_URL}}?contactId={{CONTACT_ID}}">
-      Wypisz się z listy mailingowej
-    </a>
-  </p>
+  <p>Adres administratora danych: {{COMPANY_ADDRESS}}</p>
+  <p>{{UNSUBSCRIBE_LINK}}</p>
   <p>Email wysłany do: {{CONTACT_EMAIL}}</p>
 </div>
+```
+
+## Stopka RODO - automatyczne generowanie
+
+System posiada funkcję automatycznego generowania stopki RODO zgodnej z przepisami. Stopka zawiera:
+
+- Informacje o administratorze danych ({{COMPANY_NAME}})
+- Adres firmy ({{COMPANY_ADDRESS}})
+- Link do wypisania się z bazy ({{UNSUBSCRIBE_LINK}})
+- Informacje o prawach osoby, której dane dotyczą
+
+### Przykład wygenerowanej stopki RODO:
+
+```html
+Zgodnie z Rozporządzeniem Parlamentu Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. w sprawie ochrony osób fizycznych w związku z przetwarzaniem danych osobowych i w sprawie swobodnego przepływu takich danych oraz uchylenia dyrektywy 95/46/WE (RODO), informujemy, że:
+
+Administrator danych: {{COMPANY_NAME}}
+Adres: {{COMPANY_ADDRESS}}
+
+Przetwarzamy Państwa dane osobowe w celu prowadzenia działań marketingowych. Mają Państwo prawo do wycofania zgody w dowolnym momencie.
+
+Jeśli nie chcą Państwo otrzymywać dalszych wiadomości, mogą się Państwo wypisać z listy mailingowej klikając: {{UNSUBSCRIBE_LINK}}
+
+W przypadku pytań dotyczących przetwarzania danych osobowych, prosimy o kontakt na adres: {{COMPANY_NAME}}.
 ```
 
 ## Uwagi techniczne

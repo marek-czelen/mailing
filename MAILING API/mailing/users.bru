@@ -1,0 +1,15 @@
+meta {
+  name: users
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{backendUrl}}/users
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

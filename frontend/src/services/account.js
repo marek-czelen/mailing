@@ -1,6 +1,14 @@
 import axios from 'axios';
 
 export class Account {
+  /**
+   * Pobiera token autoryzacji z localStorage
+   * @returns {string|null} Token autoryzacji
+   */
+  static getAuthToken() {
+    return localStorage.getItem('authToken');
+  }
+
   static IsLoggedIn() {
     return !!localStorage.getItem('auth_token');
   }

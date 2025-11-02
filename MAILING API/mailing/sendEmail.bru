@@ -1,0 +1,36 @@
+meta {
+  name: sendEmail
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{backendUrl}}/mailing/sendEmail
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "smtp": {
+      "host": "mail.aculeo.pl",
+      "port": 465,
+      "secure": true,
+      "ignoreTLS": true,
+      "auth": {
+        "user": "sprzedaz@verx.pl",
+        "pass": "Verx@123!"
+      }
+    },
+    "from": "sprzedaz@verx.pl",
+    "to": [
+      "czelen@verx.pl"
+    ],
+    "subject": "Test Email",
+    "html": "<h1>Hello World</h1>"
+  }
+}
