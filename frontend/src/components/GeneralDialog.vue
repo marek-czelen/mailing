@@ -22,7 +22,11 @@
       <v-card-actions class="dialog-actions">
         <slot name="actions">
           <v-spacer />
-          <v-btn variant="text" @click="close">Anuluj</v-btn>
+          <v-btn variant="text" v-if="cancelButton" @click="close">Anuluj</v-btn>
+          <v-btn color="primary" variant="elevated" v-if="saveButton" @click="save">
+            <v-icon left>mdi-content-save</v-icon>
+            Zapisz
+          </v-btn>
         </slot>
       </v-card-actions>
     </v-card>
@@ -36,6 +40,8 @@ const props = defineProps({
   modelValue: Boolean,
   title: { type: String, default: '' },
   maxWidth: { type: String, default: '600px' },
+  saveButton: { type: Boolean, default: false },
+  cancelButton: { type: Boolean, default: true },
   persistent: { type: Boolean, default: true }
 })
 
@@ -43,6 +49,11 @@ const emit = defineEmits(['update:modelValue', 'close'])
 
 function close() {
   emit('close')
+  emit('update:modelValue', false)
+}
+
+function save() {
+  emit('save')
   emit('update:modelValue', false)
 }
 </script>
@@ -72,8 +83,8 @@ function close() {
 }
 
 .dialog-content {
-  padding: 32px !important;
-  max-height: 70vh;
+  
+  max-height: 80vh;
   overflow-y: auto;
 }
 

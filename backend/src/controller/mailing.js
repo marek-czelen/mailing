@@ -15,6 +15,7 @@ import OpenAI from "openai";
 import fetch from "node-fetch";
 import fs from 'fs';
 import Auth from '../include/auth.js';
+import Sequelize from 'sequelize';
 // Pobierz wszystkie kampanie
 export async function getCampaignsList(req, res) {
     try {
@@ -1012,6 +1013,43 @@ export async function getDatabasesList(req, res) {
         res.send(new Response(databases, true, "Databases retrieved successfully."));
     } catch (error) {
         res.send(new Response(null, false, `Failed to fetch databases. ${error.message}`));
+    }
+}
+
+// Pobierz jedną nieusuniętą bazę danych po ID
+export async function getDatabaseInfoById(req, res) {
+    try {
+        const database = await Databases.findOne({
+            where: {
+                id: req.params.id,
+                deleted_at: null
+            }
+        });
+        if (!database) {
+            return res.send(new Response(null, false, "Database not found."));
+        }
+        const emailCount = await MailAddress.count({
+            where: {
+                databaseId: database.id
+            }
+        });
+        const activeEmailCount = await MailAddress.count({
+            where: {
+                databaseId: database.id
+            },
+            group:['active']
+        })
+        const unsubscribedEmailCount = await MailAddress.count({
+            where: {
+                databaseId: database.id,
+                unsubscribesDate: {
+                    [Sequelize.Op.ne]: null
+                }
+            }
+        });
+        res.send(new Response({ database, emailCount, activeEmailCount, unsubscribedEmailCount }, true, "Database retrieved successfully."));
+    } catch (error) {
+        res.send(new Response(null, false, `Failed to fetch database. ${error.message}`));
     }
 }
 

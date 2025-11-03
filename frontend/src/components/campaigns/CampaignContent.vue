@@ -7,6 +7,7 @@
       </div>
       <div class="header-buttons">
         <v-btn 
+          disabled
           color="primary" 
           variant="outlined"
           @click="$emit('edit-template')"
@@ -73,23 +74,7 @@
             </div>
           </div>
 
-          <!-- Device Preview Toggle -->
-          <div class="device-toggle">
-            <v-btn-toggle v-model="previewDevice" mandatory>
-              <v-btn value="desktop" size="small">
-                <v-icon>mdi-monitor</v-icon>
-                Desktop
-              </v-btn>
-              <v-btn value="tablet" size="small">
-                <v-icon>mdi-tablet</v-icon>
-                Tablet
-              </v-btn>
-              <v-btn value="mobile" size="small">
-                <v-icon>mdi-cellphone</v-icon>
-                Mobile
-              </v-btn>
-            </v-btn-toggle>
-          </div>
+
         </v-card-text>
       </v-card>
 
@@ -100,75 +85,22 @@
           Szczegóły treści
         </v-card-title>
         <v-card-text>
-          <div class="detail-section">
-            <h4>Szablon</h4>
-            <div v-if="campaign.template" class="template-info">
-              <div class="template-name">
-                <v-icon color="primary">mdi-email-variant</v-icon>
-                <span>{{ getTemplateName(campaign.template) }}</span>
-              </div>
-              <div class="template-description">
-                {{ getTemplateDescription(campaign.template) }}
-              </div>
-            </div>
-            <div v-else class="no-template-info">
-              <v-icon color="grey">mdi-email-off-outline</v-icon>
-              <span>Brak wybranego szablonu</span>
-            </div>
-          </div>
 
           <div class="detail-section">
-            <h4>Śledzenie</h4>
-            <div class="tracking-options">
-              <div class="tracking-item">
-                <v-icon 
-                  :color="campaign.trackOpens ? 'success' : 'grey'" 
-                  size="20"
-                >
-                  {{ campaign.trackOpens ? 'mdi-check-circle' : 'mdi-close-circle' }}
-                </v-icon>
-                <span>Śledzenie otwarć</span>
-              </div>
-              <div class="tracking-item">
-                <v-icon 
-                  :color="campaign.trackClicks ? 'success' : 'grey'" 
-                  size="20"
-                >
-                  {{ campaign.trackClicks ? 'mdi-check-circle' : 'mdi-close-circle' }}
-                </v-icon>
-                <span>Śledzenie kliknięć</span>
-              </div>
-              <div class="tracking-item">
-                <v-icon 
-                  :color="campaign.trackUnsubscribes ? 'success' : 'grey'" 
-                  size="20"
-                >
-                  {{ campaign.trackUnsubscribes ? 'mdi-check-circle' : 'mdi-close-circle' }}
-                </v-icon>
-                <span>Śledzenie wypisań</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="detail-section">
-            <h4>Ustawienia wysyłki</h4>
+            <h4>SPAM rating</h4>
             <div class="sending-info">
               <div class="info-row">
-                <span class="info-label">Tryb wysyłki:</span>
-                <v-chip size="small" :color="getSendModeColor(campaign.sendMode)" variant="elevated">
-                  {{ getSendModeLabel(campaign.sendMode) }}
-                </v-chip>
+                <span class="info-label">Spam rating:</span>
+                <span class="info-label">{{ campaign.scoring || 0 }}/100</span>
               </div>
-              <div class="info-row">
-                <span class="info-label">Szybkość:</span>
-                <span>{{ campaign.sendRate || 100 }} emaili/min</span>
-              </div>
-              <div v-if="campaign.scheduledAt && campaign.sendMode === 'scheduled'" class="info-row">
-                <span class="info-label">Zaplanowane na:</span>
-                <span>{{ formatDateTime(campaign.scheduledAt) }}</span>
+              <div v-for="(value, index) in campaign.suggestions" :key="index"
+                class="info-row">
+                <span :style="`color: ${value.scoreValue <= 0 ? '#4caf50' : '#f44336'};`" class= "info-label">{{ value.problem }}</span>
+                <span :style="`color: ${value.scoreValue <= 0 ? '#4caf50' : '#f44336'};`" class="info-label">{{ value.scoreValue }}</span>
               </div>
             </div>
           </div>
+
 
           <!-- Content Actions -->
           <div class="content-actions">
@@ -185,7 +117,7 @@
               variant="outlined" 
               size="small"
               @click="previewInBrowser"
-              :disabled="!campaign.template && !campaign.content"
+              disabled
             >
               <v-icon left>mdi-web</v-icon>
               Podgląd w przeglądarce
@@ -510,6 +442,7 @@ function previewInBrowser() {
 
 /* Details Card */
 .detail-section {
+  margin-top: 16px;
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 1px solid #f0f0f0;
@@ -568,6 +501,14 @@ function previewInBrowser() {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.info-label-positive{
+  color: #4caf50;
+}
+
+.info-label-negative{
+  color: #f44336;
 }
 
 .info-label {

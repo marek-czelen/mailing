@@ -21,7 +21,9 @@
             <v-text-field v-model="searchQuery" placeholder="Wyszukaj kampanię..." prepend-inner-icon="mdi-magnify"
               variant="outlined" density="comfortable" hide-details />
             <div class="filter-chips">
-              <v-chip v-for="status in statusFilters" :key="status.value"
+              <v-chip
+                disabled 
+                v-for="status in statusFilters" :key="status.value"
                 :variant="statusFilter === status.value ? 'elevated' : 'outlined'"
                 :color="statusFilter === status.value ? 'primary' : 'default'" size="small"
                 @click="statusFilter = statusFilter === status.value ? '' : status.value">
@@ -43,18 +45,9 @@
                 <h4 class="campaign-name">{{ campaign.name }}</h4>
                 <div class="campaign-meta">
                   <span class="recipients-count">
-                    <v-icon size="16">mdi-account-group</v-icon>
-                    {{ campaign.recipientsCount || 0 }} odbiorców
+                    {{ campaign.subject || '' }}
                   </span>
-                  <span class="campaign-date">{{ formatDate(campaign.createdAt) }}</span>
-                </div>
-                <div class="campaign-status">
-                  <v-chip :color="getStatusColor(campaign.status)" size="small" variant="elevated">
-                    {{ getStatusLabel(campaign.status) }}
-                  </v-chip>
-                  <span v-if="campaign.openRate" class="open-rate">
-                    {{ campaign.openRate }}% otwarć
-                  </span>
+                  <span class="campaign-date">{{ formatDate(campaign.dateStart) }}</span>
                 </div>
               </div>
               <div class="campaign-actions">
@@ -71,16 +64,11 @@
                         Edytuj
                       </v-list-item-title>
                     </v-list-item>
-                    <v-list-item @click="duplicateCampaign(campaign)">
+                    <v-list-item disabled
+                      @click="duplicateCampaign(campaign)">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-content-copy</v-icon>
                         Duplikuj
-                      </v-list-item-title>
-                    </v-list-item>
-                    <v-list-item @click="previewCampaign(campaign)">
-                      <v-list-item-title>
-                        <v-icon left size="16">mdi-eye</v-icon>
-                        Podgląd
                       </v-list-item-title>
                     </v-list-item>
                     <v-divider />
@@ -112,10 +100,8 @@
       <div v-else-if="selectedCampaign" class="campaign-details">
         <!-- Campaign Stats Cards -->
         <StatGrid :statElements="[
-          { icon: 'mdi-account-group', title: 'Odbiorców', value: selectedCampaign.recipientsCount || 0, class: 'recipients' },
-          { icon: 'mdi-email-send', title: 'Wysłanych', value: selectedCampaign.sentCount || 0, class: 'sent' },
-          { icon: 'mdi-email-open', title: 'Otwartych', value: selectedCampaign.openRate || 0, class: 'opened' },
-          { icon: 'mdi-cursor-pointer', title: 'Kliknięć', value: selectedCampaign.clickRate || 0, class: 'clicks' }
+          { icon: 'mdi-account-group', title: 'Odbiorców', value: selectedCampaign.databaseInfo?.emailCount || 0, class: 'recipients' },
+          { icon: 'mdi-email-send', title: 'Wypisanych', value: selectedCampaign.databaseInfo?.unsubscribedEmailCount || 0, class: 'sent' },
         ]" />
 
         <!-- Tabs Section -->
@@ -154,7 +140,7 @@
                     </v-btn>
                   </div>
 
-                  <v-card v-if="selectedCampaign.database" class="database-info mb-4">
+                  <v-card v-if="selectedCampaign.databaseInfo?.database" class="database-info mb-4">
                     <v-card-title class="pb-2">
                       <v-icon left color="primary">mdi-database</v-icon>
                       Aktualna baza odbiorców
@@ -163,11 +149,11 @@
                       <div class="database-details">
                         <div class="detail-item">
                           <span class="label">Nazwa bazy:</span>
-                          <span class="value">{{ selectedCampaign.database.name || selectedCampaign.database }}</span>
+                          <span class="value">{{ selectedCampaign.databaseInfo?.database.name }}</span>
                         </div>
                         <div class="detail-item">
                           <span class="label">Liczba kontaktów:</span>
-                          <span class="value">{{ selectedCampaign.recipientsCount || 0 }}</span>
+                          <span class="value">{{ selectedCampaign.databaseInfo?.emailCount || 0 }}</span>
                         </div>
                         <div class="detail-item" v-if="selectedCampaign.segments && selectedCampaign.segments.length">
                           <span class="label">Segmenty:</span>
@@ -186,18 +172,7 @@
                     <v-icon>mdi-alert</v-icon>
                     Nie wybrano bazy odbiorców dla tej kampanii. Kliknij "Zmień bazę odbiorców" aby wybrać bazę.
                   </v-alert>
-                  <!-- Test Sending -->
-                  <div class="test-section">
-                    <v-divider class="my-4"></v-divider>
-                    <h4>Wysyłka testowa</h4>
-                    <v-text-field v-model="testEmail" label="Email testowy" placeholder="test@example.com"
-                      variant="outlined" density="compact" :rules="emailRules"></v-text-field>
-                    <v-btn color="info" variant="outlined" size="small" @click="sendTest"
-                      :disabled="!isValidEmail(testEmail)">
-                      <v-icon left>mdi-email-send</v-icon>
-                      Wyślij test
-                    </v-btn>
-                  </div>
+
                   <CampaignRecipients v-if="false" :campaign="selectedCampaign" @edit-recipients="editRecipients" />
                 </div>
               </v-window-item>
@@ -219,11 +194,11 @@
                         </v-card-title>
                         <v-card-text>
                           <v-radio-group v-model="selectedCampaign.sendMode" @update:model-value="updateSendMode">
-                            <v-radio label="Wyślij natychmiast" value="immediate"
+                            <v-radio disabled label="Wyślij natychmiast" value="immediate"
                               :disabled="selectedCampaign.status === 'sent'" />
-                            <v-radio label="Zapisz jako szkic" value="draft"
+                            <v-radio disabled label="Zapisz jako szkic" value="draft"
                               :disabled="selectedCampaign.status === 'sent'" />
-                            <v-radio label="Zaplanuj na później" value="scheduled"
+                            <v-radio label="Zaplanuj" value="scheduled"
                               :disabled="selectedCampaign.status === 'sent'" />
                           </v-radio-group>
 
@@ -250,10 +225,10 @@
                             {{ getStatusLabel(selectedCampaign.status) }}
                           </v-chip>
 
-                          <div v-if="selectedCampaign.scheduledAt" class="scheduled-info">
+                          <div v-if="selectedCampaign.dateStart" class="scheduled-info">
                             <div class="detail-item">
                               <span class="label">Zaplanowana wysyłka:</span>
-                              <span class="value">{{ formatDateTime(selectedCampaign.scheduledAt) }}</span>
+                              <span class="value">{{ formatDateTime(selectedCampaign.dateStart) }}</span>
                             </div>
                           </div>
 
@@ -340,43 +315,44 @@
     <DatabaseSelectionDialog v-model="showDatabaseDialog" :campaign="selectedCampaign"
       @database-changed="updateCampaignDatabase" />
 
-    <!-- HTML Content Editor Dialog -->
-    <v-dialog v-model="showHtmlEditor" max-width="1200px" persistent>
-      <v-card class="html-editor-dialog">
-        <v-card-title class="dialog-header">
-          <h2>Edycja treści HTML</h2>
-          <div class="dialog-actions">
-            <v-btn icon @click="cancelHtmlEdit">
-              <v-icon>mdi-close</v-icon>
-            </v-btn>
-          </div>
-        </v-card-title>
-
-        <v-card-text class="pa-0">
-          <div class="editor-container">
+    <GeneralDialog 
+      style="z-index: 0;"
+      v-model="showHtmlEditor" 
+      @update:model-value="val => showHtmlEditor = val"
+      title="Edycja treści HTML"
+      :max-width="'1200px'"
+      persistent 
+      >
+      <template #default>
             <editor
               :key="editorKey"
               api-key="2p3hkyrffhcego8910cy6tydhz46fsjjz1jst5bidxga9e58"
               v-model="htmlEditorContent"
               :init="editorConfig"
               :inline="false"
-              style="height: 500px;"
+              style="height: 100%; margin: 0;"
             />
-             </div>
-        </v-card-text>
+        </template>
 
-        <v-card-actions class="pa-4">
-          <v-spacer />
-          <v-btn variant="text" @click="cancelHtmlEdit">
-            Anuluj
-          </v-btn>
-          <v-btn color="primary" variant="elevated" @click="saveHtmlContent">
-            <v-icon left>mdi-content-save</v-icon>
-            Zapisz treść
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+            <template #actions>
+      <v-spacer />
+      <v-btn
+        color="grey darken-1"
+        variant="text"
+        @click="cancelHtmlEdit"
+      >
+        Anuluj
+      </v-btn>
+      <v-btn
+        color="primary"
+        variant="elevated"
+        @click="saveHtmlContent"
+        :loading="loading"
+      >
+        Zapisz
+      </v-btn>
+    </template>
+      </GeneralDialog>
 
     <!-- Snackbar for notifications -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" top>
@@ -401,10 +377,12 @@ import CampaignDialog from '../components/campaigns/CampaignDialog.vue'
 import ScheduleDialog from '../components/campaigns/ScheduleDialog.vue'
 import DatabaseSelectionDialog from '../components/campaigns/DatabaseSelectionDialog.vue'
 import { Campaigns } from '../services/campaigns.js'
+import { Databases } from '../services/databases.js'
 import StatCard from '../components/StatCard.vue'
 import PageContent from '../components/PageContent.vue'
 import StatGrid from '../components/StatGrid.vue'
 import Editor  from '@tinymce/tinymce-vue'
+import GeneralDialog from '../components/GeneralDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -433,23 +411,193 @@ const snackbar = ref({
   color: 'success'
 })
 const editorConfig = {
-  height: 500,
-  menubar: false,
+  height: 600,
+  menubar: true, // Włączamy menubar dla większej funkcjonalności
   readonly: false,
-  setup: (editor) => {
-      editor.on('init', () => {
-        editor.setMode('design')   // 🔥 to wymusza tryb edycji
-      })
-    },
+  
+  // Rozszerzona lista pluginów
   plugins: [
-    'advlist autolink lists link charmap preview anchor',
-    'searchreplace visualblocks code insertdatetime table'
+    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+    'insertdatetime', 'media', 'table', 'help', 'wordcount', 'emoticons',
+    'template', 'textcolor', 'colorpicker', 'textpattern',
+    'codesample', 'hr', 'pagebreak', 'nonbreaking', 'toc', 'imagetools',
+    'quickbars', 'powerpaste', 'importcss'
   ],
-  toolbar: 'undo redo | bold italic underline | alignleft aligncenter alignright | bullist numlist | link table | code',
+  
+  // Zaawansowany toolbar w wielu liniach
+  toolbar1: 'undo redo | bold italic underline strikethrough | subscript superscript | removeformat |bullist numlist | blockquote hr nonbreaking pagebreak | link unlink anchor | image media table | insertdatetime charmap emoticons',
+  toolbar2: 'fontselect fontsizeselect | forecolor backcolor | alignleft aligncenter alignright alignjustify | outdent indent | placeholder',
+  
+  // Konfiguracja menu
+  menu: {
+    file: { title: 'Plik', items: 'newdocument restoredraft | preview | export print | deleteallconversations' },
+    edit: { title: 'Edycja', items: 'undo redo | cut copy paste pastetext | selectall | searchreplace' },
+    view: { title: 'Widok', items: 'code | visualaid visualchars visualblocks | spellchecker | preview fullscreen | showcomments' },
+    insert: { title: 'Wstaw', items: 'image link media addcomment pageembed template codesample inserttable | charmap emoticons hr | pagebreak nonbreaking anchor tableofcontents | insertdatetime' },
+    format: { title: 'Format', items: 'bold italic underline strikethrough superscript subscript codeformat | styles blocks fontfamily fontsize align lineheight | forecolor backcolor | language | removeformat' },
+    tools: { title: 'Narzędzia', items: 'spellchecker spellcheckerlanguage | a11ycheck code wordcount' },
+    table: { title: 'Tabela', items: 'inserttable | cell row column | advtablesort | tableprops deletetable' }
+  },
+  
+  // Konfiguracja obrazków
+  image_advtab: true,
+  image_caption: true,
+  image_list: false,
+  
+  // Konfiguracja linków
+  link_list: false,
+  link_context_toolbar: true,
+  
+  // Konfiguracja tabel
+  table_toolbar: 'tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol',
+  table_appearance_options: true,
+  table_grid: true,
+  table_resize_bars: true,
+  
+  // Szybkie paski narzędzi
+  quickbars_selection_toolbar: 'bold italic | quicklink h2 h3 blockquote quickimage quicktable',
+  quickbars_insert_toolbar: 'quickimage quicktable | hr pagebreak',
+  
+  // Ustawienia czcionek
+  font_formats: 'Arial=arial,helvetica,sans-serif; Courier New=courier new,courier,monospace; AkrutiKndPadmini=Akpdmi-n; Times New Roman=times new roman,times,serif; Verdana=verdana,geneva,sans-serif;',
+  fontsize_formats: '8pt 10pt 12pt 14pt 16pt 18pt 24pt 36pt 48pt',
+  
+  // Szablony dla emaili marketingowych
+  templates: [],
+  
+  // Konfiguracja wklejania
+  paste_data_images: true,
+  paste_as_text: false,
+  paste_retain_style_properties: "color font-size font-family background-color text-decoration text-align",
+  
+  // Automatyczne wzorce tekstu
+  textpattern_patterns: [
+    {start: '*', end: '*', format: 'italic'},
+    {start: '**', end: '**', format: 'bold'},
+    {start: '#', format: 'h1'},
+    {start: '##', format: 'h2'},
+    {start: '###', format: 'h3'},
+    {start: '1. ', cmd: 'InsertOrderedList'},
+    {start: '* ', cmd: 'InsertUnorderedList'},
+    {start: '- ', cmd: 'InsertUnorderedList'}
+  ],
+  
+  // Sprawdzanie pisowni
+  browser_spellcheck: true,
+  
+  setup: (editor) => {
+    editor.on('init', () => {
+      editor.setMode('design') // Wymuszenie trybu edycji
+    })
+    
+    // Dodatkowe przyciski w toolbar
+    editor.ui.registry.addButton('placeholder', {
+      text: 'Placeholder',
+      tooltip: 'Wstaw placeholder',
+      onAction: () => {
+        const placeholders = [
+          '{{CONTACT_FIRST_NAME}}',
+          '{{CONTACT_LAST_NAME}}', 
+          '{{CONTACT_EMAIL}}',
+          '{{COMPANY_NAME}}',
+          '{{COMPANY_ADDRESS}}',
+          '{{UNSUBSCRIBE_LINK}}',
+          '{{CAMPAIGN_NAME}}'
+        ]
+        
+        editor.windowManager.open({
+          title: 'Wybierz placeholder',
+          body: {
+            type: 'panel',
+            items: [{
+              type: 'selectbox',
+              name: 'placeholder',
+              label: 'Placeholder:',
+              items: placeholders.map(p => ({ text: p, value: p }))
+            }]
+          },
+          buttons: [
+            {
+              type: 'cancel',
+              text: 'Anuluj'
+            },
+            {
+              type: 'submit',
+              text: 'Wstaw',
+              primary: true
+            }
+          ],
+          onSubmit: (api) => {
+            const data = api.getData()
+            editor.insertContent(data.placeholder)
+            api.close()
+          }
+        })
+      }
+    })
+  },
+  
+  // Style CSS dla treści
   content_style: `
-    body { font-family: Arial, sans-serif; font-size: 14px; }
-    .email-container { max-width: 600px; margin: 0 auto; }
-  `
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      font-size: 14px; 
+      line-height: 1.6;
+      color: #333;
+      margin: 20px;
+    }
+    .email-container { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    h1, h2, h3 { 
+      color: #2c3e50; 
+      margin-top: 0;
+    }
+    p { 
+      margin-bottom: 16px; 
+    }
+    a { 
+      color: #007bff; 
+      text-decoration: underline;
+    }
+    table { 
+      border-collapse: collapse; 
+      width: 100%; 
+    }
+    td, th { 
+      border: 1px solid #ddd; 
+      padding: 8px; 
+      text-align: left;
+    }
+    th { 
+      background-color: #f2f2f2; 
+      font-weight: bold;
+    }
+    blockquote { 
+      border-left: 4px solid #007bff; 
+      padding-left: 16px; 
+      margin: 16px 0;
+      font-style: italic;
+    }
+    code { 
+      background-color: #f4f4f4; 
+      padding: 2px 4px; 
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+  `,
+  
+  // Ustawienia dodatkowe
+  resize: true,
+  statusbar: true,
+  elementpath: true,
+  branding: false,
+  promotion: false
 }
 
 const emailRules = [
@@ -527,7 +675,8 @@ async function selectCampaign(campaign) {
   try {
     // Pobierz pełne informacje o kampanii z API
     const fullCampaignData = await Campaigns.getCampaignById(campaign.id)
-    selectedCampaign.value = fullCampaignData
+    const databaseInfo = await Databases.getDatabaseInfoById(campaign.databaseId)
+    selectedCampaign.value = { ...fullCampaignData, databaseInfo }  
     activeTab.value = 'content'
   } catch (error) {
     console.error('Błąd pobierania szczegółów kampanii:', error)
@@ -638,7 +787,7 @@ async function deleteCampaign() {
 function handleScheduled(scheduleData) {
   if (selectedCampaign.value) {
     selectedCampaign.value.status = 'scheduled'
-    selectedCampaign.value.scheduledAt = scheduleData.sendAt
+    selectedCampaign.value.dateStart = scheduleData.sendAt
     console.log('Kampania zaplanowana:', scheduleData)
   }
   scheduleDialog.value = false
@@ -684,6 +833,8 @@ async function saveHtmlContent() {
     const updatedCampaign = await Campaigns.update(selectedCampaign.value.id, {
       htmlContent: htmlContent
     })
+
+    selectCampaign(updatedCampaign)
 
     // Aktualizuj lokalną kopię kampanii
     selectedCampaign.value.htmlContent = htmlContent
@@ -731,7 +882,7 @@ function updateSendMode(newMode) {
   if (selectedCampaign.value) {
     selectedCampaign.value.sendMode = newMode
     if (newMode !== 'scheduled') {
-      selectedCampaign.value.scheduledAt = null
+      selectedCampaign.value.dateStart = null
       scheduledDateTime.value = ''
     }
     // Update campaign via API
@@ -741,7 +892,7 @@ function updateSendMode(newMode) {
 
 function updateScheduledDate(dateTime) {
   if (selectedCampaign.value && dateTime) {
-    selectedCampaign.value.scheduledAt = new Date(dateTime)
+    selectedCampaign.value.dateStart = new Date(dateTime)
     updateCampaignScheduling()
   }
 }
@@ -753,7 +904,7 @@ async function updateCampaignScheduling() {
     // Update campaign scheduling via API
     await Campaigns.update(selectedCampaign.value.id, {
       sendMode: selectedCampaign.value.sendMode,
-      scheduledAt: selectedCampaign.value.scheduledAt
+      dateStart: selectedCampaign.value.dateStart
     })
 
     // Update local campaign list
@@ -802,7 +953,7 @@ function cancelScheduled() {
 
   selectedCampaign.value.sendMode = 'draft'
   selectedCampaign.value.status = 'draft'
-  selectedCampaign.value.scheduledAt = null
+  selectedCampaign.value.dateStart = null
   scheduledDateTime.value = ''
 
   updateCampaignScheduling()
@@ -865,7 +1016,7 @@ function formatDate(date) {
 }
 
 // Watch for selected campaign changes to sync scheduledDateTime
-watch(() => selectedCampaign.value?.scheduledAt, (newScheduledAt) => {
+watch(() => selectedCampaign.value?.dateStart, (newScheduledAt) => {
   if (newScheduledAt) {
     const date = new Date(newScheduledAt)
     scheduledDateTime.value = date.toISOString().slice(0, 16)
@@ -884,7 +1035,10 @@ onMounted(async () => {
   }
 
   // Sprawdź czy jest parametr selectedCampaign z query
-  const selectedCampaignId = route.query.selectedCampaign;
+  let selectedCampaignId = route.query.selectedCampaign;
+  if (!selectedCampaignId && campaigns.value.length > 0) {
+    selectedCampaignId = campaigns.value[0].id;
+  }
   if (selectedCampaignId && campaigns.value.length > 0) {
     // Znajdź i wybierz kampanię o danym ID
     const campaignToSelect = campaigns.value.find(c => c.id.toString() === selectedCampaignId.toString());

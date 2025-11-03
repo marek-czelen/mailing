@@ -1,22 +1,13 @@
 <template>
-  <v-dialog v-model="dialog" max-width="700px" persistent>
-    <v-card class="database-dialog">
-      <v-card-title class="dialog-header">
-        <div class="header-content">
-          <div class="header-info">
-            <v-icon left color="white">mdi-database-edit</v-icon>
-            <h2>Zmiana bazy odbiorców</h2>
-          </div>
-          <v-btn icon variant="text" @click="close">
-            <v-icon color="white">mdi-close</v-icon>
-          </v-btn>
-        </div>
-      </v-card-title>
-
-      <v-card-text class="pa-0">
-        <div class="dialog-content">
+  <GeneralDialog
+    v-model="dialog"
+    title="Zmiana bazy odbiorców"
+    :width="'700px'"
+    :persistent="true"
+    >
+    <template #default>
           <!-- Current Database Info -->
-          <div v-if="campaign?.database" class="current-database">
+          <div v-if="campaign?.databaseInfo?.database" class="current-database">
             <div class="section-header">
               <v-icon color="info">mdi-information</v-icon>
               <h3>Aktualna baza odbiorców</h3>
@@ -38,8 +29,7 @@
               </v-card-text>
             </v-card>
           </div>
-
-          <!-- Database Selection -->
+                    <!-- Database Selection -->
           <div class="database-selection">
             <div class="section-header">
               <v-icon color="primary">mdi-database-search</v-icon>
@@ -71,7 +61,7 @@
                 class="database-item"
                 :class="{ 
                   'selected': selectedDatabase?.id === database.id,
-                  'current': campaign?.database?.id === database.id || campaign?.databaseId === database.id
+                  'current': campaign?.databaseInfo?.database?.id === database.id || campaign?.databaseId === database.id
                 }"
                 @click="selectDatabase(database)"
               >
@@ -89,19 +79,13 @@
                       <v-icon size="20" color="primary">mdi-database</v-icon>
                       <span class="name">{{ database.name }}</span>
                       <v-chip 
-                        v-if="campaign?.database?.id === database.id || campaign?.databaseId === database.id"
+                        v-if="campaign?.databaseInfo?.database?.id === database.id || campaign?.databaseId === database.id"
                         size="small" 
                         color="info" 
                         variant="outlined"
                       >
                         Aktualna
                       </v-chip>
-                    </div>
-                    <div class="database-stats">
-                      <span class="contacts-count">
-                        <v-icon size="14">mdi-account-group</v-icon>
-                        {{ formatNumber(database.contactsCount) }} kontaktów
-                      </span>
                     </div>
                   </div>
                   <div v-if="database.description" class="database-description">
@@ -142,11 +126,9 @@
               </div>
             </div>
           </div>
-        </div>
-      </v-card-text>
-
-      <v-card-actions class="dialog-actions">
-        <v-btn variant="text" @click="close">
+    </template>
+    <template #actions>
+<v-btn variant="text" @click="close">
           Anuluj
         </v-btn>
         <v-spacer></v-spacer>
@@ -160,15 +142,16 @@
           <v-icon left>mdi-content-save</v-icon>
           {{ saving ? 'Zapisywanie...' : 'Zapisz zmiany' }}
         </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+    </template>
+  </GeneralDialog>
+
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { Databases } from '../../services/databases.js'
 import { Campaigns } from '../../services/campaigns.js'
+import GeneralDialog from '../GeneralDialog.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -200,15 +183,24 @@ const filteredDatabases = computed(() => {
 watch(() => props.modelValue, (newValue) => {
   dialog.value = newValue
   if (newValue) {
-    loadDatabases()
-    // Initialize with current database
-    if (props.campaign?.database?.id) {
-      const currentDb = databases.value.find(db => db.id === props.campaign.database.id)
-      if (currentDb) selectedDatabase.value = currentDb
-    } else if (props.campaign?.databaseId) {
-      const currentDb = databases.value.find(db => db.id === props.campaign.databaseId)
-      if (currentDb) selectedDatabase.value = currentDb
-    }
+    loadDatabases().then(() => {
+      // Set initial selected database
+      if (props.campaign?.databaseInfo?.database?.id) {
+        const currentDb = databases.value.find(db => db.id === props.campaign.databaseId)
+        if (currentDb) selectedDatabase.value = currentDb
+      } else if (props.campaign?.databaseId) {
+        const currentDb = databases.value.find(db => db.id === props.campaign.databaseId)
+        if (currentDb) selectedDatabase.value = currentDb
+      }
+    } )
+    // // Initialize with current database
+    // if (props.campaign?.databaseInfo?.database?.id) {
+    //   const currentDb = databases.value.find(db => db.id === props.campaign.databaseId)
+    //   if (currentDb) selectedDatabase.value = currentDb
+    // } else if (props.campaign?.databaseId) {
+    //   const currentDb = databases.value.find(db => db.id === props.campaign.databaseId)
+    //   if (currentDb) selectedDatabase.value = currentDb
+    // }
   }
 })
 

@@ -11,6 +11,7 @@ import {
     importExcelToDatabase,
     getDatabasesList,
     getDatabaseById,
+    getDatabaseInfoById,
     createDatabase,
     updateDatabase,
     deleteDatabase,
@@ -31,6 +32,9 @@ router.get('/getCampaignsList', getCampaignsList);
 
 // Pobierz kampanię po ID
 router.get('/getCampaignById/:id', getCampaignById);
+
+// Pobierz informacje o bazie danych po ID
+router.get('/getDatabaseInfoById/:id', getDatabaseInfoById);
 
 // Utwórz nową kampanię
 router.post('/createCampaign', createCampaign);

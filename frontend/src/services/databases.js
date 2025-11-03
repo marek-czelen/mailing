@@ -45,6 +45,15 @@ export class Databases {
   }
 
   /**
+   * Pobierz informacje o bazie danych po ID
+   * @param {number} id - ID bazy danych
+   */
+  static async getDatabaseInfoById(id) {
+    const response = await axios.get(`/mailing/getDatabaseInfoById/${id}`);
+    return response.data.data;
+  }
+
+  /**
    * Utwórz nową bazę danych
    * @param {Object} database - Dane bazy danych
    */

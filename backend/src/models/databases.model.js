@@ -42,12 +42,20 @@ const Databases = sequelize.define('databases', {
         type: DataTypes.DATE,
         allowNull: true,
         defaultValue: null
-  }
+  },
+  createdAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+            field: 'created_at'
+},
+updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      field: 'updated_at'
+}
 }, {
     tableName: 'databases',
     timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at'
 });
 
 Databases.belongsToMany(MarketingCampanies, {

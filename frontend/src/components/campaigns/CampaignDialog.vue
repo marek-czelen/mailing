@@ -1,4 +1,5 @@
 <template>
+
   <v-dialog 
     :model-value="modelValue" 
     @update:model-value="$emit('update:modelValue', $event)"
@@ -64,8 +65,6 @@
               prepend-inner-icon="mdi-format-title"
               :rules="[rules.required]"
               required
-              hint="To będzie widoczne w skrzynce odbiorczej"
-              persistent-hint
             />
 
             <v-textarea
@@ -100,6 +99,7 @@
 
             <v-select
               v-model="formData.segments"
+              :disabled="true"
               :items="['All']"
               label="Segmenty (opcjonalnie)"
               variant="outlined"
@@ -108,7 +108,6 @@
               multiple
               chips
               closable-chips
-              :disabled="!formData.databaseId"
             />
 
             <div v-if="availableDatabases.length === 0 && !loadingDatabases" class="no-databases-warning">
@@ -138,9 +137,9 @@
             <p>Wybierz sposób tworzenia treści</p>
 
             <v-radio-group v-model="contentMode" density="compact">
-              <v-radio label="Użyj szablonu" value="template" />
-              <v-radio label="Użyj HTML" value="html" />
-              <v-radio label="Bez szablonu" value="no-template" />
+              <v-radio label="Użyj szablonu" value="template" disabled/>
+              <v-radio label="Użyj HTML" value="html" disabled/>
+              <v-radio label="Bez szablonu (uzupełnisz później)" value="no-template" />
             </v-radio-group>
 
             <!-- Template Selection -->
@@ -162,13 +161,6 @@
             <div v-if="contentMode === 'html'">
               <div class="html-editor-container">
                 <label class="editor-label">Treść HTML</label>
-                <QuillEditor
-                  v-model:content="formData.htmlContent"
-                  contentType="html"
-                  theme="snow"
-                  placeholder="Wprowadź lub wklej kod HTML swojego emaila..."
-                  style="min-height: 300px;"
-                />
               </div>
               <div class="html-helper">
                 <v-alert type="info" variant="tonal" density="compact">
@@ -205,7 +197,7 @@
             <p>Skonfiguruj opcje wysyłki</p>
 
             <v-radio-group v-model="formData.sendMode" density="compact">
-              <v-radio label="Wyślij natychmiast" value="immediate" />
+              <v-radio label="Wyślij natychmiast" value="immediate" disabled/>
               <v-radio label="Zaplanuj wysyłkę" value="scheduled" />
             </v-radio-group>
 
@@ -222,12 +214,16 @@
               <h4>Śledzenie</h4>
               <v-switch
                 density="compact"
+                hide-details
+                disabled
                 v-model="formData.trackOpens"
                 label="Śledź otwieranie"
                 color="primary"
               />
               <v-switch
                 density="compact"
+                hide-details
+                disabled
                 v-model="formData.trackClicks"
                 label="Śledź kliknięcia"
                 color="primary"
@@ -274,15 +270,16 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { Databases } from '../../services/databases.js'
 import { Campaigns } from '../../services/campaigns.js'
 import templatesIndex from '../../templates/index.json'
+import { CustomerService } from '../../services/customer.js'
 
 const props = defineProps({
   modelValue: Boolean,
-  campaign: Object
+  campaign: Object,
 })
 
 const emit = defineEmits(['update:modelValue', 'save', 'close'])
@@ -291,7 +288,8 @@ const router = useRouter()
 // Reactive data
 const step = ref(1)
 const saving = ref(false)
-const contentMode = ref('template')
+const contentMode = ref('no-template') // 'template', 'html', 'no-template'
+const customerSettings = ref({})
 
 // Form data
 const formData = ref({
@@ -302,9 +300,9 @@ const formData = ref({
   segments: [],
   template: null,
   htmlContent: '',
-  senderName: '',
-  senderEmail: '',
-  sendMode: 'draft',
+  senderName: customerSettings.value.smtpUser || '',
+  senderEmail: customerSettings.value.smtpFrom || '',
+  sendMode: 'scheduled', // 'immediate', 'scheduled', 'draft'
   scheduledAt: null,
   trackOpens: true,
   trackClicks: true
@@ -463,7 +461,7 @@ function close() {
   emit('update:modelValue', false)
   // Reset form state
   step.value = 1
-  contentMode.value = 'template'
+  contentMode.value = 'no-template'
   saving.value = false
 }
 
@@ -649,6 +647,10 @@ async function processCampaignContent(campaignData) {
 async function loadDatabases() {
   loadingDatabases.value = true
   try {
+    console.log('Ładowanie ustawień klienta...')
+    customerSettings.value = await  CustomerService.getCurrentCustomerSettings();
+    formData.value.senderName = customerSettings.value.smtpUser || ''
+    formData.value.senderEmail = customerSettings.value.smtpFrom || ''
     console.log('Ładowanie baz danych...')
     const databases = await Databases.getList()
     console.log('Pobrane bazy danych:', databases)
@@ -697,6 +699,7 @@ function loadTemplates() {
   }
 }
 
+
 // Watch for campaign changes
 watch(() => props.campaign, (newCampaign) => {
   if (newCampaign) {
@@ -707,20 +710,26 @@ watch(() => props.campaign, (newCampaign) => {
       databaseId: newCampaign.databaseId || null,
       segments: newCampaign.segments || [],
       template: newCampaign.template || null,
-      contentType: newCampaign.contentType || 'template',
+      contentType: newCampaign.contentType || 'no-template',
       htmlContent: newCampaign.htmlContent || '',
-      senderName: newCampaign.senderName || '',
-      senderEmail: newCampaign.senderEmail || '',
-      sendMode: newCampaign.sendMode || 'draft',
-      scheduledAt: newCampaign.scheduledAt || null,
+      senderName: newCampaign.senderName || customerSettings.value.smtpUser || '',
+      senderEmail: newCampaign.senderEmail || customerSettings.value.smtpFrom || '',
+      sendMode: newCampaign.sendMode || 'scheduled',
+      scheduledAt: newCampaign.dateStart
+          ? (() => {
+              const d = new Date(newCampaign.dateStart)
+              const pad = n => n.toString().padStart(2, '0')
+              return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+            })()
+          : null,
       trackOpens: newCampaign.trackOpens !== false,
       trackClicks: newCampaign.trackClicks !== false
     }
-    contentMode.value = newCampaign.contentType || 'template'
+    contentMode.value = newCampaign.contentType || 'no-template'
   } else {
     // Reset form
     step.value = 1
-    contentMode.value = 'template'
+    contentMode.value = 'no-template'
     formData.value = {
       name: '',
       subject: '',
@@ -728,11 +737,11 @@ watch(() => props.campaign, (newCampaign) => {
       databaseId: null,
       segments: [],
       template: null,
-      contentType: 'template',
+      contentType: 'no-template',
       htmlContent: '',
-      senderName: '',
-      senderEmail: '',
-      sendMode: 'draft',
+      senderName:  customerSettings.value.smtpUser || '',
+      senderEmail:  customerSettings.value.smtpFrom || '',
+      sendMode: 'scheduled',
       scheduledAt: null,
       trackOpens: true,
       trackClicks: true
@@ -926,7 +935,7 @@ onMounted(() => {
 
 /* Tracking Options */
 .tracking-options h4 {
-  margin: 24px 0 16px 0;
+  margin: 0;
   font-weight: 600;
   color: #333;
 }
