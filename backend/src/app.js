@@ -35,9 +35,19 @@ app.all('*', function(req, res, next)
     else{
       let authorized = false
       try{
-        if (!req.headers.authorization) return unauthorized(req, res)
+        if (!req.headers.authorization)  {
+          return res.status(401).json({
+            success: false,
+            message: 'Not authorized'
+          });
+        }
         let authHeader = req.headers.authorization.split(' ');
-        if (authHeader[0] != "Bearer") return unauthorized(req, res)
+        if (authHeader[0] != "Bearer")  {
+          return res.status(401).json({
+            success: false,
+            message: 'Not authorized'
+          });
+        }
         res.locals.Auth = {authorized: true, data: Auth.decodeToken(authHeader[1])}
         authorized = true;
       }catch(err){
@@ -45,7 +55,14 @@ app.all('*', function(req, res, next)
         
       }
       if (authorized === true) next();
-      else return unauthorized(req, res, err.message)
+      else {
+        console.log("Unauthorized access attempt detected");
+        return res.status(401).json({
+          success: false,
+          message: 'Not authorized'
+        });
+
+      }
     }
 
   }

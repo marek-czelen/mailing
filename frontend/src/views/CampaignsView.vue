@@ -115,7 +115,7 @@
               <v-icon left>mdi-account-multiple</v-icon>
               Odbiorcy
             </v-tab>
-            <v-tab value="scheduling">
+            <v-tab value="scheduling" v-if="false">
               <v-icon left>mdi-calendar-clock</v-icon>
               Planowanie
             </v-tab>
@@ -149,7 +149,7 @@
                       <div class="database-details">
                         <div class="detail-item">
                           <span class="label">Nazwa bazy:</span>
-                          <span class="value">{{ selectedCampaign.databaseInfo?.database.name }}</span>
+                          <span class="value">{{ selectedCampaign?.databaseInfo?.database?.name }}</span>
                         </div>
                         <div class="detail-item">
                           <span class="label">Liczba kontaktów:</span>
@@ -676,13 +676,13 @@ async function selectCampaign(campaign) {
     // Pobierz pełne informacje o kampanii z API
     const fullCampaignData = await Campaigns.getCampaignById(campaign.id)
     const databaseInfo = await Databases.getDatabaseInfoById(campaign.databaseId)
-    selectedCampaign.value = { ...fullCampaignData, databaseInfo }  
+    selectedCampaign.value = { ...fullCampaignData, databaseInfo, sendMode: "scheduled" }
     activeTab.value = 'content'
   } catch (error) {
     console.error('Błąd pobierania szczegółów kampanii:', error)
     showNotification('Nie udało się pobrać pełnych szczegółów kampanii. Pokazano podstawowe informacje.', 'warning')
     // Fallback do danych z listy
-    selectedCampaign.value = campaign
+    selectedCampaign.value = {...campaign, sendMode: "scheduled" }
     activeTab.value = 'content'
   } finally {
     loadingCampaignDetails.value = false
@@ -951,7 +951,7 @@ function cancelScheduled() {
   const confirmed = confirm('Czy na pewno chcesz anulować zaplanowaną wysyłkę?')
   if (!confirmed) return
 
-  selectedCampaign.value.sendMode = 'draft'
+  selectedCampaign.value.sendMode = 'scheduled'
   selectedCampaign.value.status = 'draft'
   selectedCampaign.value.dateStart = null
   scheduledDateTime.value = ''
@@ -966,16 +966,22 @@ function formatDateTime(date) {
 
 function updateCampaignDatabase(updatedCampaign) {
   // Update selected campaign with new database
-  selectedCampaign.value = updatedCampaign
-
-  // Update campaign in local list
+  console.log('Aktualizacja bazy danych kampanii:', updatedCampaign)
+  Databases.getDatabaseInfoById(updatedCampaign.databaseId)
+  .then(databaseInfo => {
+    selectedCampaign.value = { ...updatedCampaign, databaseInfo, sendMode: 'scheduled' }
+      // Update campaign in local list
   const index = campaigns.value.findIndex(c => c.id === updatedCampaign.id)
   if (index !== -1) {
-    campaigns.value[index] = updatedCampaign
+    campaigns.value[index] = { ...campaigns.value[index], ...selectedCampaign.value }
   }
 
   // Show success message
   showNotification(`Baza danych została zaktualizowana na: ${updatedCampaign.database?.name || 'Nowa baza'}`, 'success')
+
+  })
+  
+
 }
 
 
