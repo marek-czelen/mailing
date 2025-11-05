@@ -1,5 +1,5 @@
-import axios from 'axios';
 import router from './router/index.js';
+import axios from 'axios';
 import { Account } from './services/account.js';
 
 axios.interceptors.request.use(config => {
@@ -16,9 +16,13 @@ axios.interceptors.response.use(
   response => response,
   error => {
     if (error.response && error.response.status === 401) {
-      Account.logout();
-      alert(error.response.data?.message || 'Sesja wygasła. Zaloguj się ponownie.');
-      router.push('/login');
+      // Nie przekierowuj na login jeśli jesteśmy na stronie unsubscribe
+      const currentPath = window.location.pathname;
+      
+        Account.logout();
+        console.error(error.response.data?.message || 'Sesja wygasła. Zaloguj się ponownie.');
+        router.push('/login');
+      
     }
     return Promise.reject(error);
   }
@@ -38,7 +42,12 @@ WebFont.load({
 		families: ['Roboto:100,300,400,500,700,900']
 	}
 });
-createApp(App)
-	.use(router)
-	.use(vuetify)
-	.mount('#app')
+
+// Montuj aplikację dopiero gdy router jest gotowy, aby uniknąć migotania layoutu
+const app = createApp(App)
+  .use(router)
+  .use(vuetify)
+
+router.isReady().then(() => {
+  app.mount('#app')
+})

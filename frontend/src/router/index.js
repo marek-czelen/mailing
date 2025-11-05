@@ -42,6 +42,15 @@ const routes = [
     component: () => import('../views/DatabasesView.vue')
   },
   {
+    path: '/unsubscribe/:hash',
+    name: 'Unsubscribe',
+    component: () => import('../views/UnsubscribeView.vue'),
+    meta: { 
+      requiresAuth: false, // Publiczny endpoint - nie wymaga logowania
+      layout: 'public' // Specjalny layout bez menu/toolbar
+    }
+  },
+  {
     path: '/',
     redirect: '/login'
   }
@@ -56,7 +65,22 @@ const router = createRouter({
 import { Account } from '../services/account';
 
 router.beforeEach((to, from, next) => {
-  if (to.path !== '/login' && !Account.IsLoggedIn()) {
+  // Dla strony unsubscribe - zawsze pozwól
+  if (to.path.startsWith('/unsubscribe/')) {
+    next();
+    return;
+  }
+  
+  // Dla strony login - zawsze pozwól
+  if (to.path === '/login') {
+    next();
+    return;
+  }
+  
+  // Sprawdź czy strona wymaga autoryzacji (domyślnie tak, chyba że meta.requiresAuth === false)
+  const requiresAuth = to.meta?.requiresAuth !== false;
+  
+  if (requiresAuth && !Account.IsLoggedIn()) {
     next('/login');
   } else {
     next();

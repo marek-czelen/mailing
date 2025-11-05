@@ -47,6 +47,7 @@ class MailingTask {
                     where: {
                         active: 1,
                         customerId: campaign.customerId,
+                        databaseId: campaign.databaseId,
                         unsubscribesDate: null
                     }
                 });

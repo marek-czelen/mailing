@@ -49,7 +49,7 @@ app.all('*', function(req, res, next)
       console.log("🌐 Request:", req.method, req.url);
     }
     
-    if (req.originalUrl=="/auth/login" || req.originalUrl.startsWith("/mailing/unsubscribe/")) next()
+    if (req.originalUrl=="/auth/login") next()
     else{
       let authorized = false
       try{

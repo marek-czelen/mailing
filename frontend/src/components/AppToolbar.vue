@@ -127,12 +127,18 @@ onMounted(async () => {
   checkMobile();
   window.addEventListener('resize', checkMobile);
   
-  // Pobierz ID bieżącego klienta
-  try {
-    customerSettings.value = await  CustomerService.getCurrentCustomerSettings();
-    currentUser.value = await Account.getCurrentUser();
-  } catch (error) {
-    console.warn('Nie udało się pobrać danych bieżącego klienta:', error);
+  // Pobierz dane tylko jeśli nie jesteśmy na publicznej stronie
+  const currentPath = router.currentRoute.value.path;
+  const isPublicPage = currentPath === '/login' || currentPath.startsWith('/unsubscribe/');
+  
+  if (!isPublicPage) {
+    // Pobierz ID bieżącego klienta
+    try {
+      customerSettings.value = await CustomerService.getCurrentCustomerSettings();
+      currentUser.value = await Account.getCurrentUser();
+    } catch (error) {
+      console.warn('Nie udało się pobrać danych bieżącego klienta:', error);
+    }
   }
 });
 

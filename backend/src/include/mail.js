@@ -130,7 +130,7 @@ export class Mail {
     };
 
     // Regex do znajdowania placeholderów: {{PLACEHOLDER}} lub {{PLACEHOLDER|default}}
-    const placeholderRegex = /\{\{([A-Z_][A-Z0-9_]*?)(?:\|([^}]*))?\}\}/g;
+    const placeholderRegex =  /\{\{([A-Z_][A-Z0-9_]*?)(?:\|([^}]*))?\}\}/g;
 
     return htmlContent.replace(placeholderRegex, (match, key, defaultValue) => {
       // Sprawdź czy placeholder istnieje

@@ -584,7 +584,7 @@ function generateGdprFooter() {
   </ul>
   
   <p>
-    <a href="{{UNSUBSCRIBE_URL}}//mailing/unsubscribe/{{CONTACT_HASH}}" 
+    <a href="{{UNSUBSCRIBE_URL}}" 
        style="color: #007bff; text-decoration: underline;">
       Wypisz się z listy mailingowej
     </a>

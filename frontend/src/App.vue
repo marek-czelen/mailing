@@ -194,8 +194,8 @@ a {
 
 <template>
   <v-app>
-    <!-- Widok logowania bez layoutu -->
-    <template v-if="route.path === '/login'">
+    <!-- Widoki publiczne bez layoutu (login, unsubscribe) -->
+    <template v-if="isPublicRoute">
       <router-view />
     </template>
 
@@ -277,6 +277,24 @@ const route = useRoute()
 const router = useRouter()
 const drawer = ref(false)
 const isMobile = ref(false)
+
+// Check if current route is public (no layout needed)
+const isPublicRoute = computed(() => {
+  const currentPath = route.path
+  const currentName = route.name
+  
+  // Check by path
+  if (currentPath === '/login' || currentPath.startsWith('/unsubscribe/')) {
+    return true
+  }
+  
+  // Check by route name
+  if (currentName === 'Login' || currentName === 'Unsubscribe') {
+    return true
+  }
+  
+  return false
+})
 
 // Check if device is mobile
 function checkMobile() {
