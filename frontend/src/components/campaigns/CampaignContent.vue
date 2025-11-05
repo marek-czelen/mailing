@@ -188,6 +188,7 @@
 <script setup>
 import { ref, computed, onMounted, defineProps, defineEmits } from 'vue'
 import MailingService from '../../services/mailing.js'
+import { CustomerService } from '../../services/customer.js'
 
 const props = defineProps({
   campaign: {
@@ -203,7 +204,7 @@ const snackbar = ref(false)
 const snackbarText = ref('')
 const snackbarColor = ref('success')
 const testEmail = ref('')
-
+const customerConfig = ref({})
 // Reactive data
 const previewDevice = ref('desktop')
 
@@ -302,7 +303,15 @@ function testSend() {
   MailingService.sendTestEmail(
     testEmail.value,
     props.campaign.subject || 'Testowy email',
-    props.campaign.htmlContent || '<p>Brak treści do wysłania</p>'
+    props.campaign.htmlContent || '<p>Brak treści do wysłania</p>',
+    {
+      host: customerConfig.value.smtpHost,
+      port: customerConfig.value.smtpPort,
+      secure: true,
+      ignoreTLS:  true,
+      user: customerConfig.value.smtpUser,
+      pass: customerConfig.value.smtpPass
+    }
   )
     .then(response => {
       console.log('Test email wysłany pomyślnie:', response)
@@ -329,6 +338,9 @@ const RODO_END = '<!-- RODO_FOOTER_END -->'
 onMounted(() => {
   const html = String(props.campaign?.htmlContent || '')
   rodoEnabled.value = hasRodoFooter(html)
+  CustomerService.getCurrentCustomerSettings().then(config => {
+    customerConfig.value = config
+  })
 })
 
 function hasRodoFooter(html) {
@@ -344,7 +356,7 @@ function buildDefaultRodoFooter() {
     Otrzymałeś(-aś) tę wiadomość, ponieważ adres e-mail znajduje się w naszej bazie.\n
     Administratorem danych jest {{COMPANY_NAME}} ({{COMPANY_ADDRESS}}).\n
     Jeśli nie chcesz otrzymywać od nas wiadomości, możesz się wypisać klikając\n
-    <a href="{{UNSUBSCRIBE_LINK}}" style="color:#666;">tutaj</a>.
+    <a href="{{UNSUBSCRIBE_URL}}" style="color:#666;">tutaj</a>.
   </div>
 ${RODO_END}\n`
 }

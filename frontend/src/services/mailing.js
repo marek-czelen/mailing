@@ -1,25 +1,23 @@
 import axios from 'axios';
 
 export class MailingService {
-  static async sendTestEmail(emailTo, emailSubject, emailData) {
+  static async sendTestEmail(emailTo, emailSubject, emailData, smtpConfig) {
     try {
       const result = await axios.post(`/mailing/sendEmail`, {
         
         smtp: {
-            host: "mail.aculeo.pl",
-            port: 465,
-            secure: true,
-            ignoreTLS: true,
+            host: smtpConfig.host,
+            port: smtpConfig.port,
+            secure: smtpConfig.secure,
+            ignoreTLS: smtpConfig.ignoreTLS,
             auth: {
-            user: "sprzedaz@verx.pl",
-            pass: "Verx@123!"
+              user: smtpConfig.user,
+              pass: smtpConfig.pass
             }
         },
         from: "sprzedaz@verx.pl",
-        to: [
-            "czelen@verx.pl"
-        ],
-        subject: "Test Email",
+        to: [emailTo],
+        subject: emailSubject,
         html: emailData
 
       });
