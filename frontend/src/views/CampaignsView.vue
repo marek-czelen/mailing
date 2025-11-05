@@ -125,8 +125,10 @@
             <v-window v-model="activeTab">
               <!-- Content Tab -->
               <v-window-item value="content">
-                <CampaignContent :campaign="selectedCampaign" @edit-template="editTemplate"
-                  @edit-content="editHtmlContent" />
+                <CampaignContent :campaign="selectedCampaign" 
+                  @edit-template="editTemplate"
+                  @edit-content="editHtmlContent"
+                  @update:campaign="updateCampaign" />
               </v-window-item>
 
               <!-- Recipients Tab -->
@@ -801,6 +803,28 @@ function editTemplate() {
         campaignId: selectedCampaign.value.id
       }
     })
+  }
+}
+
+async function updateCampaign(updatedData) {
+  if (!selectedCampaign.value) return
+
+  try {
+    const updatedCampaign = await Campaigns.update(selectedCampaign.value.id, updatedData)
+
+    // Update local copy
+    selectedCampaign.value = { ...selectedCampaign.value, ...updatedCampaign }
+
+    // Update campaign in the list
+    const index = campaigns.value.findIndex(c => c.id === selectedCampaign.value.id)
+    if (index !== -1) {
+      campaigns.value[index] = { ...campaigns.value[index], ...updatedCampaign }
+    }
+
+    showNotification('Kampania została zaktualizowana', 'success')
+  } catch (error) {
+    console.error('Błąd aktualizacji kampanii:', error)
+    showNotification('Nie udało się zaktualizować kampanii', 'error')
   }
 }
 

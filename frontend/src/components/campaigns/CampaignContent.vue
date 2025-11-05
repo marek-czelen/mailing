@@ -10,7 +10,7 @@
           disabled
           color="primary" 
           variant="outlined"
-          @click="$emit('edit-template')"
+          @click="emit('edit-template')"
         >
           <v-icon left>mdi-pencil</v-icon>
           Zmień szablon
@@ -18,7 +18,7 @@
         <v-btn 
           color="secondary" 
           variant="outlined"
-          @click="$emit('edit-content')"
+          @click="emit('edit-content')"
         >
           <v-icon left>mdi-code-tags</v-icon>
           Edytuj treść
@@ -66,7 +66,7 @@
                 <v-icon size="64" color="grey-lighten-2">mdi-email-outline</v-icon>
                 <h3>Brak treści</h3>
                 <p>Wybierz szablon lub utwórz niestandardową treść</p>
-                <v-btn color="primary" @click="$emit('edit-template')">
+                <v-btn color="primary" @click="emit('edit-content')">
                   <v-icon left>mdi-plus</v-icon>
                   Dodaj treść
                 </v-btn>
@@ -100,6 +100,18 @@
                   ></v-switch>
                 </span>
               </div>
+               <div class="info-row">
+                 <span class="info-label">
+                   <v-switch
+                     density="compact"
+                     hide-details
+                     v-model="rodoEnabled"
+                     label="Stopka RODO"
+                     color="primary"
+                     @update:modelValue="onRodoSwitchChange"
+                   ></v-switch>
+                 </span>
+               </div>
             </div>
           </div>
 
@@ -123,22 +135,37 @@
           <div class="content-actions">
             <v-btn 
               variant="outlined" 
+              color="primary"
               size="small"
               @click="testSend"
-              :disabled="false"
+              :disabled="!isTestEmailValid"
             >
               <v-icon left>mdi-email-send-outline</v-icon>
               Test email
             </v-btn>
-            <v-btn 
-              variant="outlined" 
-              size="small"
-              @click="previewInBrowser"
-              disabled
-            >
-              <v-icon left>mdi-web</v-icon>
-              Podgląd w przeglądarce
-            </v-btn>
+             <v-btn 
+               variant="outlined" 
+               size="small"
+               color="info"
+               @click="calculateSpamScore"
+             >
+               <v-icon left>mdi-shield-search</v-icon>
+               SPAM scoring
+             </v-btn>
+          </div>
+          <div class="content-actions">
+            <v-text-field 
+              label="Email testowy"
+              v-model="testEmail"
+              type="email"
+              variant="outlined"
+              density="compact"
+              :color="testEmailFieldColor"
+              :append-inner-icon="testEmailAppendIcon"
+              :rules="emailRules"
+              hide-details="auto"
+              clearable
+            ></v-text-field>
           </div>
         </v-card-text>
       </v-card>
@@ -159,7 +186,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits } from 'vue'
+import { ref, computed, onMounted, defineProps, defineEmits } from 'vue'
 import MailingService from '../../services/mailing.js'
 
 const props = defineProps({
@@ -169,15 +196,32 @@ const props = defineProps({
   }
 })
 
-defineEmits(['edit-template', 'edit-content'])
+const emit = defineEmits(['edit-template', 'edit-content', 'update:campaign'])
 
 // Snackbar
 const snackbar = ref(false)
 const snackbarText = ref('')
 const snackbarColor = ref('success')
+const testEmail = ref('')
 
 // Reactive data
 const previewDevice = ref('desktop')
+
+// Email validation
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const isTestEmailValid = computed(() => emailPattern.test(String(testEmail.value || '').trim()))
+const emailRules = [
+  v => !!String(v || '').trim() || 'Wpisz adres e-mail',
+  v => emailPattern.test(String(v || '').trim()) || 'Nieprawidłowy adres e-mail'
+]
+const testEmailFieldColor = computed(() => {
+  if (!testEmail.value) return undefined
+  return isTestEmailValid.value ? 'success' : 'error'
+})
+const testEmailAppendIcon = computed(() => {
+  if (!testEmail.value) return undefined
+  return isTestEmailValid.value ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'
+})
 
 // Methods
 function showSnackbar(text, color = 'success') {
@@ -248,25 +292,163 @@ function getSendModeLabel(sendMode) {
 }
 
 function testSend() {
+  if (!isTestEmailValid.value) {
+    showSnackbar('Podaj prawidłowy adres e-mail', 'error')
+    return
+  }
+
   console.log('Wysyłanie test email dla kampanii:', props.campaign.name)
 
   MailingService.sendTestEmail(
-    "czelen@verx.pl",
-    props.campaign.subject || "Testowy email",
-    props.campaign.htmlContent || "<p>Brak treści do wysłania</p>"
+    testEmail.value,
+    props.campaign.subject || 'Testowy email',
+    props.campaign.htmlContent || '<p>Brak treści do wysłania</p>'
   )
-  .then(response => {
-    console.log('Test email wysłany pomyślnie:', response)
-    showSnackbar( 'Testowy email został wysłany', 'success')
-  })
-  .catch(error => {
-    console.error('Błąd podczas wysyłania testowego e-maila:', error)
-  })
+    .then(response => {
+      console.log('Test email wysłany pomyślnie:', response)
+      showSnackbar('Testowy email został wysłany', 'success')
+    })
+    .catch(error => {
+      console.error('Błąd podczas wysyłania testowego e-maila:', error)
+      showSnackbar('Nie udało się wysłać testowego e-maila', 'error')
+    })
 }
 
 function previewInBrowser() {
   console.log('Otwieranie podglądu w przeglądarce')
   // Implement browser preview functionality
+}
+
+// --------------------
+// Stopka RODO handling
+// --------------------
+const rodoEnabled = ref(false)
+const RODO_START = '<!-- RODO_FOOTER_START -->'
+const RODO_END = '<!-- RODO_FOOTER_END -->'
+
+onMounted(() => {
+  const html = String(props.campaign?.htmlContent || '')
+  rodoEnabled.value = hasRodoFooter(html)
+})
+
+function hasRodoFooter(html) {
+  if (!html) return false
+  return html.includes(RODO_START) && html.includes(RODO_END)
+}
+
+function buildDefaultRodoFooter() {
+  // Domyślna stopka z placeholderami – backend podczas wysyłki powinien je podmienić
+  // Zawijamy w znaczniki, aby móc ją łatwo usunąć
+  return `\n${RODO_START}
+  <div class="rodo-footer" style="font-size:12px;color:#666;margin-top:24px;border-top:1px solid #eee;padding-top:12px;text-align:center;line-height:1.4;">
+    Otrzymałeś(-aś) tę wiadomość, ponieważ adres e-mail znajduje się w naszej bazie.\n
+    Administratorem danych jest {{COMPANY_NAME}} ({{COMPANY_ADDRESS}}).\n
+    Jeśli nie chcesz otrzymywać od nas wiadomości, możesz się wypisać klikając\n
+    <a href="{{UNSUBSCRIBE_LINK}}" style="color:#666;">tutaj</a>.
+  </div>
+${RODO_END}\n`
+}
+
+function insertBeforeBodyEnd(html, block) {
+  if (!html) return block
+  const idx = html.toLowerCase().lastIndexOf('</body>')
+  if (idx !== -1) {
+    return html.slice(0, idx) + block + html.slice(idx)
+  }
+  return html + block
+}
+
+function addRodoFooterToContent() {
+  const current = String(props.campaign?.htmlContent || '')
+  if (hasRodoFooter(current)) return
+  const footer = buildDefaultRodoFooter()
+  const updated = insertBeforeBodyEnd(current, footer)
+  props.campaign.htmlContent = updated
+}
+
+function removeRodoFooterFromContent() {
+  const current = String(props.campaign?.htmlContent || '')
+  if (!current) return
+  const regex = new RegExp(`${RODO_START.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\s\S]*?${RODO_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g')
+  const updated = current.replace(regex, '')
+  props.campaign.htmlContent = updated
+}
+
+function onRodoSwitchChange(val) {
+  try {
+    if (val) {
+      addRodoFooterToContent()
+      showSnackbar('Dodano stopkę RODO do treści', 'success')
+    } else {
+      removeRodoFooterFromContent()
+      showSnackbar('Usunięto stopkę RODO z treści', 'success')
+    }
+  emit('update:campaign', props.campaign)
+  } catch (e) {
+    console.error('Błąd podczas aktualizacji stopki RODO:', e)
+    showSnackbar('Błąd podczas aktualizacji stopki RODO', 'error')
+    // Przy błędzie przywróć poprzednią wartość przełącznika
+    rodoEnabled.value = hasRodoFooter(String(props.campaign?.htmlContent || ''))
+  }
+}
+
+// --------------------
+// SPAM scoring (frontend heuristic)
+// --------------------
+function calculateSpamScore() {
+  const html = String(props.campaign?.htmlContent || '')
+  const subject = String(props.campaign?.subject || '')
+  const suggestions = []
+  let score = 0
+
+  // Heurystyka 1: temat zbyt długi / pusty
+  if (!subject.trim()) {
+    suggestions.push({ problem: 'Brak tematu wiadomości', scoreValue: 20 })
+    score += 20
+  } else if (subject.length > 78) {
+    suggestions.push({ problem: 'Temat dłuższy niż 78 znaków', scoreValue: 10 })
+    score += 10
+  }
+
+  // Heurystyka 2: nadmiar wykrzykników
+  const exclamations = (html.match(/!/g) || []).length + (subject.match(/!/g) || []).length
+  if (exclamations >= 3) {
+    suggestions.push({ problem: 'Zbyt dużo wykrzykników', scoreValue: 10 })
+    score += 10
+  }
+
+  // Heurystyka 3: słowa potencjalnie spamowe (prosty zestaw)
+  const spamWords = ['free', 'za darmo', 'kup teraz', 'oferta', 'promocja', 'wygrana', 'kliknij', 'pilne']
+  const lower = (subject + ' ' + html.replace(/<[^>]+>/g, ' ')).toLowerCase()
+  let spamHits = 0
+  spamWords.forEach(w => { if (lower.includes(w)) spamHits++ })
+  if (spamHits >= 2) {
+    suggestions.push({ problem: 'Treść zawiera słowa typowe dla spamu', scoreValue: 15 })
+    score += 15
+  }
+
+  // Heurystyka 4: obrazki bez alt
+  const images = html.match(/<img\b[^>]*>/gi) || []
+  const imagesWithoutAlt = images.filter(img => !/\balt\s*=/.test(img)).length
+  if (imagesWithoutAlt > 0) {
+    suggestions.push({ problem: `Obrazki bez atrybutu alt: ${imagesWithoutAlt}`, scoreValue: 5 })
+    score += 5
+  }
+
+  // Heurystyka 5: brak linku wypisu
+  if (!/\{\{\s*UNSUBSCRIBE_LINK\s*\}\}|unsubscribe|wypisz/.test(lower)) {
+    suggestions.push({ problem: 'Brak linku wypisu (unsubscribe)', scoreValue: 20 })
+    score += 20
+  }
+
+  // Ogranicz wynik do 100
+  score = Math.max(0, Math.min(100, score))
+
+  // Zapisz do kampanii
+  props.campaign.scoring = score
+  props.campaign.suggestions = suggestions
+
+  showSnackbar('Zaktualizowano SPAM scoring (heurystyka)', 'success')
 }
 </script>
 
