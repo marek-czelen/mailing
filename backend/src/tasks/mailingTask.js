@@ -2,10 +2,13 @@
 import MarketingCampanies from '../models/marketingCampanies.model.js';
 import MailAddress from '../models/mailAddress.model.js';
 import Customers from '../models/customers.model.js';
-import nodemailer from 'nodemailer';
+import Mail from '../include/mail.js';
 import { Op } from 'sequelize';
+import MarketingCampaniesMailingResult from '../models/marketingCampaniesMailing.model.js';
+import EnvironmentConfig from '../config/environment.config.js';
 
-let interval = 86400000;
+// Interwał na podstawie zmiennej środowiskowej
+let interval = EnvironmentConfig.get('MAILING_TASK_INTERVAL', 60000); // domyślnie 1 minuta
 
 /**
  * Pobiera i wysyła maile dla aktywnych kampanii, używając konfiguracji SMTP przypisanej do klienta
@@ -13,18 +16,18 @@ let interval = 86400000;
 class MailingTask {
     static async sendMails() {
         try {
-            console.log('Rozpoczęcie wysyłania maili:', new Date().toISOString());
+            if (EnvironmentConfig.isDevelopment()) {
+                console.log('📧 Rozpoczęcie wysyłania maili:', new Date().toISOString());
+            }
 
             // Pobierz aktywne kampanie razem z danymi klienta
             const activeCampaigns = await MarketingCampanies.findAll({
                 where: {
                     active: true,
+                    sent: false,
                     dateStart: {
                         [Op.lte]: new Date()
                     },
-                    dateEnd: {
-                        [Op.gte]: new Date()
-                    }
                 },
                 include: [{ model: Customers, as: 'Customer' }]
             });
@@ -50,64 +53,103 @@ class MailingTask {
 
                 console.log(`Kampania ${campaign.name} (klient ${customer.id}): znaleziono ${mailAddresses.length} adresów do wysyłki`);
 
-                // Konfiguracja SMTP klienta (fallback na env)
-                const smtpHost = customer.smtpHost || process.env.SMTP_HOST;
-                const smtpPort = customer.smtpPort || (process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587);
-                const smtpUser = customer.smtpUser || process.env.SMTP_USER;
-                const smtpPass = customer.smtpPass || process.env.SMTP_PASS;
-                const smtpFrom = customer.smtpFrom || process.env.SMTP_FROM;
-                const unsubscribeBase = customer.unsubscribeUrl || process.env.UNSUBSCRIBE_URL;
+                // Konfiguracja SMTP klienta (fallback na zmienne środowiskowe)
+                const smtpHost = customer.smtpHost || EnvironmentConfig.get('SMTP_HOST');
+                const smtpPort = customer.smtpPort || EnvironmentConfig.get('SMTP_PORT');
+                const smtpUser = customer.smtpUser || EnvironmentConfig.get('SMTP_USER');
+                const smtpPass = customer.smtpPass || EnvironmentConfig.get('SMTP_PASS');
+                const smtpFrom = customer.smtpFrom || EnvironmentConfig.get('SMTP_FROM');
+                const unsubscribeBase = customer.unsubscribeUrl || EnvironmentConfig.get('UNSUBSCRIBE_URL');
+                
+                // Konfiguracja SSL/TLS na podstawie środowiska
+                const smtpSecure = smtpPort === 465;
+                const ignoreTLS = EnvironmentConfig.get('SMTP_IGNORE_TLS', false);
+                const rejectUnauthorized = EnvironmentConfig.get('SMTP_REJECT_UNAUTHORIZED', true);
 
                 if (!smtpHost || !smtpPort) {
                     console.warn(`Brak konfiguracji SMTP dla klienta ${customer.id} - pomijam wysyłkę kampanii ${campaign.id}`);
                     continue;
                 }
 
-                const transporter = nodemailer.createTransport({
-                    host: smtpHost,
-                    port: Number(smtpPort),
-                    secure: Number(smtpPort) === 465,
-                    auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined
-                });
+
 
                 for (const address of mailAddresses) {
                     try {
-                        await transporter.sendMail({
-                            from: smtpFrom || smtpUser,
+                        Mail.sendEmail({
+                            smtp: {
+                                host: smtpHost,
+                                port: smtpPort,
+                                secure: smtpSecure,
+                                ignoreTLS: ignoreTLS,
+                                tls: {
+                                    rejectUnauthorized: rejectUnauthorized
+                                },
+                                auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined
+                            },
+                            from: `${campaign.senderName}<${campaign.senderEmail}>`,
                             to: address.mailAddress,
-                            subject: campaign.name,
-                            html: campaign.mailContent,
-                            headers: unsubscribeBase ? { 'List-Unsubscribe': `<${unsubscribeBase}?email=${address.mailAddress}>` } : undefined
+                            subject: campaign.subject,
+                            html: campaign.htmlContent,
+                            placeholders: {
+                                UNSUBSCRIBE_URL: `${unsubscribeBase}/${address.hash}`,
+                                ENVIRONMENT: EnvironmentConfig.get('NODE_ENV'),
+                                APP_NAME: EnvironmentConfig.get('APP_NAME'),
+                                BASE_URL: EnvironmentConfig.get('BASE_URL'),
+                                CONTACT_HASH: address.hash,
+                                CONTACT_EMAIL: address.mailAddress,
+                            }
+                        })
+                        .then((result) => {
+                            if (!result.success) {
+                                MarketingCampaniesMailingResult.upsert({
+                                    marketingCampaniesId: campaign.id,
+                                    mailAddressesId: address.id,
+                                    error: true,
+                                    errorMessage: result.error
+                                });
+                                return;
+                            }else {
+                                // Zaktualizuj status wysyłki w bazie danych
+                                MarketingCampaniesMailingResult.upsert({
+                                    marketingCampaniesId: campaign.id,
+                                    mailAddressesId: address.id,
+                                    isSend: true,
+                                    sendData: new Date()
+                                }).catch(err => {
+                                    console.error(`Błąd zapisu statusu wysyłki dla ${address.mailAddress}:`, err && err.message ? err.message : err);
+                                });
+                            }
                         });
 
-                        // Krótkie opóźnienie między wysyłkami
-                        await new Promise(resolve => setTimeout(resolve, 100));
+                        // Opóźnienie między wysyłkami na podstawie zmiennej środowiskowej
+                        const sendDelay = EnvironmentConfig.get('MAILING_SEND_DELAY', 100);
+                        await new Promise(resolve => setTimeout(resolve, sendDelay));
                     } catch (error) {
                         console.error(`Błąd wysyłki na adres ${address.mailAddress}:`, error && error.message ? error.message : error);
                         continue;
                     }
                 }
+                campaign.sent = true;
+                await campaign.save();
+                console.log(`Kampania ${campaign.name} (klient ${customer.id}): wysyłka zakończona`);
 
-                // Aktualizuj postęp kampanii
-                try {
-                    await campaign.update({ process: Math.min((campaign.process || 0) + 1, 100) });
-                } catch (err) {
-                    console.error(`Nie udało się zaktualizować postępu kampanii ${campaign.id}:`, err && err.message ? err.message : err);
-                }
             }
-
-            console.log('Zakończenie wysyłania maili:', new Date().toISOString());
         } catch (error) {
             console.error('Błąd podczas wysyłania maili:', error && error.message ? error.message : error);
         }
     }
 
     /**
-     * Starts timers for standard and offline state checkers
+     * Uruchamia zadanie cykliczne wysyłania maili
      */
     static run() {
-        console.log('MailingTask started.');
+        console.log(`📧 MailingTask uruchomiony - środowisko: ${EnvironmentConfig.get('NODE_ENV')}`);
+        console.log(`⏰ Interwał wysyłania: ${interval}ms`);
+        
+        // Pierwsza wysyłka od razu
         MailingTask.sendMails();
+        
+        // Następne w określonym interwale
         setInterval(MailingTask.sendMails, interval);
     }
 }

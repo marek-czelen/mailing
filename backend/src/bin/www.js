@@ -3,17 +3,20 @@
 /**
  * Module dependencies.
  */
+
+// WAŻNE: Ładuj konfigurację środowiska jako pierwszą rzecz
+import '../config/environment.config.js';
+
 import app from "../app.js"
+import EnvironmentConfig from '../config/environment.config.js';
 import http from "http"
-// var app = require('../app');
-// var debug = require('debug')('src:server');
-// var http = require('http');
 
 /**
  * Get port from environment and store in Express.
  */
 
-var port = normalizePort(process.env.PORT || '3000');
+const port = normalizePort(EnvironmentConfig.get('PORT', '3000'));
+const host = EnvironmentConfig.get('HOST', 'localhost');
 app.set('port', port);
 
 /**
@@ -26,9 +29,26 @@ var server = http.createServer(app);
  * Listen on provided port, on all network interfaces.
  */
 
-server.listen(port);
+server.listen(port, host);
 server.on('error', onError);
 server.on('listening', onListening);
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('👋 SIGTERM otrzymany. Zamykanie serwera...');
+  server.close(() => {
+    console.log('✓ Serwer HTTP zamknięty.');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('👋 SIGINT otrzymany. Zamykanie serwera...');
+  server.close(() => {
+    console.log('✓ Serwer HTTP zamknięty.');
+    process.exit(0);
+  });
+});
 
 /**
  * Normalize a port into a number, string, or false.
@@ -83,9 +103,15 @@ function onError(error) {
  */
 
 function onListening() {
-  var addr = server.address();
-  var bind = typeof addr === 'string'
+  const addr = server.address();
+  const bind = typeof addr === 'string'
     ? 'pipe ' + addr
-    : 'port ' + addr.port;
-  console.log('Listening on ' + bind);
+    : `${addr.address}:${addr.port}`;
+  
+  console.log(`🚀 Serwer nasłuchuje na ${bind}`);
+  console.log(`🌍 Środowisko: ${EnvironmentConfig.get('NODE_ENV')}`);
+  
+  if (EnvironmentConfig.isDevelopment()) {
+    console.log(`📱 URL: http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
+  }
 }

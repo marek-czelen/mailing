@@ -22,6 +22,7 @@ export class Campaigns {
       databaseId: campaign.databaseId,
       htmlContent: campaign.htmlContent,
       senderName: campaign.senderName,
+      senderEmail: campaign.senderEmail,
       from: campaign.senderEmail,
       dateStart: campaign.scheduledAt,
     };
@@ -40,6 +41,7 @@ export class Campaigns {
       databaseId: campaign.databaseId,
       htmlContent: campaign.htmlContent,
       senderName: campaign.senderName,
+      senderEmail: campaign.senderEmail,
       from: campaign.senderEmail,
       dateStart: campaign.scheduledAt,
     };

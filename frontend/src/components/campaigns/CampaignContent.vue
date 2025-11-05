@@ -37,8 +37,8 @@
           <!-- Email Header -->
           <div class="email-header">
             <div class="email-from">
-              <strong>Od:</strong> {{ campaign.from || 'Nazwa nadawcy' }} 
-              &lt;{{ campaign.from || 'email@example.com' }}&gt;
+              <strong>Od:</strong> {{ campaign.senderName || 'Nazwa nadawcy' }} 
+              &lt;{{ campaign.senderEmail || 'email@example.com' }}&gt;
             </div>
             <div class="email-subject">
               <strong>Temat:</strong> {{ campaign.subject || 'Brak tematu' }}
@@ -85,6 +85,23 @@
           Szczegóły treści
         </v-card-title>
         <v-card-text>
+          <div class="detail-section">
+            <h4>Ogólne</h4>
+            <div class="sending-info">
+              <div class="info-row">
+                <span class="info-label">
+                  <v-switch
+                    density="compact"
+                    hide-details
+                    v-model="campaign.active"
+                    label="Aktywna kampania"
+                    color="primary"
+                    @click="activateCampaign"
+                  ></v-switch>
+                </span>
+              </div>
+            </div>
+          </div>
 
           <div class="detail-section">
             <h4>SPAM rating</h4>
@@ -172,6 +189,19 @@ function showSnackbar(text, color = 'success') {
 function formatDate(date) {
   if (!date) return '-'
   return new Date(date).toLocaleDateString('pl-PL')
+}
+
+function activateCampaign() {
+  MailingService.updateCampaign(props.campaign.id, { active: !props.campaign.active ? 1 : 0 })
+    .then(response => {
+      console.log('Kampania zaktualizowana pomyślnie:', response)
+      showSnackbar( `Kampania ${props.campaign.active ? 'aktywowana' : 'dezaktywowana'}`, 'success')
+    })
+    .catch(error => {
+      console.error('Błąd podczas aktualizacji kampanii:', error)
+      showSnackbar('Błąd podczas aktualizacji kampanii', 'error')
+    })
+  // Implement campaign activation logic
 }
 
 function formatDateTime(date) {

@@ -16,6 +16,7 @@ import fetch from "node-fetch";
 import fs from 'fs';
 import Auth from '../include/auth.js';
 import Sequelize from 'sequelize';
+import Mail from '../include/mail.js';
 // Pobierz wszystkie kampanie
 export async function getCampaignsList(req, res) {
     try {
@@ -915,9 +916,11 @@ export async function importExcelToDatabase(req, res) {
                             continue;
                         }
 
+
                         // Dodaj nowy adres e-mail do bazy
                         const newMailRecord = await MailAddress.create({
                             mailAddress: row.email,
+                            hash: Mail.HashEmail(row.email),
                             miasto: row.miasto || null,
                             rodzaj: row.rodzaj || null,
                             active: 1,
@@ -1481,17 +1484,17 @@ export async function getDatabaseContacts(req, res) {
  */
 export async function unsubscribeContact(req, res) {
     try {
-        const { contactId  } = req.params;
+        const { contactHash } = req.params;
 
         // Walidacja parametrów
-        if (!contactId) {
-            return res.send(new Response(null, false, "Contact ID is required."));
+        if (!contactHash) {
+            return res.send(new Response(null, false, "Contact hash is required."));
         }
 
                 // Znajdź kontakt należący do danego klienta
         const contact = await MailAddress.findOne({
             where: {
-                id: contactId,
+                hash: contactHash,
             }
         });
 
@@ -1769,6 +1772,7 @@ export async function contactAdd(req, res) {
         const newContact = await MailAddress.create({
             mailAddress,
             miasto: miasto || null,
+            hash: Mail.HashEmail(mailAddress),
             rodzaj: rodzaj || null,
             phone: phone || null,
             active: active,

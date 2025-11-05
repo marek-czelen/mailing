@@ -31,10 +31,15 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
     allowNull: true,
     field: "description"
   },
-  from: {
+  senderName: {
     type: DataTypes.STRING,
     allowNull: true,
-    field: "from"
+    field: "sender_name"
+  },
+  senderEmail: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: "sender_email"
   },
   textContent: {
     type: DataTypes.TEXT,
@@ -76,6 +81,12 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
       type: DataTypes.INTEGER,
       allowNull: false,
       field: "database_id"
+    },
+    sent:{
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: "sent"
     }
   }, {
     tableName: 'marketing_campanies',

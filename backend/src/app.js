@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import Auth from './include/auth.js';
 import {unauthorized} from './include/errors.js';
 import MailingTask from './tasks/mailingTask.js';
+import EnvironmentConfig from './config/environment.config.js';
 
 import authRouter from './routes/auth.js';
 import customerRouter from './routes/customers.js';
@@ -19,9 +20,22 @@ import './models/index.js';
 
 var app = express();
 
-app.use(cors())
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Konfiguracja CORS na podstawie zmiennych środowiskowych
+const corsConfig = EnvironmentConfig.getCORSConfig();
+const corsOptions = {
+  origin: corsConfig.origin,
+  credentials: corsConfig.credentials,
+  optionsSuccessStatus: 200
+};
+
+// Tymczasowe logowanie CORS config
+if (EnvironmentConfig.isDevelopment()) {
+  console.log("🔐 CORS Configuration:", corsOptions);
+}
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: EnvironmentConfig.get('EXPRESS_JSON_LIMIT') }));
+app.use(express.urlencoded({ extended: false, limit: EnvironmentConfig.get('EXPRESS_URL_ENCODED_LIMIT') }));
 app.use(cookieParser());
 app.use(express.static(path.join("./", 'public')));
 
@@ -30,7 +44,11 @@ app.use(uploadRoutes);
 //veryfication of the token
 app.all('*', function(req, res, next) 
   {
-    console.log("🌐 Request:", req.method, req.url)
+    // Logowanie requestów tylko w środowisku development
+    if (EnvironmentConfig.isDevelopment()) {
+      console.log("🌐 Request:", req.method, req.url);
+    }
+    
     if (req.originalUrl=="/auth/login") next()
     else{
       let authorized = false
@@ -56,7 +74,9 @@ app.all('*', function(req, res, next)
       }
       if (authorized === true) next();
       else {
-        console.log("Unauthorized access attempt detected");
+        if (EnvironmentConfig.isDevelopment()) {
+          console.log("❌ Unauthorized access attempt detected");
+        }
         return res.status(401).json({
           success: false,
           message: 'Not authorized'
@@ -84,7 +104,19 @@ app.use(function(req, res, next) {
 app.use(function(err, req, res, next) {
   // set locals, only providing error in development
   res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+  res.locals.error = EnvironmentConfig.isDevelopment() ? err : {};
+
+  // Szczegółowe logowanie błędów w środowisku development
+  if (EnvironmentConfig.isDevelopment()) {
+    console.error('🔥 Application Error:', {
+      message: err.message,
+      stack: err.stack,
+      url: req.originalUrl,
+      method: req.method
+    });
+  } else {
+    console.error('Application Error:', err.message);
+  }
 
   // render the error page
   res.status(err.status || 500);

@@ -162,7 +162,7 @@ Adres: ${fullAddress}
 
 Przetwarzamy Państwa dane osobowe w celu prowadzenia działań marketingowych. Mają Państwo prawo do wycofania zgody w dowolnym momencie.
 
-Jeśli nie chcą Państwo otrzymywać dalszych wiadomości, mogą się Państwo wypisać z listy mailingowej klikając: {{UNSUBSCRIBE_LINK}}
+Jeśli nie chcą Państwo otrzymywać dalszych wiadomości, mogą się Państwo wypisać z listy mailingowej klikając: {{UNSUBSCRIBE_LINK}}/mailing/unsubscribe/{{CONTACT_HASH}}.
 
 W przypadku pytań dotyczących przetwarzania danych osobowych, prosimy o kontakt na adres: ${companyName}.`;
   }

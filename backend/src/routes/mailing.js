@@ -79,7 +79,7 @@ router.get('/getCustomerDatabasesStats/:customerId', getCustomerDatabasesStats);
 router.get('/getDatabaseContacts/:databaseId', getDatabaseContacts);
 
 // Wypisz kontakt ze wszystkich list mailingowych danego klienta
-router.get('/unsubscribe/:contactId', unsubscribeContact);
+router.get('/unsubscribe/:contactHash', unsubscribeContact);
 
 // ============= CONTACTS MANAGEMENT =============
 // Aktualizuj dane kontaktu

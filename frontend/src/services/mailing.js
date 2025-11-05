@@ -34,6 +34,16 @@ export class MailingService {
       throw error;
     }
   }
+
+  static async updateCampaign(campaignId, campaignData) {
+    try {
+      const result = await axios.put(`/mailing/updateCampaign/${campaignId}`, campaignData);
+      return result.data;
+    } catch (error) {
+      console.error('Błąd podczas aktualizacji kampanii:', error);
+      throw error;
+    }
+  }
 }
 
 

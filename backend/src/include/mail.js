@@ -2,6 +2,8 @@ import nodemailer from 'nodemailer';
 import { createConnection } from 'net';
 import dns from 'dns';
 import { promisify } from 'util';
+import crypto from 'crypto';
+const SECRET_KEY = 'oiej!@#sdoiqjsd09324dnsadaSDqwe1!##$@34'; // trzymaj w .env lub konfiguracji
 
 const resolveMx = promisify(dns.resolveMx);
 
@@ -84,14 +86,19 @@ export class Mail {
   /**
    * Konfiguracja domyślnych placeholderów systemu
    * Rozszerz tę listę o własne globalne placeholdery
+   * Wartości są pobierane ze zmiennych środowiskowych
    */
   static DEFAULT_PLACEHOLDERS = {
     CURRENT_YEAR: () => new Date().getFullYear(),
     CURRENT_DATE: () => new Date().toLocaleDateString('pl-PL'),
     CURRENT_DATETIME: () => new Date().toLocaleString('pl-PL'),
     COMPANY_NAME: () => process.env.COMPANY_NAME || 'Nasza Firma',
+    COMPANY_ADDRESS: () => process.env.COMPANY_ADDRESS || '',
     WEBSITE_URL: () => process.env.WEBSITE_URL || 'https://example.com',
-    SUPPORT_EMAIL: () => process.env.SUPPORT_EMAIL || 'support@example.com'
+    SUPPORT_EMAIL: () => process.env.SUPPORT_EMAIL || 'support@example.com',
+    PRIVACY_POLICY_URL: () => process.env.PRIVACY_POLICY_URL || '#',
+    TERMS_URL: () => process.env.TERMS_URL || '#',
+    UNSUBSCRIBE_URL: () => process.env.UNSUBSCRIBE_URL || 'https://example.com'
   };
 
   /**
@@ -682,6 +689,13 @@ export class Mail {
     if (token) params.append('token', token);
     return `${baseUrl}/unsubscribe?${params.toString()}`;
   }
-}
 
+
+static HashEmail(email) {
+  return crypto
+    .createHmac('sha256', SECRET_KEY)
+    .update(email)
+    .digest('base64url'); // można użyć też 'hex'
+}
+}
 export default Mail

@@ -9,6 +9,11 @@ const MailAddress = sequelize.define('mail_addresses', {
         type: DataTypes.INTEGER,
         field: "id"
     },
+    hash:{
+        type: DataTypes.STRING,
+        allowNull: false,
+        field: "hash"
+    },
     mailAddress:{
         type: DataTypes.STRING,
         allowNull: false,
