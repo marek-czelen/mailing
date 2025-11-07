@@ -3,17 +3,18 @@
     v-model="dialogVisible"
     max-width="700px"
     title="Import kontaktów"
-    @close="dialogVisible = false"
+    @close="close"
     persistent
   >
   <template #default>
- 
+    <div class="dialog-wrapper">
       <!-- Loading Overlay -->
       <v-overlay
         :model-value="uploading || importing"
-        class="align-center justify-center"
-        contained
+        class="d-flex align-center justify-center"
         persistent
+        scrim="rgba(0, 0, 0, 0.7)"
+        :z-index="3000"
       >
         <div class="loading-content">
           <v-progress-circular
@@ -325,7 +326,7 @@
               </div>
             </v-window-item>
         </v-window>
-
+    </div>
 
     </template>
 
@@ -405,6 +406,36 @@ const importOptions = ref({
   validateEmails: true,
   defaultStatus: 'active'
 })
+
+// Watch dla resetowania stanu przy otwarciu dialogu
+watch(() => props.modelValue, (newValue) => {
+  if (newValue) {
+    // Reset wszystkich wartości do stanu początkowego
+    resetDialogState()
+  }
+})
+
+// Funkcja resetująca stan dialogu
+function resetDialogState() {
+  step.value = 1
+  selectedFile.value = null
+  filePreview.value = null
+  fieldMapping.value = {}
+  importMode.value = 'add'
+  uploading.value = false
+  uploadProgress.value = 0
+  uploadStatus.value = ''
+  uploadedFilePath.value = null
+  importing.value = false
+  importProgress.value = 0
+  importStatus.value = ''
+  importResult.value = null
+  importOptions.value = {
+    skipDuplicates: true,
+    validateEmails: true,
+    defaultStatus: 'active'
+  }
+}
 
 // Database fields for mapping
 const databaseFields = [
@@ -662,6 +693,11 @@ function nextStep() {
   console.log('nextStep wywołane, step:', step.value, 'canProceed:', canProceed.value)
   
   if (canProceed.value && step.value < 3) {
+    // Jeśli przechodzimy do kroku 2 i plik nie został jeszcze przesłany,
+    // włącz natychmiast overlay zanim zaczniemy upload
+    if (step.value === 1 && !uploadedFilePath.value) {
+      uploading.value = true
+    }
     step.value++
     console.log('Przeszedłem do kroku:', step.value)
 
@@ -683,6 +719,7 @@ async function startUpload() {
     return
   }
   
+  // Upewnij się, że overlay jest aktywny
   uploading.value = true
   uploadProgress.value = 0
   uploadStatus.value = 'Przygotowywanie pliku...'
@@ -702,14 +739,15 @@ async function startUpload() {
     if (result?.filePath) {
       uploadedFilePath.value = result.filePath
       uploadProgress.value = 100
-      uploading.value = false
+      uploadStatus.value = 'Zakończono. Przechodzenie do importu...'
       
       console.log('Plik przesłany pomyślnie:', result.filePath)
       
-      // Automatycznie przejdź do następnego kroku
+      // Trzymaj overlay do momentu przejścia do kroku 3
       setTimeout(() => {
         step.value = 3
-      }, 1500)
+        uploading.value = false
+      }, 800)
       
     } else {
       throw new Error(result?.message || 'Brak ścieżki pliku w odpowiedzi')
@@ -815,27 +853,17 @@ function finishImport() {
 }
 
 function close() {
-  // Reset state
-  step.value = 1
-  selectedFile.value = null
-  filePreview.value = null
-  fieldMapping.value = {}
-  importing.value = false
-  importProgress.value = 0
-  importResult.value = null
-  importStatus.value = ''
-  importMode.value = 'add'
-  importOptions.value = {
-    skipDuplicates: true,
-    validateEmails: true,
-    defaultStatus: 'active'
-  }
-  
+  resetDialogState()
   emit('update:modelValue', false)
 }
 </script>
 
 <style scoped>
+.dialog-wrapper {
+  position: relative;
+  min-height: 500px;
+}
+
 .import-dialog {
   border-radius: 16px !important;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15) !important;
