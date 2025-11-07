@@ -20,7 +20,8 @@ import {
     getDatabaseContacts,
     unsubscribeContact,
     contactUpdate,
-    contactAdd
+    contactAdd,
+    contactDelete
 } from '../controller/mailing.js';
 
 import { sendEmail } from '../controller/mailProcessing.js';
@@ -89,5 +90,7 @@ router.post('/contactUpdate', contactUpdate);
 router.post('/contactAdd', contactAdd);
 
 router.post('/sendEmail', sendEmail);
+
+router.delete('/contactDelete/:contactId', contactDelete);
 
 export default router;

@@ -198,7 +198,7 @@ export class Databases {
    * @param {number} contactId - ID kontaktu
    */
   static async deleteContact(databaseId, contactId) {
-    const response = await axios.delete(`/mailing/deleteDatabaseContact/${databaseId}/${contactId}`);
+    const response = await axios.delete(`/mailing/contactDelete/${contactId}`);
     return response.data;
   }
 

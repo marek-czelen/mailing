@@ -1,11 +1,13 @@
 <template>
-  <v-dialog 
-    :model-value="modelValue" 
-    @update:model-value="$emit('update:modelValue', $event)"
+  <GeneralDialog
+    v-model="dialogVisible"
     max-width="700px"
+    title="Import kontaktów"
+    @close="dialogVisible = false"
     persistent
   >
-    <v-card class="import-dialog">
+  <template #default>
+ 
       <!-- Loading Overlay -->
       <v-overlay
         :model-value="uploading || importing"
@@ -35,14 +37,8 @@
         </div>
       </v-overlay>
 
-      <v-card-title class="dialog-header">
-        <h2>Import kontaktów</h2>
-        <v-btn icon variant="text" @click="close" class="close-btn" :disabled="uploading || importing">
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-      </v-card-title>
 
-      <v-card-text class="dialog-content">
+
         <!-- Custom Stepper Header -->
         <div class="custom-stepper-header">
           <div class="stepper-steps">
@@ -54,37 +50,28 @@
               <span class="step-title">Parsowanie</span>
             </div>
             
+           
             <v-divider class="step-divider" />
-            
+
             <div class="stepper-step" :class="{ active: step === 2, completed: step > 2 }">
               <div class="step-number">
                 <v-icon v-if="step > 2" color="success">mdi-check</v-icon>
                 <span v-else>2</span>
-              </div>
-              <span class="step-title">Mapowanie</span>
-            </div>
-            
-            <v-divider class="step-divider" />
-            
-            <div class="stepper-step" :class="{ active: step === 3, completed: step > 3 }">
-              <div class="step-number">
-                <v-icon v-if="step > 3" color="success">mdi-check</v-icon>
-                <span v-else>3</span>
               </div>
               <span class="step-title">Upload</span>
             </div>
             
             <v-divider class="step-divider" />
             
-            <div class="stepper-step" :class="{ active: step === 4 }">
-              <div class="step-number">4</div>
+            <div class="stepper-step" :class="{ active: step === 3 }">
+              <div class="step-number">3</div>
               <span class="step-title">Import</span>
             </div>
           </div>
         </div>
 
         <!-- Steps Content -->
-        <v-window v-model="step" class="import-window">
+        <v-window v-model="step" >
             <!-- Step 1: File Selection -->
             <v-window-item value="1">
               <div class="step-content">
@@ -142,109 +129,8 @@
               </div>
             </v-window-item>
 
-            <!-- Step 2: Field Mapping -->
-            <v-window-item value="2">
-              <div class="step-content">
-                <h3>Mapowanie pól</h3>
-                <p>Dopasuj kolumny z pliku do pól w bazie danych</p>
-
-                <div class="mapping-section">
-                  <div
-                    v-for="(header, index) in filePreview?.headers"
-                    :key="index"
-                    class="mapping-row"
-                  >
-                    <div class="source-field">
-                      <strong>{{ header }}</strong>
-                      <span class="field-example">
-                        np: {{ getFieldExample(index) }}
-                      </span>
-                    </div>
-                    
-                    <v-icon class="mapping-arrow">mdi-arrow-right</v-icon>
-                    
-                    <div class="target-field">
-                      <v-select
-                        v-model="fieldMapping[index]"
-                        :items="databaseFields"
-                        label="Pole w bazie"
-                        variant="outlined"
-                        density="comfortable"
-                        clearable
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Email Required Warning -->
-                <v-alert
-                  v-if="!hasEmailMapping"
-                  type="warning"
-                  variant="tonal"
-                  class="mapping-warning"
-                  :text="false"
-                >
-                  <v-icon>mdi-alert</v-icon>
-                  <strong>Wymagane pole email:</strong> Musisz zmapować przynajmniej jedną kolumnę na pole "Email", aby móc kontynuować import.
-                </v-alert>
-
-                <v-alert
-                  v-else
-                  type="success"
-                  variant="tonal"
-                  class="mapping-success"
-                  :text="false"
-                >
-                  <v-icon>mdi-check-circle</v-icon>
-                  <strong>Mapowanie prawidłowe:</strong> Kolumna email została zmapowana pomyślnie.
-                </v-alert>
-
-                <!-- Import Options -->
-                <div class="import-options">
-                  <h4>Opcje importu</h4>
-                  
-                  <v-radio-group v-model="importMode" inline>
-                    <v-radio
-                      label="Dodaj nowe kontakty"
-                      value="add"
-                    />
-                    <v-radio
-                      label="Aktualizuj istniejące"
-                      value="update"
-                    />
-                    <v-radio
-                      label="Dodaj i aktualizuj"
-                      value="merge"
-                    />
-                  </v-radio-group>
-
-                  <v-switch
-                    v-model="importOptions.skipDuplicates"
-                    label="Pomiń duplikaty (na podstawie email)"
-                    color="primary"
-                    inset
-                  />
-
-                  <v-switch
-                    v-model="importOptions.validateEmails"
-                    label="Waliduj adresy email"
-                    color="primary"
-                    inset
-                  />
-
-                  <v-select
-                    v-model="importOptions.defaultStatus"
-                    :items="statusOptions"
-                    label="Domyślny status kontaktów"
-                    variant="outlined"
-                    density="comfortable"
-                  />
-                </div>
-              </div>
-            </v-window-item>
-
             <!-- Step 3: Upload File -->
-            <v-window-item value="3">
+            <v-window-item value="2">
               <div class="step-content">
                 <div v-if="!uploading && !uploadedFilePath" class="upload-summary">
                   <h3>Przesyłanie pliku na serwer</h3>
@@ -304,7 +190,7 @@
             </v-window-item>
 
             <!-- Step 4: Import Process -->
-            <v-window-item value="4">
+            <v-window-item value="3">
               <div class="step-content">
                 <div v-if="!importing && !importResult" class="import-summary">
                   <h3>Import danych do bazy</h3>
@@ -440,22 +326,12 @@
             </v-window-item>
         </v-window>
 
-        <!-- Custom Actions -->
-        <div class="stepper-actions" v-if="!importing || importResult">
+
+    </template>
+
+    <template #actions>
           <v-btn
-            v-if="step > 1"
-            variant="outlined"
-            @click="prevStep"
-            :disabled="importing || uploading"
-          >
-            <v-icon left>mdi-arrow-left</v-icon>
-            Wstecz
-          </v-btn>
-          
-          <v-spacer />
-          
-          <v-btn
-            v-if="step < 4"
+            v-if="step == 1"
             color="primary"
             :disabled="!canProceed || importing || uploading"
             @click="nextStep"
@@ -464,7 +340,7 @@
             <v-icon right>mdi-arrow-right</v-icon>
           </v-btn>
           <v-btn
-            v-else-if="step === 4 && !importing && !importResult"
+            v-else-if="step === 3 && !importing && !importResult"
             color="primary"
             @click="startImport"
           >
@@ -479,17 +355,15 @@
             <v-icon left>{{ importResult.success && importResult.errors === 0 ? 'mdi-check' : 'mdi-close' }}</v-icon>
             {{ importResult.success && importResult.errors === 0 ? 'Zakończ pomyślnie' : 'Zamknij dialog' }}
           </v-btn>
-        </div>
-
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+    </template>
+  </GeneralDialog>
 </template>
 
 <script setup>
-import { ref, computed, defineProps, defineEmits } from 'vue'
+import { ref, computed, defineProps, defineEmits, watch } from 'vue'
 import * as XLSX from 'xlsx'
 import { Databases } from '../../services/databases'
+import GeneralDialog from '../GeneralDialog.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -516,6 +390,15 @@ const importing = ref(false)
 const importProgress = ref(0)
 const importStatus = ref('')
 const importResult = ref(null)
+
+const dialogVisible = computed({
+  get() {
+    return props.modelValue
+  },
+  set(value) {
+    emit('update:modelValue', value)
+  }
+})
 
 const importOptions = ref({
   skipDuplicates: true,
@@ -778,13 +661,13 @@ function prevStep() {
 function nextStep() {
   console.log('nextStep wywołane, step:', step.value, 'canProceed:', canProceed.value)
   
-  if (canProceed.value && step.value < 4) {
+  if (canProceed.value && step.value < 3) {
     step.value++
     console.log('Przeszedłem do kroku:', step.value)
-    
-    // Jeśli właśnie przeszliśmy do kroku 3, automatycznie uruchom upload
-    if (step.value === 3 && !uploadedFilePath.value) {
-      console.log('Uruchamiam automatyczny upload w kroku 3')
+
+    // Jeśli właśnie przeszliśmy do kroku 2, automatycznie uruchom upload
+    if (step.value === 2 && !uploadedFilePath.value) {
+      console.log('Uruchamiam automatyczny upload w kroku 2')
       startUpload()
     }
   } else {
@@ -825,7 +708,7 @@ async function startUpload() {
       
       // Automatycznie przejdź do następnego kroku
       setTimeout(() => {
-        step.value = 4
+        step.value = 3
       }, 1500)
       
     } else {
@@ -1009,7 +892,7 @@ function close() {
 
 /* Custom Stepper Styles */
 .custom-stepper-header {
-  padding: 24px;
+  padding: 5px;
   border-bottom: 1px solid #e0e0e0;
   background: #fafafa;
 }

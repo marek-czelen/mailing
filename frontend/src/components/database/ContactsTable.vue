@@ -154,6 +154,7 @@
       v-model="showImportDialog"
       :database="props.database"
       @imported="handleImportComplete"
+      @update:modelValue="(value) => {console.log(value); loadingImport = value}"
     />
   </div>
 </template>
@@ -293,9 +294,8 @@ function viewHistory(contact) {
 }
 
 function deleteContact(contact) {
-  if (confirm(`Czy na pewno chcesz usunąć kontakt ${contact.firstName} ${contact.lastName}?`)) {
-    emit('delete-contact', contact)
-  }
+  console.log('Usuwanie kontaktu:', contact)
+  emit('delete-contact', contact)
 }
 
 async function exportContacts() {

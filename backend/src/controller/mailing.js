@@ -1848,3 +1848,57 @@ export async function contactAdd(req, res) {
         res.send(new Response(null, false, `Failed to add contact. ${error.message}`));
     }
 }
+
+
+export async function contactDelete(req, res) {
+    try {
+        const { contactId } = req.params;
+
+        // Pobierz ID klienta z tokena
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.send(new Response(null, false, "Authorization token required."));
+        }
+
+        const token = authHeader.substring(7);
+        let decodedToken;
+        try {
+            decodedToken = Auth.decodeToken(token);
+        } catch (err) {
+            return res.send(new Response(null, false, "Invalid or expired token."));
+        }
+
+        // Pobierz użytkownika i jego klienta z bazy danych
+        const user = await Auth.getUserByEmail(decodedToken.data.userEmail);
+        if (!user || !user.Customer) {
+            return res.send(new Response(null, false, "User not found or not assigned to any customer."));
+        }
+
+        const customerId = user.Customer.id;
+
+        // Sprawdź czy kontakt istnieje i należy do tego klienta
+        const contact = await MailAddress.findOne({
+            where: {
+                id: contactId,
+                customerId: customerId
+            }
+        });
+
+        if (!contact) {
+            return res.send(new Response(null, false, "Contact not found or does not belong to your customer account."));
+        }
+
+        // Usuń kontakt
+        await MailAddress.destroy({
+            where: {
+                id: contactId
+            }
+        });
+
+        res.send(new Response(null, true, "Contact deleted successfully."));
+
+    } catch (error) {
+        console.log(error);
+        res.send(new Response(null, false, `Failed to delete contact. ${error.message}`));
+    }
+}
