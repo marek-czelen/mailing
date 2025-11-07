@@ -47,12 +47,19 @@ export async function createCampaign(req, res) {
     try {
         let data = req.body;
         console.log(data);
-        data.active = data.active ? true : false;
-        data.progress = data.progress ? data.progress : 0;
-        data.customerId = data.customerId ? data.customerId : 1;
+        
+        // Normalizacja danych dla MySQL/MariaDB
+        const normalized = {
+            ...data,
+            active: (data.active === true || data.active === 'true' || data.active === 1 || data.active === '1'),
+            sent: (data.sent === true || data.sent === 'true' || data.sent === 1 || data.sent === '1') || false,
+            progress: data.progress ? Number(data.progress) : 0,
+            customerId: data.customerId ? Number(data.customerId) : 1,
+            // suggestions już jest JSON w modelu — obsługiwane automatycznie
+        };
 
         // Utwórz kampanię
-        const newCampaign = await MarketingCampanies.create(data);
+        const newCampaign = await MarketingCampanies.create(normalized);
 
         // Automatycznie licz scoring i sugestie po utworzeniu kampanii
         await computeSpamRating({ body: { id: newCampaign.id } }, { send: () => {} });
@@ -66,7 +73,26 @@ export async function createCampaign(req, res) {
 // Aktualizuj kampanię po ID
 export async function updateCampaign(req, res) {
     try {
-        const [updated] = await MarketingCampanies.update(req.body, {
+        // Normalizacja danych (jak w createCampaign)
+        const updateData = {};
+        if (req.body.name !== undefined) updateData.name = req.body.name;
+        if (req.body.subject !== undefined) updateData.subject = req.body.subject;
+        if (req.body.description !== undefined) updateData.description = req.body.description;
+        if (req.body.senderName !== undefined) updateData.senderName = req.body.senderName;
+        if (req.body.senderEmail !== undefined) updateData.senderEmail = req.body.senderEmail;
+        if (req.body.textContent !== undefined) updateData.textContent = req.body.textContent;
+        if (req.body.htmlContent !== undefined) updateData.htmlContent = req.body.htmlContent;
+        if (req.body.dateStart !== undefined) updateData.dateStart = req.body.dateStart;
+        if (req.body.dateEnd !== undefined) updateData.dateEnd = req.body.dateEnd;
+        if (req.body.progress !== undefined) updateData.progress = Number(req.body.progress);
+        if (req.body.active !== undefined) updateData.active = (req.body.active === true || req.body.active === 'true' || req.body.active === 1 || req.body.active === '1');
+        if (req.body.sent !== undefined) updateData.sent = (req.body.sent === true || req.body.sent === 'true' || req.body.sent === 1 || req.body.sent === '1');
+        if (req.body.scoring !== undefined) updateData.scoring = req.body.scoring ? Number(req.body.scoring) : null;
+        if (req.body.suggestions !== undefined) updateData.suggestions = req.body.suggestions; // JSON
+        if (req.body.databaseId !== undefined) updateData.databaseId = Number(req.body.databaseId);
+        if (req.body.customerId !== undefined) updateData.customerId = Number(req.body.customerId);
+        
+        const [updated] = await MarketingCampanies.update(updateData, {
             where: { id: req.params.id }
         });
         if (!updated) {
@@ -1083,6 +1109,16 @@ export async function getDatabaseById(req, res) {
 export async function createDatabase(req, res) {
     try {
         const { name, description, tags, rodo_flag, export_enabled, customer_id } = req.body;
+
+        // Normalizacja typów na potrzeby MySQL/MariaDB
+        const normalized = {
+            name: name,
+            description: description ?? null,
+            tags: Array.isArray(tags) ? tags : (tags ? [].concat(tags) : []),
+            rodo_flag: (rodo_flag === true || rodo_flag === 'true' || rodo_flag === 1 || rodo_flag === '1'),
+            export_enabled: (export_enabled === true || export_enabled === 'true' || export_enabled === 1 || export_enabled === '1'),
+            customer_id: Number(customer_id)
+        };
         
         // Walidacja wymaganych pól
         if (!name || rodo_flag === undefined || export_enabled === undefined || !customer_id) {
@@ -1095,14 +1131,7 @@ export async function createDatabase(req, res) {
             return res.send(new Response(null, false, "Customer not found."));
         }
 
-        const newDatabase = await Databases.create({
-            name,
-            description,
-            tags: tags || [],
-            rodo_flag,
-            export_enabled,
-            customer_id
-        });
+        const newDatabase = await Databases.create(normalized);
 
         console.log('Created database:', newDatabase.toJSON());
 
@@ -1128,6 +1157,15 @@ export async function updateDatabase(req, res) {
     try {
         const { name, description, tags, rodo_flag, export_enabled, customer_id } = req.body;
         
+        // Normalizacja typów (jak w createDatabase) — tylko dla pól przesłanych
+        const normalized = {};
+        if (name !== undefined) normalized.name = name;
+        if (description !== undefined) normalized.description = description ?? null;
+        if (tags !== undefined) normalized.tags = Array.isArray(tags) ? tags : (tags ? [].concat(tags) : []);
+        if (rodo_flag !== undefined) normalized.rodo_flag = (rodo_flag === true || rodo_flag === 'true' || rodo_flag === 1 || rodo_flag === '1');
+        if (export_enabled !== undefined) normalized.export_enabled = (export_enabled === true || export_enabled === 'true' || export_enabled === 1 || export_enabled === '1');
+        if (customer_id !== undefined) normalized.customer_id = Number(customer_id);
+        
         // Sprawdź czy baza istnieje i nie jest usunięta
         const existingDatabase = await Databases.findOne({
             where: {
@@ -1141,21 +1179,14 @@ export async function updateDatabase(req, res) {
         }
         
         // Jeśli customer_id jest podany, sprawdź czy istnieje
-        if (customer_id) {
-            const customer = await Customers.findByPk(customer_id);
+        if (normalized.customer_id) {
+            const customer = await Customers.findByPk(normalized.customer_id);
             if (!customer) {
                 return res.send(new Response(null, false, "Customer not found."));
             }
         }
 
-        const [updated] = await Databases.update({
-            name,
-            description,
-            tags,
-            rodo_flag,
-            export_enabled,
-            customer_id
-        }, {
+        const [updated] = await Databases.update(normalized, {
             where: { 
                 id: req.params.id,
                 deleted_at: null

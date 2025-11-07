@@ -245,6 +245,7 @@ async function loadCampaign() {
   if (!props.campaignId) return;
   const data = await Campaigns.getCampaignById(props.campaignId);
   let suggestions = [];
+  console.log("Załadowano kampanię do edycji:", data);
   if (Array.isArray(data.suggestions)) {
     suggestions = data.suggestions.map(s => ({
       problem: s.problem || '',

@@ -122,7 +122,8 @@
                 <span class="info-label">Spam rating:</span>
                 <span class="info-label">{{ campaign.scoring || 0 }}/100</span>
               </div>
-              <div v-for="(value, index) in campaign.suggestions" :key="index"
+
+              <div v-for="(value, index) in (typeof campaign.suggestions === 'string' ? JSON.parse(campaign.suggestions) : campaign.suggestions)" :key="index"
                 class="info-row">
                 <span :style="`color: ${value.scoreValue <= 0 ? '#4caf50' : '#f44336'};`" class= "info-label">{{ value.problem }}</span>
                 <span :style="`color: ${value.scoreValue <= 0 ? '#4caf50' : '#f44336'};`" class="info-label">{{ value.scoreValue }}</span>
@@ -144,6 +145,7 @@
               Test email
             </v-btn>
              <v-btn 
+               disabled
                variant="outlined" 
                size="small"
                color="info"

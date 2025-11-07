@@ -271,7 +271,10 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import AppToolbar from './components/AppToolbar.vue'
 
-axios.defaults.baseURL = 'http://localhost:3000'
+// Ustaw bazowy URL API z zmiennej środowiskowej Vite
+// W development fallback do localhost:3000
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+axios.defaults.baseURL = baseURL
 
 const route = useRoute()
 const router = useRouter()

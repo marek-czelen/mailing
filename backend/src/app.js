@@ -25,75 +25,77 @@ const corsConfig = EnvironmentConfig.getCORSConfig();
 const corsOptions = {
   origin: corsConfig.origin,
   credentials: corsConfig.credentials,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH']
 };
 
-// Tymczasowe logowanie CORS config
-if (EnvironmentConfig.isDevelopment()) {
-  console.log("🔐 CORS Configuration:", corsOptions);
-}
+// Pliki statyczne dostępne publicznie (bez autoryzacji)
+app.use(express.static(path.join("./", 'public')));
 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: EnvironmentConfig.get('EXPRESS_JSON_LIMIT') }));
 app.use(express.urlencoded({ extended: false, limit: EnvironmentConfig.get('EXPRESS_URL_ENCODED_LIMIT') }));
 app.use(cookieParser());
-app.use(express.static(path.join("./", 'public')));
 
+
+
+// Upload routes (bez autoryzacji dla niektórych endpointów)
 app.use(uploadRoutes);
 
-//veryfication of the token
-app.all('*', function(req, res, next) 
-  {
-    // Logowanie requestów tylko w środowisku development
-    if (EnvironmentConfig.isDevelopment()) {
-      console.log("🌐 Request:", req.method, req.url);
-    }
-    
-    if (req.originalUrl=="/auth/login" || req.originalUrl.startsWith("/mailing/unsubscribe/")) next()
-    else{
-      let authorized = false
-      try{
-        if (!req.headers.authorization)  {
-          return res.status(401).json({
-            success: false,
-            message: 'Not authorized'
-          });
-        }
-        let authHeader = req.headers.authorization.split(' ');
-        if (authHeader[0] != "Bearer")  {
-          return res.status(401).json({
-            success: false,
-            message: 'Not authorized'
-          });
-        }
-        res.locals.Auth = {authorized: true, data: Auth.decodeToken(authHeader[1])}
-        authorized = true;
-      }catch(err){
-        authorized = false
-        
-      }
-      if (authorized === true) next();
-      else {
-        if (EnvironmentConfig.isDevelopment()) {
-          console.log("❌ Unauthorized access attempt detected");
-        }
-        return res.status(401).json({
-          success: false,
-          message: 'Not authorized'
-        });
+// Dedykowany middleware autoryzacji tylko dla chronionych ścieżek API
+function requireAuth(req, res, next) {
+  // Przepuść preflight bez autoryzacji
+  if (req.method === 'OPTIONS') return next();
 
-      }
+  try {
+    const auth = req.headers.authorization;
+    if (!auth) {
+      console.log("❌ Missing authorization header for:", req.method, req.originalUrl);
+      return res.status(401).json({ success: false, message: 'Not authorized' });
     }
-
+    const parts = auth.split(' ');
+    if (parts[0] !== 'Bearer' || !parts[1]) {
+      console.log("❌ Invalid authorization format (not Bearer):", parts[0]);
+      return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+    res.locals.Auth = { authorized: true, data: Auth.decodeToken(parts[1]) };
+    return next();
+  } catch (err) {
+    console.log("❌ Token decode error:", err.message);
+    return res.status(401).json({ success: false, message: 'Not authorized' });
   }
-)
+}
 
 //router
+// Publiczne endpointy autoryzacji
 app.use('/auth', authRouter);
-app.use('/customers', customerRouter);
-app.use('/admin', adminRouter);
-app.use('/mailing', mailinngRouter);
-app.use('/templates', templateRoutes);
+
+// Chronione endpointy API
+app.use('/customers', requireAuth, customerRouter);
+app.use('/admin', requireAuth, adminRouter);
+// /mailing z wyjątkiem publicznych linków wypisania
+app.use('/mailing', (req, res, next) => {
+  if (req.path.startsWith('/unsubscribe/')) return next();
+  return requireAuth(req, res, next);
+}, mailinngRouter);
+app.use('/templates', requireAuth, templateRoutes);
+
+// SPA fallback: serwuj index.html dla tras frontendu (np. /login) bez rozszerzenia
+app.get('*', (req, res, next) => {
+  // jeśli to żądanie do API, idź dalej
+  const isApi = req.path.startsWith('/auth')
+            || req.path.startsWith('/customers')
+            || req.path.startsWith('/admin')
+            || req.path.startsWith('/mailing')
+            || req.path.startsWith('/templates');
+  const acceptsHtml = req.method === 'GET' && (req.headers.accept || '').includes('text/html');
+  const hasExtension = /\.[^\/]+$/.test(req.path);
+  if (!isApi && acceptsHtml && !hasExtension) {
+    return res.sendFile(path.resolve('./', 'public', 'index.html'));
+  }
+  return next();
+});
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

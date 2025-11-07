@@ -97,6 +97,14 @@ class UsersController {
       }
 
       const customerData = req.body;
+      
+      // Normalizacja boolean dla MySQL/MariaDB
+      if (customerData.active !== undefined) {
+        customerData.active = (customerData.active === true || customerData.active === 'true' || customerData.active === 1 || customerData.active === '1');
+      }
+      if (customerData.internalMailServer !== undefined) {
+        customerData.internalMailServer = (customerData.internalMailServer === true || customerData.internalMailServer === 'true' || customerData.internalMailServer === 1 || customerData.internalMailServer === '1');
+      }
 
       // Sprawdź czy klient o tej nazwie już istnieje
       const existingCustomer = await Customers.findOne({
@@ -128,6 +136,14 @@ class UsersController {
 
       const { id } = req.params;
       const customerData = req.body;
+      
+      // Normalizacja boolean dla MySQL/MariaDB
+      if (customerData.active !== undefined) {
+        customerData.active = (customerData.active === true || customerData.active === 'true' || customerData.active === 1 || customerData.active === '1');
+      }
+      if (customerData.internalMailServer !== undefined) {
+        customerData.internalMailServer = (customerData.internalMailServer === true || customerData.internalMailServer === 'true' || customerData.internalMailServer === 1 || customerData.internalMailServer === '1');
+      }
 
       const customer = await Customers.findByPk(id);
 

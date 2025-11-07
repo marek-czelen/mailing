@@ -3,7 +3,7 @@ import sequelize from "../include/db.js";
 import Customers from "./customers.model.js";
 import MarketingCampanies from "./marketingCampanies.model.js";
 
-const Databases = sequelize.define('databases', {
+const Databases = sequelize.define('customer_databases', {
   id:{
         primaryKey: true,
         type: DataTypes.INTEGER,
@@ -18,7 +18,8 @@ const Databases = sequelize.define('databases', {
         allowNull: true
   },
   tags:{
-        type: DataTypes.ARRAY(DataTypes.STRING),
+        // MySQL/MariaDB nie wspiera ARRAY; używamy JSON zgodnie ze schematem bazy
+        type: DataTypes.JSON,
         allowNull: true
   },
   rodo_flag: {
@@ -54,7 +55,7 @@ updatedAt: {
       field: 'updated_at'
 }
 }, {
-    tableName: 'databases',
+    tableName: 'customer_databases',
     timestamps: true,
 });
 

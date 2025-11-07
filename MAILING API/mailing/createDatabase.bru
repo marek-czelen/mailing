@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{backendUrl}}/mailing/createCampaign
+  url: {{backendUrl}}/mailing/createDatabase
   body: json
   auth: bearer
 }
@@ -16,7 +16,11 @@ auth:bearer {
 
 body:json {
   {
-    "email": "user2@o.pl",
-    "password":"111"
+    "name": "test",
+    "description": "test",
+    "tags": [],
+    "rodo_flag": true,
+    "export_enabled": true,
+    "customer_id": 1
   }
 }
