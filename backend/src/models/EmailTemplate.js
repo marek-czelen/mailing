@@ -36,9 +36,20 @@ import sequelize from "../include/db.js";
       allowNull: true
     },
     tags: {
-      type: DataTypes.JSON, // Tablica tagów ['newsletter', 'firmowy']
+      type: DataTypes.TEXT("long"), // Tablica tagów ['newsletter', 'firmowy']
       allowNull: true,
-      defaultValue: []
+      get() {
+        try {
+          const value = this.getDataValue('tags');
+          return value ? JSON.parse(value) : [];
+        } catch (error) {
+          console.error("Error parsing tags JSON:", error);
+          return [];
+        }
+      },
+      set(value) {
+        this.setDataValue('tags', JSON.stringify(value));
+      },
     },
     
     // Informacje o autorze i wersjonowaniu
@@ -94,9 +105,21 @@ import sequelize from "../include/db.js";
     
     // Dodatkowe metadane
     metadata: {
-      type: DataTypes.JSON,
+      type: DataTypes.TEXT("long"),
       allowNull: true,
-      comment: 'Dodatkowe informacje o template (rozmiar, kolory dominujące, etc.)'
+      comment: 'Dodatkowe informacje o template (rozmiar, kolory dominujące, etc.)',
+      get() {
+        try {
+          const value = this.getDataValue('metadata');
+          return value ? JSON.parse(value) : null;
+        } catch (error) {
+          console.error("Error parsing metadata JSON:", error);
+          return null;
+        }
+      },
+      set(value) {
+        this.setDataValue('metadata', JSON.stringify(value));
+      }
     }
   }, {
     // Opcje modelu

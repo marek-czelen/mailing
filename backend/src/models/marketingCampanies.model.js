@@ -73,9 +73,21 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
       field: "scoring"
     },
     suggestions: {
-      type: DataTypes.JSON,
+      type: DataTypes.TEXT("long"),
       allowNull: true,
-      field: "suggestions"
+      field: "suggestions",
+      get() {
+        try {
+          const value = this.getDataValue('suggestions');
+          return value ? JSON.parse(value) : [];
+        } catch (error) {
+          console.error("Error parsing suggestions JSON:", error);
+          return [];
+        }
+      },
+      set(value) {
+        this.setDataValue('suggestions', JSON.stringify(value));
+      }
     },
     databaseId: {
       type: DataTypes.INTEGER,

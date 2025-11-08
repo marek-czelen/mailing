@@ -37,22 +37,45 @@ import sequelize from "../include/db.js";
     
     // Zawartość bloku (JSON ze wszystkimi właściwościami)
     content: {
-      type: DataTypes.JSON,
+      type: DataTypes.TEXT("long"),
       allowNull: false,
       defaultValue: {},
-      comment: 'Zawartość bloku w formacie JSON (text, fontSize, color, etc.)'
+      comment: 'Zawartość bloku w formacie JSON (text, fontSize, color, etc.)',
+      get() {
+        try {
+          const value = this.getDataValue('content');
+          return value ? JSON.parse(value) : {};
+        } catch (error) {
+          console.error("Error parsing content JSON:", error);
+          return {};
+        }
+      },
+      set(value) {
+        this.setDataValue('content', JSON.stringify(value));
+      }
     },
     
     // Style bloku (JSON z marginesami, wyrównaniem, etc.)
     style: {
-      type: DataTypes.JSON,
+      type: DataTypes.TEXT("long"),
       allowNull: false,
-      defaultValue: {
-        marginTop: 0,
-        marginBottom: 0,
-        textAlign: 'left'
+      comment: 'Style bloku w formacie JSON (marginTop, marginBottom, textAlign, etc.)',
+      get() {
+        try {
+          const value = this.getDataValue('style');
+          return value ? JSON.parse(value) : {};
+        } catch (error) {
+          console.error("Error parsing style JSON:", error);
+          return {
+            marginTop: 0,
+            marginBottom: 0,
+            textAlign: 'left'
+          };
+        }
       },
-      comment: 'Style bloku w formacie JSON (marginTop, marginBottom, textAlign, etc.)'
+      set(value) {
+        this.setDataValue('style', JSON.stringify(value));
+      }
     },
     
     // Dodatkowe właściwości
@@ -64,9 +87,21 @@ import sequelize from "../include/db.js";
     
     // Metadane bloku
     metadata: {
-      type: DataTypes.JSON,
+      type: DataTypes.TEXT("long"),
       allowNull: true,
-      comment: 'Dodatkowe metadane bloku (np. rozmiar wygenerowanego contentu)'
+      comment: 'Dodatkowe metadane bloku (np. rozmiar wygenerowanego contentu)',
+      get() {
+        try {
+          const value = this.getDataValue('metadata');
+          return value ? JSON.parse(value) : null;
+        } catch (error) {
+          console.error("Error parsing metadata JSON:", error);
+          return null;
+        }
+      },
+      set(value) {
+        this.setDataValue('metadata', JSON.stringify(value));
+      }
     }
   }, {
     // Opcje modelu

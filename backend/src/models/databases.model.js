@@ -19,8 +19,20 @@ const Databases = sequelize.define('customer_databases', {
   },
   tags:{
         // MySQL/MariaDB nie wspiera ARRAY; używamy JSON zgodnie ze schematem bazy
-        type: DataTypes.JSON,
-        allowNull: true
+        type: DataTypes.TEXT("long"),
+        allowNull: true,
+        get() {
+            try {
+                const value = this.getDataValue('tags');
+                return value ? JSON.parse(value) : [];
+            } catch (error) {
+                console.error("Error parsing tags JSON:", error);
+                return [];
+            }
+        },
+        set(value) {
+            this.setDataValue('tags', JSON.stringify(value));
+        }         
   },
   rodo_flag: {
         type: DataTypes.BOOLEAN,

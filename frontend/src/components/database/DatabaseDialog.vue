@@ -47,7 +47,7 @@
             <template v-slot:chip="{ props, item }">
               <v-chip
                 v-bind="props"
-                :text="item"
+                :text="item.value"
                 size="small"
                 color="primary"
                 variant="elevated"
@@ -64,6 +64,7 @@
             v-model="formData.gdprCompliant"
             label="Zgodność z RODO"
             color="primary"
+            :rules="[rules.required]"
             inset
             hide-details
           />
@@ -113,8 +114,8 @@ const formData = ref({
   name: '',
   description: '',
   tags: [],
-  gdprCompliant: true,
-  allowExport: true,
+  gdprCompliant: false,
+  allowExport: false,
   autoCleanup: false,
   notifications: {
     newContacts: true,
@@ -124,8 +125,11 @@ const formData = ref({
   customFieldsTemplate: []
 })
 
+const ruleRequiredTrue = value => value === true || 'To pole musi być zaznaczone' 
+
 const rules = {
-  required: value => !!value || 'To pole jest wymagane'
+  required: value => !!value || 'To pole jest wymagane',
+  gdprCompliant: ruleRequiredTrue
 }
 
 const isEditing = computed(() => !!props.database)
@@ -156,8 +160,8 @@ function resetForm() {
     name: '',
     description: '',
     tags: [],
-    gdprCompliant: true,
-    allowExport: true,
+    gdprCompliant: false,
+    allowExport: false,
     autoCleanup: false,
     notifications: {
       newContacts: true,

@@ -1256,6 +1256,19 @@ export async function getDatabasesByCustomer(req, res) {
             order: [['name', 'ASC']]
         });
 
+        const contactCounts = await MailAddress.findAll({
+            where: {
+                customerId: customerId
+            },
+            group: ['databaseId'],
+            attributes: ['databaseId', [Sequelize.fn('COUNT', Sequelize.col('id')), 'count']]
+        });
+
+        for (const db of databases) {
+            const countRecord = contactCounts.find(c => c.databaseId === db.id);
+            db.dataValues.contactsCount = countRecord ? parseInt(countRecord.get('count'), 10) : 0;
+        }
+
         res.send(new Response(databases, true, "Customer databases retrieved successfully."));
     } catch (error) {
         res.send(new Response(null, false, `Failed to fetch customer databases. ${error.message}`));
