@@ -141,6 +141,14 @@ export class Databases {
       segment: params.segment || ''
     });
     
+    // Dodaj sortowanie jeśli przekazano
+    if (params.sortBy) {
+      queryParams.append('sortBy', params.sortBy);
+    }
+    if (params.sortOrder) {
+      queryParams.append('sortOrder', params.sortOrder);
+    }
+    
     const response = await axios.get(`/mailing/getDatabaseContacts/${id}?${queryParams}`);
     return response.data.data;
   }

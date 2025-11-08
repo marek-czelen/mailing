@@ -373,19 +373,20 @@ async function deleteDatabase(database) {
 
 async function exportDatabase(database) {
   loadingOperation.value = true
+  let format = 'xlsx'  // Można rozszerzyć o wybór formatu w przyszłości
   try {
     console.log('Eksportowanie bazy:', database.name)
     const blob = await Databases.exportContacts(database.id, {
-      format: 'csv',
-      fields: ['email', 'firstName', 'lastName', 'phone'],
-      status: 'active'
+      format: format,
+      fields: ['mailAddress', 'rodzaj', 'miasto', 'phone'],
+      status: null
     })
     
     // Utwórz link do pobrania pliku
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${database.name}_contacts_${new Date().toISOString().split('T')[0]}.csv`
+    link.download = `${database.name}_contacts_${new Date().toISOString().split('T')[0]}.${format}`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

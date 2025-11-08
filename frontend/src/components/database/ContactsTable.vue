@@ -34,49 +34,48 @@
       </div>
     </div>
 
-    <!-- Data Table -->
-    <v-data-table
+    <!-- Data Table (server-side) -->
+    <v-data-table-server
       :headers="headers"
-      :items="filteredContacts"
-      :search="searchQuery"
+      :items="items"
+      :items-length="totalItems"
       :loading="loading"
       item-value="id"
       class="contacts-table"
-      :items-per-page="25"
-      :items-per-page-options="[10, 25, 50, 100]"
+      @update:options="onUpdateOptions"
     >
       <!-- Email Column -->
-      <template v-slot:item.email="{ item }">
+      <template v-slot:item.mailAddress="{ item }">
         <div class="email-cell">
-          <div class="email">{{ item.email }}</div>
+          <div class="email">{{ item.mailAddress }}</div>
           <div class="name">{{ item.firstName }} {{ item.lastName }}</div>
         </div>
       </template>
 
       <!-- Unsubscribe Date Column -->
-      <template v-slot:item.unsubscribeDate="{ item }">
+      <template v-slot:item.unsubscribesDate="{ item }">
         <div class="unsubscribe-cell">
-          <span v-if="item.unsubscribeDate" class="unsubscribe-date">
-            {{ formatDate(item.unsubscribeDate) }}
+          <span v-if="item.unsubscribesDate" class="unsubscribe-date">
+            {{ formatDate(item.unsubscribesDate) }}
           </span>
           <span v-else class="no-unsubscribe">-</span>
         </div>
       </template>
 
       <!-- Type Column -->
-      <template v-slot:item.type="{ item }">
+      <template v-slot:item.rodzaj="{ item }">
         <v-chip
-          :color="getTypeColor(item.type)"
+          :color="getTypeColor(item.rodzaj)"
           size="small"
           variant="elevated"
         >
-          {{ getTypeLabel(item.type) }}
+          {{ getTypeLabel(item.rodzaj) }}
         </v-chip>
       </template>
 
       <!-- City Column -->
-      <template v-slot:item.city="{ item }">
-        <span>{{ item.city || '-' }}</span>
+      <template v-slot:item.miasto="{ item }">
+        <span>{{ item.miasto || '-' }}</span>
       </template>
 
       <!-- Actions Column -->
@@ -137,7 +136,7 @@
           </v-btn>
         </div>
       </template>
-    </v-data-table>
+  </v-data-table-server>
 
     <!-- Contact Dialog -->
     <ContactDialog
@@ -160,7 +159,8 @@
 </template>
 
 <script setup>
-import { ref, computed, defineProps, defineEmits } from 'vue'
+import { ref, computed, defineProps, defineEmits, watch, onMounted } from 'vue'
+import { Databases } from '../../services/databases'
 import ContactDialog from './ContactDialog.vue'
 import ImportDialog from './ImportDialog.vue'
 
@@ -181,7 +181,14 @@ const showContactDialog = ref(false)
 const editingContact = ref(null)
 const showImportDialog = ref(false)
 
+// Server-side table state
+const items = ref([])
+const totalItems = ref(0)
+const options = ref({ page: 1, itemsPerPage: 25, sortBy: [] })
+let searchDebounce = null
+
 // Table headers
+// Używamy oryginalnych kluczy z backendu aby uniknąć błędów
 const headers = [
   { title: 'Email', key: 'mailAddress', sortable: true },
   { title: 'Data wypisania', key: 'unsubscribesDate', sortable: true },
@@ -199,26 +206,78 @@ const statusOptions = [
   { title: 'Wypisany', value: 'unsubscribed' }
 ]
 
-// Computed
-const filteredContacts = computed(() => {
-  let contacts = props.contacts || []
-  
-  if (statusFilter.value) {
-    contacts = contacts.filter((contact) => {
-      switch (statusFilter.value) {
-        case 'active':
-          return contact.active == true
-        case 'unsubscribed':
-          return contact.unsubscribesDate !== null
-        case 'inactive':
-          return contact.active != true
-        default:
-          return true
-      }
-    })
+// Server-side loaders
+let fetchInProgress = false
+async function fetchContacts() {
+  if (fetchInProgress) return
+  fetchInProgress = true
+  if (!props.database?.id) {
+    items.value = []
+    totalItems.value = 0
+    fetchInProgress = false
+    return
   }
+  try {
+    loading.value = true
+    const params = {
+      page: options.value.page,
+      limit: options.value.itemsPerPage || 25,
+      search: searchQuery.value || '',
+      status: statusFilter.value || ''
+    }
+    // Sortowanie (pierwsza reguła sortowania z tabeli)
+    const firstSort = (options.value.sortBy && options.value.sortBy[0]) || null
+    if (firstSort && firstSort.key) {
+      params.sortBy = firstSort.key
+      params.sortOrder = firstSort.order || 'asc'
+    }
+    const data = await Databases.getContacts(props.database.id, params)
+    items.value = data.contacts || []
+    totalItems.value = data.total || 0
+  } catch (e) {
+    console.error('Błąd pobierania kontaktów:', e)
+    items.value = []
+    totalItems.value = 0
+  } finally {
+    loading.value = false
+    fetchInProgress = false
+  }
+}
+
+function onUpdateOptions(newOptions) {
+  // Porównanie czy strona, rozmiar lub sortowanie faktycznie się zmieniły
+  const changed = newOptions.page !== options.value.page ||
+                  newOptions.itemsPerPage !== options.value.itemsPerPage ||
+                  JSON.stringify(newOptions.sortBy) !== JSON.stringify(options.value.sortBy)
   
-  return contacts
+  options.value = { ...options.value, ...newOptions }
+  
+  if (changed) {
+    fetchContacts()
+  }
+}
+
+// Reakcje na zmiany filtrów i bazy
+watch(() => props.database?.id, () => {
+  options.value.page = 1
+  fetchContacts()
+})
+
+watch(statusFilter, () => {
+  options.value.page = 1
+  fetchContacts()
+})
+
+watch(searchQuery, () => {
+  options.value.page = 1
+  if (searchDebounce) clearTimeout(searchDebounce)
+  searchDebounce = setTimeout(() => {
+    fetchContacts()
+  }, 300)
+})
+
+onMounted(() => {
+  fetchContacts()
 })
 
 // Methods
@@ -334,6 +393,8 @@ function handleImportComplete(result) {
 function handleContactUpdated(updatedContact) {
   console.log('Kontakt zaktualizowany:', updatedContact)
   emit('contact-updated', updatedContact)
+  // Odśwież bieżącą stronę po edycji/dodaniu
+  fetchContacts()
 }
 </script>
 

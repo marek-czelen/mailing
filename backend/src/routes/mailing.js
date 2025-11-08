@@ -79,6 +79,9 @@ router.get('/getCustomerDatabasesStats/:customerId', getCustomerDatabasesStats);
 
 // Pobierz kontakty przypisane do konkretnej bazy danych
 router.get('/getDatabaseContacts/:databaseId', getDatabaseContacts);
+// Eksport wszystkich kontaktów z bazy danych
+import { exportDatabaseContacts } from '../controller/mailing.js';
+router.get('/exportDatabaseContacts/:databaseId', exportDatabaseContacts);
 
 // Wypisz kontakt ze wszystkich list mailingowych danego klienta
 router.get('/unsubscribe/:contactHash', unsubscribeContact);

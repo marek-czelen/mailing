@@ -1498,6 +1498,8 @@ export async function getCustomerDatabasesStats(req, res) {
 export async function getDatabaseContacts(req, res) {
     try {
         const { databaseId } = req.params;
+        const {page=1, limit=50, search='', status='', segment='', sortBy='id', sortOrder='asc'} = req.query; // status, segment przyszłościowo
+        
         const userData = await Admin.getCurrentUserData(req.headers.authorization);
         // Sprawdź czy baza danych istnieje i nie jest usunięta
         const database = await Databases.findOne({
@@ -1510,24 +1512,72 @@ export async function getDatabaseContacts(req, res) {
                 model: Customers,
                 as: 'Customer',
                 attributes: ['id', 'name']
-            }]
+            }],
         });
 
         if (!database) {
             return res.send(new Response(null, false, "Database not found or is deleted."));
         }
 
-        // Pobierz wszystkie adresy email przypisane do tej bazy danych
+        // Całkowita liczba kontaktów (bez filtra) – przydatne do UI
+        const totalContacts = await MailAddress.count({
+            where: { databaseId: databaseId }
+        });
+
+    // Budowa warunku where z opcjonalnym filtrem search i statusem
+    const whereClause = { databaseId: databaseId };
+
+        const trimmedSearch = (search || '').trim();
+        if (trimmedSearch !== '') {
+            const s = trimmedSearch.toLowerCase();
+            const numeric = /^\d+$/.test(s) ? Number(s) : null;
+
+            const orConditions = [
+                // Tekstowe pola – LIKE case-insensitive
+                Sequelize.where(Sequelize.fn('LOWER', Sequelize.col('mail_address')), { [Op.like]: `%${s}%` }),
+                Sequelize.where(Sequelize.fn('LOWER', Sequelize.col('miasto')), { [Op.like]: `%${s}%` }),
+                Sequelize.where(Sequelize.fn('LOWER', Sequelize.col('rodzaj')), { [Op.like]: `%${s}%` }),
+                // Jeśli kolumna phone istnieje w tabeli – uwzględnij
+                Sequelize.where(Sequelize.fn('LOWER', Sequelize.col('phone')), { [Op.like]: `%${s}%` })
+            ];
+
+            // Numeryczne dopasowanie (np. id albo active 0/1)
+            if (numeric !== null) {
+                orConditions.push({ id: numeric });
+                // aktywność: jeśli szukamy '0' lub '1'
+                if (numeric === 0 || numeric === 1) {
+                    orConditions.push({ active: numeric });
+                }
+            }
+
+            whereClause[Op.or] = orConditions;
+        }
+
+        // Filtrowanie po statusie
+        const statusValue = (status || '').toString().toLowerCase();
+        if (statusValue === 'active') {
+            whereClause.active = 1;
+        } else if (statusValue === 'inactive') {
+            whereClause.active = 0;
+        } else if (statusValue === 'unsubcribed' || statusValue === 'unsubscribed') {
+            // wspieramy obie pisownie
+            whereClause.unsubscribesDate = { [Op.ne]: null };
+        }
+
+        // Liczba kontaktów po filtrze (paginated później)
+        const filteredTotal = await MailAddress.count({ where: whereClause });
+
+        // Pobierz kontakty spełniające warunek (z paginacją)
         const contacts = await MailAddress.findAll({
-            where: {
-                databaseId: databaseId
-            },
+            where: whereClause,
             include: [{
                 model: Customers,
                 as: 'Customer',
                 attributes: ['id', 'name']
             }],
-            order: [['created_at', 'DESC']]
+            order: [[sortBy, sortOrder]],
+            limit: limit ? parseInt(limit) : undefined,
+            offset: page && limit ? ((parseInt(page) - 1) * parseInt(limit)) : undefined
         });
 
         const result = {
@@ -1541,14 +1591,27 @@ export async function getDatabaseContacts(req, res) {
                 mailAddress: contact.mailAddress,
                 miasto: contact.miasto,
                 rodzaj: contact.rodzaj,
+                phone: contact.phone,
                 active: contact.active,
                 unsubscribesDate: contact.unsubscribesDate,
                 hash: contact.hash,
                 createdAt: contact.created_at,
                 updatedAt: contact.updated_at
             })),
+            // total – pełna liczba kontaktów w bazie (bez filtra)
+            total: totalContacts,
+            // filteredTotal – liczba rekordów spełniających filtr search
+            filteredTotal,
+            page: page ? parseInt(page) : 1,
+            limit: limit ? parseInt(limit) : totalContacts,
+            search: trimmedSearch,
+            status: statusValue || null,
+            filterApplied: (trimmedSearch !== '') || (statusValue !== ''),
             summary: {
-                totalContacts: contacts.length,
+                // liczba kontaktów zwróconych w tej stronie paginacji
+                pageContacts: contacts.length,
+                filteredTotal,
+                totalContacts,
                 activeContacts: contacts.filter(c => c.active === 1).length,
                 inactiveContacts: contacts.filter(c => c.active === 0).length,
                 unsubscribedContacts: contacts.filter(c => c.unsubscribesDate !== null).length
@@ -2045,5 +2108,143 @@ export async function contactDelete(req, res) {
     } catch (error) {
         console.log(error);
         res.send(new Response(null, false, `Failed to delete contact. ${error.message}`));
+    }
+}
+
+// ============= EXPORT CONTACTS =============
+/**
+ * Eksport wszystkich kontaktów z bazy o podanym ID
+ * 
+ * Endpoint (GET): /mailing/exportDatabaseContacts/:databaseId
+ * Query:
+ *  - format: 'csv' | 'json' | 'xlsx' (domyślnie 'csv')
+ *  - fields: lista pól rozdzielona przecinkami; dostępne: 
+ *            id, mailAddress, miasto, rodzaj, phone, active, unsubscribesDate, hash, databaseId, customerId, created_at, updated_at
+ *            (jeśli puste – użyte zostaną domyślne)
+ *  - status: 'active' | 'inactive' | 'unsubscribed' (lub 'unsubcribed') – filtr statusu
+ *  - segment: (na przyszłość) – obecnie ignorowane
+ */
+export async function exportDatabaseContacts(req, res) {
+    try {
+        const { databaseId } = req.params;
+        const { format = 'csv', fields = '', status = '', segment = '' } = req.query;
+
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+
+        // Weryfikacja bazy i przynależności do klienta
+        const database = await Databases.findOne({
+            where: {
+                id: databaseId,
+                deleted_at: null,
+                customer_id: userData.customerId
+            }
+        });
+
+        if (!database) {
+            return res.send(new Response(null, false, "Database not found or is deleted."));
+        }
+
+        // Zbuduj warunek where z filtrem status
+        const whereClause = { databaseId: databaseId };
+        const statusValue = (status || '').toString().toLowerCase();
+        if (statusValue === 'active') {
+            whereClause.active = 1;
+        } else if (statusValue === 'inactive') {
+            whereClause.active = 0;
+        } else if (statusValue === 'unsubcribed' || statusValue === 'unsubscribed') {
+            whereClause.unsubscribesDate = { [Op.ne]: null };
+        }
+
+        // Pobierz wszystkie kontakty dla bazy (bez paginacji)
+        const contacts = await MailAddress.findAll({ where: whereClause, order: [['created_at', 'ASC']] });
+
+        // Lista dozwolonych pól (po właściwościach modelu)
+        const allowedFields = [
+            'id', 'mailAddress', 'miasto', 'rodzaj', 'phone', 'active', 'unsubscribesDate', 'hash',
+            'databaseId', 'customerId', 'created_at', 'updated_at'
+        ];
+
+        // Domyślne pola eksportu (czytelny CSV)
+        const defaultFields = ['id', 'mailAddress', 'miasto', 'rodzaj', 'phone', 'active', 'unsubscribesDate', 'created_at'];
+
+        const selectedFields = (fields || '')
+            .split(',')
+            .map(f => f.trim())
+            .filter(Boolean);
+
+        const exportFields = (selectedFields.length > 0 ? selectedFields : defaultFields)
+            .filter(f => allowedFields.includes(f));
+
+        // Jeśli nic nie zostało po walidacji – wróć do default
+        const finalFields = exportFields.length > 0 ? exportFields : defaultFields;
+
+    // Pola numeryczne – tylko te NIE będą wymuszały cudzysłowów
+    const numericFields = new Set(['id', 'active', 'databaseId', 'customerId']);
+
+        // Funkcja pomocnicza do CSV z opcją wymuszenia cudzysłowu dla pól tekstowych
+        const escapeCsv = (val, forceQuote = false) => {
+            if (val === null || val === undefined) return '';
+            let s = String(val);
+            // zamieniamy CRLF na spację, żeby nie psuć struktury
+            s = s.replace(/\r\n|\n|\r/g, ' ');
+            // podwój cudzysłowy wewnątrz
+            s = s.replace(/"/g, '""');
+            if (forceQuote || /[",;]/.test(s)) {
+                s = '"' + s + '"';
+            }
+            return s;
+        };
+
+        const fileBase = `database_${databaseId}_contacts`;
+
+        const fmt = String(format).toLowerCase();
+        if (fmt === 'json') {
+            // JSON – zwracamy obiekty z wybranymi polami
+            const jsonData = contacts.map(c => {
+                const obj = {};
+                for (const f of finalFields) obj[f] = c[f];
+                return obj;
+            });
+
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="${fileBase}.json"`);
+            return res.status(200).send(jsonData);
+        }
+
+        if (fmt === 'xlsx' || fmt === 'excel' || fmt === 'xls') {
+            // EXCEL – budujemy arkusz w kolejności kolumn z finalFields
+            const normalizeCell = (val) => {
+                if (val === null || val === undefined) return '';
+                if (val instanceof Date) return val.toISOString();
+                return val;
+            };
+            const aoa = [finalFields];
+            for (const c of contacts) {
+                aoa.push(finalFields.map(f => normalizeCell(c[f])));
+            }
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            XLSX.utils.book_append_sheet(wb, ws, 'contacts');
+            const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename="${fileBase}.xlsx"`);
+            return res.status(200).send(buf);
+        }
+
+        // CSV – budujemy nagłówek i wiersze
+        const header = finalFields.join(',');
+        const rows = contacts.map(c => finalFields
+            .map(f => escapeCsv(c[f], !numericFields.has(f)))
+            .join(','));
+        const csv = [header, ...rows].join('\n');
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileBase}.csv"`);
+        return res.status(200).send(csv);
+    } catch (error) {
+        console.log(error);
+        return res.send(new Response(null, false, `Failed to export contacts. ${error.message}`));
     }
 }

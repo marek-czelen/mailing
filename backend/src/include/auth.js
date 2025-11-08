@@ -1,6 +1,7 @@
 
 import User from "../models/user.model.js";
 import jwt from 'jsonwebtoken';
+import bcrypt from "bcrypt"
 
 export class Auth {
     static privateKey = "qSVfGKmHzdwfcVxFFL1eSdMKFRQtx4m1TtxhJfz2yVVjtyMhBpqeLpbx0h0bN5Wv";
