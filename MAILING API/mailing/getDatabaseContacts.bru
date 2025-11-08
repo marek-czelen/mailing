@@ -1,7 +1,7 @@
 meta {
-  name: getCustomerDatabasesStats
+  name: getDatabaseContacts
   type: http
-  seq: 9
+  seq: 10
 }
 
 get {
@@ -12,11 +12,4 @@ get {
 
 auth:bearer {
   token: {{token}}
-}
-
-body:json {
-  {
-    "email": "user2@o.pl",
-    "password":"111"
-  }
 }

@@ -73,12 +73,6 @@
                         Edytuj
                       </v-list-item-title>
                     </v-list-item>
-                    <v-list-item @click="duplicateDatabase(database)">
-                      <v-list-item-title>
-                        <v-icon left size="16">mdi-content-copy</v-icon>
-                        Duplikuj
-                      </v-list-item-title>
-                    </v-list-item>
                     <v-list-item @click="exportDatabase(database)">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-download</v-icon>
@@ -273,7 +267,6 @@ async function loadDatabaseContacts(databaseId) {
     
     if (selectedDatabase.value && selectedDatabase.value.id === databaseId) {
       selectedDatabase.value.contacts = contactsData.contacts || []
-      selectedDatabase.value.contactsCount = contactsData.total || 0
       console.log('Kontakty załadowane:', contactsData.contacts?.length || 0)
     }
   } catch (error) {
@@ -357,16 +350,6 @@ function closeDatabaseDialog() {
   editingDatabase.value = null
 }
 
-function duplicateDatabase(database) {
-  const duplicate = {
-    ...database,
-    id: Date.now(),
-    name: `${database.name} (kopia)`,
-    createdAt: new Date(),
-    history: []
-  }
-  databases.value.unshift(duplicate)
-}
 
 async function deleteDatabase(database) {
   if (confirm(`Czy na pewno chcesz usunąć bazę "${database.name}"? Ta operacja jest nieodwracalna.`)) {
@@ -434,7 +417,7 @@ async function editContact(contact) {
 }
 
 async function deleteContact(contact) {
-  if (confirm(`Czy na pewno chcesz usunąć kontakt ${contact.email}?`)) {
+  if (confirm(`Czy na pewno chcesz usunąć kontakt ${contact.mailAddress}?`)) {
     try {
       if (selectedDatabase.value) {
         await Databases.deleteContact(selectedDatabase.value.id, contact.id)
@@ -651,7 +634,9 @@ async function handleContactUpdated(updatedContact) {
 async function loadDatabases() {
   loadingDatabases.value = true
   try {
+    
     const data = await Databases.getList()
+    console.log('Załadowane bazy danych:', data)
     databases.value = data || []
     if (databases.value.length > 0) {
       await selectDatabase(databases.value[0])

@@ -19,6 +19,7 @@ import {
     getCustomerDatabasesStats,
     getDatabaseContacts,
     unsubscribeContact,
+    resubscribeContact,
     contactUpdate,
     contactAdd,
     contactDelete
@@ -81,6 +82,7 @@ router.get('/getDatabaseContacts/:databaseId', getDatabaseContacts);
 
 // Wypisz kontakt ze wszystkich list mailingowych danego klienta
 router.get('/unsubscribe/:contactHash', unsubscribeContact);
+router.get('/resubscribe/:contactHash', resubscribeContact);
 
 // ============= CONTACTS MANAGEMENT =============
 // Aktualizuj dane kontaktu

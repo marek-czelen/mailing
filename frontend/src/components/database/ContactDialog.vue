@@ -302,7 +302,7 @@ watch(() => props.contact, (newContact) => {
         miasto: newContact.miasto || '',
         rodzaj: newContact.rodzaj || '',
         phone: newContact.phone || '',
-        unsubscribeDate: newContact.unsubscribeDate || null,
+        unsubscribeDate: newContact.unsubscribesDate || null,
     }
   } else {
     resetForm()
@@ -348,7 +348,7 @@ async function confirmUnsubscribe() {
   unsubscribing.value = true
   
   try {
-    const result = await Databases.unsubscribeContact(props.contact.id)
+    const result = await Databases.unsubscribeContact(props.contact.hash)
     
     if (result.response?.success || result.success) {
       // Aktualizuj lokalny stan
@@ -357,7 +357,7 @@ async function confirmUnsubscribe() {
       // Powiadom rodzica o zmianie
       emit('contact-updated', {
         ...props.contact,
-        unsubscribeDate: formData.value.unsubscribeDate
+        ...result.data.contact
       })
 
       showSnackbar('Kontakt został pomyślnie wypisany ze wszystkich list mailingowych.', 'success')
@@ -386,16 +386,16 @@ async function confirmResubscribe() {
   resubscribing.value = true
   
   try {
-    const result = await Databases.resubscribeContact(props.contact.id)
+    const result = await Databases.resubscribeContact(props.contact.hash)
     
-    if (result.success) {
+    if (result.response.success) {
       // Aktualizuj lokalny stan
       formData.value.unsubscribeDate = null
       
       // Powiadom rodzica o zmianie
       emit('contact-updated', {
         ...props.contact,
-        unsubscribeDate: null
+        ...result.data.contact
       })
       
       showSnackbar('Kontakt został pomyślnie zapisany ponownie na listy mailingowe.', 'success')

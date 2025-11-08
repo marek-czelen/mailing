@@ -4,6 +4,7 @@ import Auth from '../include/auth.js';
 
 import { validationResult, body } from 'express-validator';
 import { Op } from 'sequelize';
+import Admin from '../include/admin.js';
 
 /**
  * Kontroler do zarządzania ustawieniami użytkowników (model Customers)
@@ -67,7 +68,7 @@ class UsersController {
       const userEmail = decodedToken.data.userEmail;
 
       // Pobierz dane użytkownika z bazy
-      const user = await Auth.getUserByEmail(userEmail);
+      const user = await Admin.getUserByEmail(userEmail);
       if (!user) {
           return res.status(500).send(new Response(null, false, 'Failed to fetch current user.'));  
       }

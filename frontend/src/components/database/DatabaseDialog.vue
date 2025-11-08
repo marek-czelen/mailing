@@ -134,26 +134,55 @@ const rules = {
 
 const isEditing = computed(() => !!props.database)
 
-watch(() => props.database, (newDatabase) => {
-  if (newDatabase) {
-    formData.value = {
-      name: newDatabase.name || '',
-      description: newDatabase.description || '',
-      tags: [...(newDatabase.tags || [])],
-      gdprCompliant: newDatabase.rodo_flag !== false,
-      allowExport: newDatabase.export_enabled !== false,
-      autoCleanup: newDatabase.autoCleanup || false,
-      notifications: {
-        newContacts: newDatabase.notifications?.newContacts !== false,
-        bounces: newDatabase.notifications?.bounces !== false,
-        unsubscribes: newDatabase.notifications?.unsubscribes !== false
-      },
-      customFieldsTemplate: [...(newDatabase.customFieldsTemplate || [])]
+// Watch na modelValue - resetuj formularz przy każdym otwarciu dialogu
+watch(() => props.modelValue, (isOpen) => {
+  if (isOpen) {
+    if (props.database) {
+      // Załaduj dane z edytowanej bazy
+      formData.value = {
+        name: props.database.name || '',
+        description: props.database.description || '',
+        tags: [...(props.database.tags || [])],
+        gdprCompliant: props.database.rodo_flag !== false,
+        allowExport: props.database.export_enabled !== false,
+        autoCleanup: props.database.autoCleanup || false,
+        notifications: {
+          newContacts: props.database.notifications?.newContacts !== false,
+          bounces: props.database.notifications?.bounces !== false,
+          unsubscribes: props.database.notifications?.unsubscribes !== false
+        },
+        customFieldsTemplate: [...(props.database.customFieldsTemplate || [])]
+      }
+    } else {
+      // Reset do wartości pustych dla nowej bazy
+      resetForm()
     }
-  } else {
-    resetForm()
   }
-}, { immediate: true })
+})
+
+// Watch na props.database dla kompatybilności wstecznej
+watch(() => props.database, (newDatabase) => {
+  if (props.modelValue) {
+    if (newDatabase) {
+      formData.value = {
+        name: newDatabase.name || '',
+        description: newDatabase.description || '',
+        tags: [...(newDatabase.tags || [])],
+        gdprCompliant: newDatabase.rodo_flag !== false,
+        allowExport: newDatabase.export_enabled !== false,
+        autoCleanup: newDatabase.autoCleanup || false,
+        notifications: {
+          newContacts: newDatabase.notifications?.newContacts !== false,
+          bounces: newDatabase.notifications?.bounces !== false,
+          unsubscribes: newDatabase.notifications?.unsubscribes !== false
+        },
+        customFieldsTemplate: [...(newDatabase.customFieldsTemplate || [])]
+      }
+    } else {
+      resetForm()
+    }
+  }
+})
 
 function resetForm() {
   formData.value = {

@@ -2,7 +2,7 @@
   <div class="contacts-table-container">
     <!-- Table Controls -->
     <div class="table-controls">
-      <div class="controls-left">
+      <div class="controls-left" style="width: 450px;">
         <v-text-field
           v-model="searchQuery"
           placeholder="Wyszukaj kontakty..."
@@ -109,7 +109,7 @@
                   Wypisz z listy
                 </v-list-item-title>
               </v-list-item>
-              <v-list-item @click="viewHistory(item)">
+              <v-list-item disabled @click="viewHistory(item)">
                 <v-list-item-title>
                   <v-icon left size="16">mdi-history</v-icon>
                   Historia
@@ -196,7 +196,6 @@ const statusOptions = [
   { title: 'Wszystkie', value: '' },
   { title: 'Aktywny', value: 'active' },
   { title: 'Nieaktywny', value: 'inactive' },
-  { title: 'Zablokowany', value: 'blocked' },
   { title: 'Wypisany', value: 'unsubscribed' }
 ]
 
@@ -205,7 +204,18 @@ const filteredContacts = computed(() => {
   let contacts = props.contacts || []
   
   if (statusFilter.value) {
-    contacts = contacts.filter(contact => contact.status === statusFilter.value)
+    contacts = contacts.filter((contact) => {
+      switch (statusFilter.value) {
+        case 'active':
+          return contact.active == true
+        case 'unsubscribed':
+          return contact.unsubscribesDate !== null
+        case 'inactive':
+          return contact.active != true
+        default:
+          return true
+      }
+    })
   }
   
   return contacts

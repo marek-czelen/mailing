@@ -29,9 +29,7 @@ export class Databases {
       return response.data.data;
     } catch (error) {
       // Fallback - jeśli nie można pobrać customer_id, spróbuj pobrać wszystkie
-      console.warn('Nie można pobrać customer_id, używam fallback do wszystkich baz danych');
-      const response = await axios.get('/mailing/getDatabasesList');
-      return response.data.data;
+      console.log('Nie można pobrać customer_id, używam fallback do wszystkich baz danych');
     }
   }
 
@@ -443,10 +441,9 @@ export class Databases {
    * @param {number} contactId - ID kontaktu do ponownego zapisania
    * @returns {Promise<Object>} - Wynik operacji zapisywania
    */
-  static async resubscribeContact(contactId) {
+  static async resubscribeContact(contactHash) {
     try {
-      const customer_id = await this._getCurrentCustomerId();
-      const response = await axios.post(`/mailing/resubscribe/${contactId}/${customer_id}`);
+      const response = await axios.get(`/mailing/resubscribe/${contactHash}`);
       return response.data;
     } catch (error) {
       console.error('Błąd podczas ponownego zapisywania kontaktu:', error);

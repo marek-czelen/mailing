@@ -4,13 +4,14 @@ import Auth from '../include/auth.js';
 import User from '../models/user.model.js';
 import Customers from '../models/customers.model.js';
 import PermissionsTable from "../include/PermissionsTable.js"
+import Admin from "../include/admin.js";
 
 export async function addUser(req, res){
     let query = req.body
     if (!PermissionsTable.checkPermission(query.email,"users","manage","write")) return unauthorized(req,res)
     let data = null
     try{
-        data = await Auth.AddUser(query.email, 1, query.password);
+        data = await Admin.AddUser(query.email, 1, query.password);
         if (!data)  return unavailable(req,res)
     }catch(err){
         return unavailable(req,res, err)
@@ -28,6 +29,7 @@ export async function login(req,res){
         else res.send(new Response({token: authToken}, true, "Data received successfully."));
 
     }
+
 
 export async function me(req, res) {
     try {
@@ -54,7 +56,7 @@ export async function me(req, res) {
         const userEmail = decodedToken.data.userEmail;
 
         // Pobierz dane użytkownika z bazy
-        const user = await Auth.getUserByEmail(userEmail);
+        const user = await Admin.getUserByEmail(userEmail);
         if (!user) {
             return unauthorized(req, res);
         }

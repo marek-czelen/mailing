@@ -124,7 +124,7 @@
                     </tbody>
                   </v-table>
                   <p class="preview-info">
-                    Pokazano 5 z {{ filePreview.totalRows }} wierszy
+                    Pokazano {{ filePreview.totalRows < 5 ? filePreview.totalRows : 5 }} z {{ filePreview.totalRows }} wierszy
                   </p>
                 </div>
               </div>
@@ -354,7 +354,7 @@
             @click="finishImport"
           >
             <v-icon left>{{ importResult.success && importResult.errors === 0 ? 'mdi-check' : 'mdi-close' }}</v-icon>
-            {{ importResult.success && importResult.errors === 0 ? 'Zakończ pomyślnie' : 'Zamknij dialog' }}
+            {{ importResult.success && importResult.errors === 0 ? 'Zakończ' : 'Zamknij dialog' }}
           </v-btn>
     </template>
   </GeneralDialog>
@@ -609,7 +609,7 @@ async function parseExcelFile(file) {
         resolve({
           headers,
           rows: rows.map(row => row.map(cell => (cell || '').toString())),
-          totalRows: jsonData.length - 1
+          totalRows: rows.length 
         })
       } catch (error) {
         reject(error)

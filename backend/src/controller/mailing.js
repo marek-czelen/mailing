@@ -4,41 +4,54 @@ import XLSX from 'xlsx';
 import MailAddress from '../models/mailAddress.model.js';
 import UPLOAD_DIR from '../config/upload.config.js';
 import Path from 'path';
-import MarketingCampaniesMailing from '../models/marketingCampaniesMailing.model.js';
 import Databases from '../models/databases.model.js';
 import Customers from '../models/customers.model.js';
 import sequelize from '../include/db.js';
 import { Op } from 'sequelize';
-import axios from 'axios';
-import OPENAI_API_KEY from '../config/openai.config.js';
-import OpenAI from "openai";
 import fetch from "node-fetch";
 import fs from 'fs';
 import Auth from '../include/auth.js';
 import Sequelize from 'sequelize';
 import Mail from '../include/mail.js';
+import { Admin } from '../include/admin.js';
+
+
 // Pobierz wszystkie kampanie
 export async function getCampaignsList(req, res) {
     try {
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, "User not found."));
+        }
+
         const campaigns = await MarketingCampanies.findAll({
+            where: { customerId: userData.customerId },
             attributes: { exclude: ['htmlContent', 'textContent', 'suggestions'] }
         });
-        res.send(new Response(campaigns, true, "Data received successfully."));
+        res.status(200).send(new Response(campaigns, true, "Data received successfully."));
     } catch (error) {
-        res.send(new Response(null, false, `Failed to fetch campaigns. ${error.message}`));
+        res.status(500).send(new Response(null, false, `Failed to fetch campaigns. ${error.message}`));
     }
 }
 
 // Pobierz jedną kampanię po ID
 export async function getCampaignById(req, res) {
     try {
-        const campaign = await MarketingCampanies.findByPk(req.params.id);
-        if (!campaign) {
-            return res.send(new Response(null, false, "Campaign not found."));
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, "User not found."));
         }
-        res.send(new Response(campaign, true, "Data received successfully."));
+
+        const campaign = await MarketingCampanies.findOne({
+            where: { id: req.params.id, customerId: userData.customerId }
+        });
+
+        if (!campaign) {
+            return res.status(403).send(new Response(null, false, "Campaign not found."));
+        }
+        res.status(200).send(new Response(campaign, true, "Data received successfully."));
     } catch (error) {
-        res.send(new Response(null, false, `Failed to fetch campaign. ${error.message}`));
+        res.status(500).send(new Response(null, false, `Failed to fetch campaign. ${error.message}`));
     }
 }
 
@@ -92,35 +105,39 @@ export async function updateCampaign(req, res) {
         if (req.body.databaseId !== undefined) updateData.databaseId = Number(req.body.databaseId);
         if (req.body.customerId !== undefined) updateData.customerId = Number(req.body.customerId);
         
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
         const [updated] = await MarketingCampanies.update(updateData, {
-            where: { id: req.params.id }
+            where: { id: req.params.id, customerId: userData.customerId }
         });
         if (!updated) {
-            return res.send(new Response(null, false, "Campaign not found."));
+            return res.status(403).send(new Response(null, false, "Campaign not found."));
         }
-        const updatedCampaign = await MarketingCampanies.findByPk(req.params.id);
+        const updatedCampaign = await MarketingCampanies.findOne({
+            where: { id: req.params.id, customerId: userData.customerId }
+        });
         // Automatycznie licz scoring i sugestie po edycji kampanii
 
         await computeSpamRating({ body: { id: updatedCampaign.id } }, { send: () => {} });
 
-        res.send(new Response(updatedCampaign, true, "Campaign updated successfully."));
+        res.status(200).send(new Response(updatedCampaign, true, "Campaign updated successfully."));
     } catch (error) {
-        res.send(new Response(null, false, `Failed to update campaign. ${error.message}`));
+        res.status(500).send(new Response(null, false, `Failed to update campaign. ${error.message}`));
     }
 }
 
 // Usuń kampanię po ID
 export async function deleteCampaign(req, res) {
     try {
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
         const deleted = await MarketingCampanies.destroy({
-            where: { id: req.params.id }
+            where: { id: req.params.id, customerId: userData.customerId }
         });
         if (!deleted) {
-            return res.send(new Response(null, false, "Campaign not found."));
+            return res.status(403).send(new Response(null, false, "Campaign not found."));
         }
-        res.send(new Response(null, true, "Campaign deleted successfully."));
+        res.status(200).send(new Response(null, true, "Campaign deleted successfully."));
     } catch (error) {
-        res.send(new Response(null, false, `Failed to delete campaign. ${error.message}`));
+        res.status(500).send(new Response(null, false, `Failed to delete campaign. ${error.message}`));
     }
 }
 
@@ -884,11 +901,13 @@ export async function importExcelToDatabase(req, res) {
             return res.send(new Response(null, false, "File not found on server. Please upload the file first using /mailing/uploadFile endpoint."));
         }
 
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
         // Sprawdź czy baza danych istnieje i nie jest usunięta
         const database = await Databases.findOne({
             where: {
                 id: databaseId,
-                deleted_at: null
+                deleted_at: null,
+                customer_id: userData.customerId
             },
             include: [{
                 model: Customers,
@@ -898,7 +917,7 @@ export async function importExcelToDatabase(req, res) {
         });
 
         if (!database) {
-            return res.send(new Response(null, false, "Database not found or is deleted."));
+            return res.status(403).send(new Response(null, false, "Database not found or is deleted."));
         }
 
         // Wczytaj i przetwórz plik Excel
@@ -1028,9 +1047,17 @@ export async function importExcelToDatabase(req, res) {
 // Pobierz wszystkie nieusunięte bazy danych
 export async function getDatabasesList(req, res) {
     try {
+
+        const authHeader = req.headers.authorization;
+        const userData = await Admin.getCurrentUserData(authHeader);
+        if (!userData) {
+            return unauthorized(req, res);
+        }
+
         const databases = await Databases.findAll({
             where: {
-                deleted_at: null
+                deleted_at: null,
+                customer_id: userData.customerId
             },
             include: [{
                 model: Customers,
@@ -1048,10 +1075,13 @@ export async function getDatabasesList(req, res) {
 // Pobierz jedną nieusuniętą bazę danych po ID
 export async function getDatabaseInfoById(req, res) {
     try {
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        // Sprawdź czy baza istnieje i nie jest usunięta
         const database = await Databases.findOne({
             where: {
                 id: req.params.id,
-                deleted_at: null
+                deleted_at: null,
+                customer_id: userData.customerId
             }
         });
         if (!database) {
@@ -1076,19 +1106,22 @@ export async function getDatabaseInfoById(req, res) {
                 }
             }
         });
-        res.send(new Response({ database, emailCount, activeEmailCount, unsubscribedEmailCount }, true, "Database retrieved successfully."));
+        res.status(200).send(new Response({ database, emailCount, activeEmailCount, unsubscribedEmailCount }, true, "Database retrieved successfully."));
     } catch (error) {
-        res.send(new Response(null, false, `Failed to fetch database. ${error.message}`));
+        res.status(500).send(new Response(null, false, `Failed to fetch database. ${error.message}`));
     }
 }
 
 // Pobierz jedną nieusuniętą bazę danych po ID
 export async function getDatabaseById(req, res) {
     try {
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        // Sprawdź czy baza istnieje i nie jest usunięta
         const database = await Databases.findOne({
             where: {
                 id: req.params.id,
-                deleted_at: null
+                deleted_at: null,
+                customer_id: userData.customerId
             },
             include: [{
                 model: Customers,
@@ -1099,9 +1132,9 @@ export async function getDatabaseById(req, res) {
         if (!database) {
             return res.send(new Response(null, false, "Database not found."));
         }
-        res.send(new Response(database, true, "Database retrieved successfully."));
+        res.status(200).send(new Response(database, true, "Database retrieved successfully."));
     } catch (error) {
-        res.send(new Response(null, false, `Failed to fetch database. ${error.message}`));
+        res.status(500).send(new Response(null, false, `Failed to fetch database. ${error.message}`));
     }
 }
 
@@ -1166,11 +1199,13 @@ export async function updateDatabase(req, res) {
         if (export_enabled !== undefined) normalized.export_enabled = (export_enabled === true || export_enabled === 'true' || export_enabled === 1 || export_enabled === '1');
         if (customer_id !== undefined) normalized.customer_id = Number(customer_id);
         
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
         // Sprawdź czy baza istnieje i nie jest usunięta
         const existingDatabase = await Databases.findOne({
             where: {
                 id: req.params.id,
-                deleted_at: null
+                deleted_at: null,
+                customer_id: userData.customerId
             }
         });
 
@@ -1210,16 +1245,24 @@ export async function updateDatabase(req, res) {
             }]
         });
 
-        res.send(new Response(updatedDatabase, true, "Database updated successfully."));
+        res.status(200).send(new Response(updatedDatabase, true, "Database updated successfully."));
     } catch (error) {
-        res.send(new Response(null, false, `Failed to update database. ${error.message}`));
+        res.status(500).send(new Response(null, false, `Failed to update database. ${error.message}`));
     }
 }
 
 // Oznacz bazę danych jako usuniętą (soft delete)
 export async function deleteDatabase(req, res) {
     try {
-        const database = await Databases.findByPk(req.params.id);
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        // Sprawdź czy baza istnieje
+        const database = await Databases.findOne({
+            where: {
+                id: req.params.id,
+                deleted_at: null,
+                customer_id: userData.customerId
+            }
+        });
         if (!database) {
             return res.send(new Response(null, false, "Database not found."));
         }
@@ -1242,7 +1285,12 @@ export async function deleteDatabase(req, res) {
 export async function getDatabasesByCustomer(req, res) {
     try {
         const { customerId } = req.params;
-        
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+
+        if (userData.customerId !== Number(customerId)) {
+            return res.status(403).send(new Response(null, false, "Unauthorized access to customer databases."));
+        }
+
         const databases = await Databases.findAll({
             where: { 
                 customer_id: customerId,
@@ -1279,11 +1327,15 @@ export async function getDatabasesByCustomer(req, res) {
 export async function getCustomerDatabasesStats(req, res) {
     try {
         const { customerId } = req.params;
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
 
+        if (userData.customerId !== Number(customerId)) {
+            return res.status(403).send(new Response(null, false, "Unauthorized access to customer statistics."));
+        }
         // Sprawdź czy klient istnieje
         const customer = await Customers.findByPk(customerId);
         if (!customer) {
-            return res.send(new Response(null, false, "Customer not found."));
+            return res.status(404).send(new Response(null, false, "Customer not found."));
         }
 
         // Pobierz podstawowe statystyki nieusuniętych baz danych
@@ -1446,12 +1498,13 @@ export async function getCustomerDatabasesStats(req, res) {
 export async function getDatabaseContacts(req, res) {
     try {
         const { databaseId } = req.params;
-
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
         // Sprawdź czy baza danych istnieje i nie jest usunięta
         const database = await Databases.findOne({
             where: {
                 id: databaseId,
-                deleted_at: null
+                deleted_at: null,
+                customer_id: userData.customerId
             },
             include: [{
                 model: Customers,
@@ -1490,6 +1543,7 @@ export async function getDatabaseContacts(req, res) {
                 rodzaj: contact.rodzaj,
                 active: contact.active,
                 unsubscribesDate: contact.unsubscribesDate,
+                hash: contact.hash,
                 createdAt: contact.created_at,
                 updatedAt: contact.updated_at
             })),
@@ -1570,9 +1624,14 @@ export async function unsubscribeContact(req, res) {
             }
         );
         
+        const data = await MailAddress.findOne({
+            where: {
+                hash: contactHash,
+            }
+        });        
 
         const result = {
-            contact: contact,
+            contact: data,
         };
 
         const message =  `Contact unsubscribed successfully in all databases.`;
@@ -1584,6 +1643,75 @@ export async function unsubscribeContact(req, res) {
         res.send(new Response(null, false, `Failed to unsubscribe contact. ${error.message}`));
     }
 }
+
+
+
+export async function resubscribeContact(req, res) {
+    try {
+        const { contactHash } = req.params;
+
+        // Walidacja parametrów
+        if (!contactHash) {
+            return res.send(new Response(null, false, "Contact hash is required."));
+        }
+
+                // Znajdź kontakt należący do danego klienta
+        const contact = await MailAddress.findOne({
+            where: {
+                hash: contactHash,
+            }
+        });
+
+        // Sprawdź czy klient istnieje
+        const customer = await Customers.findByPk(contact.customerId);
+        if (!customer) {
+            return res.send(new Response(null, false, "Customer not found."));
+        }
+
+
+        if (!contact) {
+            return res.send(new Response(null, false, "Contact not found for this customer."));
+        }
+
+
+        await MailAddress.update(
+            {
+                unsubscribesDate: null,
+                active: 1
+            },
+            {
+                where: {
+                    mailAddress: contact.mailAddress,
+                    customerId: contact.customerId
+                }
+            }
+        );
+
+        
+        
+        const data = await MailAddress.findOne({
+            where: {
+                hash: contactHash,
+            }
+        });
+
+        const result = {
+            contact: data,
+        };
+
+        const message =  `Contact resubscribed successfully in all databases.`;
+
+        res.send(new Response(result, true, message));
+
+    } catch (error) {
+        console.log(error);
+        res.send(new Response(null, false, `Failed to resubscribe contact. ${error.message}`));
+    }
+
+}
+
+
+
 
 /**
  * Aktualizuj dane kontaktu
@@ -1613,6 +1741,10 @@ export async function contactUpdate(req, res) {
     try {
         const { id, mailAddress, miasto, rodzaj, active, databaseId, customerId, phone } = req.body;
 
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (customerId && userData.customerId !== Number(customerId)) {
+            return res.status(403).send(new Response(null, false, "Unauthorized access to update contact for this customer."));
+        }
         // Walidacja wymaganego parametru
         if (!id) {
             return res.send(new Response(null, false, "Contact ID is required."));
@@ -1779,7 +1911,7 @@ export async function contactAdd(req, res) {
         }
 
         // Pobierz użytkownika i jego klienta z bazy danych
-        const user = await Auth.getUserByEmail(decodedToken.data.userEmail);
+        const user = await Admin.getUserByEmail(decodedToken.data.userEmail);
         if (!user || !user.Customer) {
             return res.send(new Response(null, false, "User not found or not assigned to any customer."));
         }
@@ -1882,7 +2014,7 @@ export async function contactDelete(req, res) {
         }
 
         // Pobierz użytkownika i jego klienta z bazy danych
-        const user = await Auth.getUserByEmail(decodedToken.data.userEmail);
+        const user = await Admin.getUserByEmail(decodedToken.data.userEmail);
         if (!user || !user.Customer) {
             return res.send(new Response(null, false, "User not found or not assigned to any customer."));
         }
