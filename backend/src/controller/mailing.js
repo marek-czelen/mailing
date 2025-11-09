@@ -234,648 +234,670 @@ export async function generateMailContent(req, res) {
 }
 
 
-/**
- * computeSpamRating - oblicza ocenę SPAM dla treści mailingu
- *
- * Parametry (body JSON):
- * - id: number - ID kampanii marketingowej
- *
- * Zwracana wartość (Response JSON - pole `data`):
- * {
- *   score: number,        // 0-100 - wyliczona punktacja spamowa (im wyższa, tym bardziej "spam")
- *   rating: 'low'|'medium'|'high',
- *   details: {            // szczegółowe składowe oceny
- *     optimalSubjectLength?: boolean,
- *     suboptimalSubjectLength?: boolean,
- *     subjectUppercase?: boolean,
- *     subjectExclaim?: number,
- *     foundSpamInSubject: string[],
- *     personalization?: boolean,
- *     noPersonalization?: boolean,
- *     textLength: number,
- *     optimalLength?: boolean,
- *     tooShort?: boolean,
- *     tooLong?: boolean,
- *     hasFooter?: boolean,
- *     noFooter?: boolean,
- *     cleanHtml?: boolean,
- *     dirtyHtml?: boolean,
- *     hasAltTexts?: boolean,
- *     missingAltTexts?: boolean,
- *     validFromHeader?: boolean,
- *     freeProviderFrom?: boolean,
- *     invalidFrom?: boolean,
- *     missingFrom?: boolean,
- *     linkCount: number,
- *     linkList: string[],
- *     linkValidation?: object,
- *     imageCount: number,
- *     imageList: string[],
- *     foundSpamInBody: Array<{word: string, count: number}>,
- *     hasUnsubscribe: boolean
- *   },
- *   suggestions: Array<{              // sugestie poprawy - każdy test może dodawać (+) lub odejmować (-) punkty
- *     problem: string,                // opis problemu/cechy
- *     impact: string,                 // wpływ na wynik
- *     fix: string,                    // sugerowane rozwiązanie
- *     scoreValue: number              // wartość punktowa (+dodatnia dla kar, -ujemna dla bonusów)
- *   }>
- * }
- *
- * Reguły scoringu (każdy test może zarówno dodawać jak i odejmować punkty):
- * 
- * TEMAT:
- * - optymalna długość 20-60 znaków: -7 | nieoptymalna: +5
- * - duża proporcja wielkich liter: +12
- * - nadmiar wykrzykników (>=3): +6
- * - słowa kluczowe spamowe: +8 za każde wystąpienie
- * 
- * TREŚĆ:
- * - personalizacja (znaczniki %%, {{}}, []): -10 | brak: +10
- * - optymalna długość 100-2000 znaków: -5 | za krótka (<50): +10 | za długa (>2000): +3
- * - profesjonalna stopka: -8 | brak: +5
- * - czyste semantyczne HTML: -7 | przestarzałe znaczniki: +8
- * - alt teksty przy wszystkich obrazkach: -5 | brak: +6
- * 
- * NADAWCA:
- * - spersonalizowany adres z własnej domeny: -8
- * - darmowy provider (gmail, onet itp.): +4
- * - noreply/nieprawidłowy: +8
- * 
- * LINKI I OBRAZY:
- * - więcej niż 2 linki: +(linkCount-2)*6 (max +30)
- * - niesprawne/wolne linki: +5 za każdy (max +25)
- * - dużo obrazków (>5): +6
- * 
- * COMPLIANCE:
- * - link wypisania się obecny: -8 | brak: +22
- * 
- * SPAM WORDS:
- * - słowa spamowe w treści: +3 za wystąpienie (max +30)
- *
- * Końcowy wynik:
- * 1. Zaczynamy od bazy 50 punktów
- * 2. Każdy test dodaje lub odejmuje punkty bezpośrednio od score
- * 3. Wynik normalizowany do zakresu 0-100
- * 4. Rating przydzielany według progów: 0-30 low, 31-60 medium, 61-100 high
- *
- * Przykład wywołania:
- * POST /mailing/spamRating
- * Body: { "id": 123 }
- */
-// computeSpamRating: pobiera tylko id kampanii, resztę parametrów pobiera z bazy
+// computeSpamRating (advanced heuristics)
+// zachowuje strukturę wyniku: { score, rating, details, suggestions }
+// uwagi: wymaga Node.js z dns.promises oraz fetch (globalny lub polyfill).
+import dns from 'dns';
+const dnsPromises = dns.promises;
+
+// helper: bezpieczne resolve TXT
+async function resolveTxtSafe(name) {
+  try {
+    const txts = await dnsPromises.resolveTxt(name);
+    // resolveTxt zwraca tablice tablic -> spłaszczamy do stringów
+    return txts.flat().join(' ');
+  } catch (e) {
+    return null;
+  }
+}
+
+// główna funkcja
 export async function computeSpamRating(req, res) {
     try {
         const { id } = req.body || {};
-        if (!id) {
-            return res.send(new Response(null, false, 'Brak id kampanii.'));
-        }
-        // Pobierz kampanię z bazy
+        if (!id) return res.send(new Response(null, false, 'Brak id kampanii.'));
+
         const campaign = await MarketingCampanies.findByPk(id);
-        if (!campaign) {
-            return res.send(new Response(null, false, 'Nie znaleziono kampanii.'));
-        }
-        // Pobierz parametry z modelu
-        const subject = campaign.subject || '';
-        const html = campaign.htmlContent || '';
-        const from = campaign.from || '';
-        const unsubscribe = campaign.unsubscribe || null;
-        // Treść tekstowa (opcjonalnie, jeśli chcesz dodać)
-        const text =  campaign.textContent || '';
-        const content = (html || text || '').toString();
+        if (!campaign) return res.send(new Response(null, false, 'Nie znaleziono kampanii.'));
 
-        // Inicjalizuj scoring (zaczynamy od 0, testy mogą dodawać lub odejmować punkty)
-        let score = 0;
+        const subject = (campaign.subject || '') + '';
+        const html = (campaign.htmlContent || '') + '';
+        const text = (campaign.textContent || '') + '';
+        const content = (html || text).toString();
+        const from = (campaign.senderEmail || '') + '';
+        const unsubscribeField = campaign.unsubscribe ?? null;
+        const sendingIp = campaign.sendingIp || null;
+        const sendingIpReputation = typeof campaign.sendingIpReputation === 'number' ? campaign.sendingIpReputation : null;
+        const bounceRate = typeof campaign.bounceRate === 'number' ? campaign.bounceRate : null;
+        const complaintRate = typeof campaign.complaintRate === 'number' ? campaign.complaintRate : null;
+
         const details = {};
+        const suggestions = [];
 
-        // lista słów typowo kojarzonych ze spamem (PL i EN)
+        // rozszerzona lista spam words (angielski + polski)
         const spamWords = [
-            // angielskie
-            'free', 'buy now', 'click here', 'winner', 'win', 'prize', 'urgent', 'limited', 'offer',
-            'money', 'cash', 'credit', 'cheap', 'guarantee', 'congratulations', 'act now', 'action required',
-            'amazing', 'bargain', 'best price', 'bonus', 'call now', 'cash bonus', 'casino', 'clearance',
-            'compare rates', 'discount', 'double your', 'earn extra', 'eliminate debt', 'extra cash',
-            'fast cash', 'financial freedom', 'free access', 'free consultation', 'free gift', 'free hosting',
-            'free info', 'free investment', 'free membership', 'free money', 'free offer', 'free preview',
-            'free quote', 'free trial', 'free website', 'fantastic deal', 'give away', 'great offer',
-            'guarantee', 'increase sales', 'increase traffic', 'incredible deal', 'investment', 'join millions',
-            'laser printer', 'limited time', 'lose weight', 'lottery', 'lower rates', 'luxury', 'make money',
-            'million dollars', 'miracle', 'money back', 'no cost', 'no fees', 'no obligation', 'no purchase',
-            'no strings attached', 'once in lifetime', 'order now', 'password', 'penis enlargement', 'porn',
-            'pre-approved', 'prestige', 'prince', 'promise', 'pure profit', 'refinance', 'remove wrinkles',
-            'reverses aging', 'risk-free', 'satisfaction', 'save big', 'save money', 'save up to', 'special deal',
-            'special discount', 'special offer', 'success', 'time limited', 'urgent', 'viagra', 'warranty',
-            'web traffic', 'while supplies last', 'winner', 'winning', 'you have been selected',
-            // polskie
-            'okazja', 'promocja', 'wyprzedaż', 'rabat', 'gratisy', 'za darmo', 'darmowy', 'darmowa',
-            'super cena', 'super oferta', 'nie przegap', 'ostatnia szansa', 'tylko teraz', 'tylko dzisiaj',
-            'promocja dnia', 'hit cenowy', 'bestseller', 'nowość', 'extra rabat', 'extra bonus',
-            'dodatkowy rabat', 'dodatkowa zniżka', 'kup teraz', 'zamów', 'zamawiaj', 'kliknij tutaj',
-            'sprawdź teraz', 'wygrana', 'wygrałeś', 'zostałeś wybrany', 'zostałaś wybrana', 'prezent',
-            'bonus', 'kredyt', 'pożyczka', 'chwilówka', 'tania rata', 'niskie raty', 'bez prowizji',
-            'bez opłat', 'bez zobowiązań', 'oszczędź', 'zaoszczędź', 'zniżka', 'tanie', 'najtańszy',
-            'najtaniej', 'szybka gotówka', 'szybkie pieniądze', 'pewny zysk', 'gwarantowany zysk',
-            'zarabiaj', 'dorabiaj', 'praca dodatkowa', 'praca zdalna', 'biznes', 'inwestycja',
-            'wspaniała okazja', 'nie czekaj', 'zapisz się', 'zarejestruj się', 'odbierz bonus',
-            'odbierz nagrodę', 'odbierz prezent', 'specjalna oferta', 'limitowana oferta',
-            'ograniczona oferta', 'oferta specjalna', 'złota okazja', 'wyjątkowa okazja',
-            'niesamowita okazja', 'pilne', 'ostatnie sztuki', 'końcówka serii', 'wyprzedaż magazynowa',
-            'likwidacja sklepu', 'likwidacja magazynu', 'wszystko musi się sprzedać'
+            // English spam keywords
+            'free','buy now','click here','winner','win','prize','urgent','limited','offer',
+            'money','cash','credit','cheap','guarantee','congratulations','act now',
+            'discount','earn','income','investment','get paid','work from home','no cost',
+            'trial','bonus','bargain','exclusive','deal','amazing','special','miracle',
+            'secret','risk free','instant','promo','promotion','cheap meds','lottery',
+            'jackpot','selected','you have been chosen','apply now','order now','get started',
+            'unsubscribe','don’t delete','lowest price','clearance','save big','double your',
+            'increase sales','extra income','hot','winner','reward','gift','100% free',
+            'unsecured','credit card','loan','debt','forex','crypto','bitcoin','get rich',
+            'limited time','final notice','act fast','attention','important update',
+            'this is not spam','click below','read this','apply online','exclusive offer',
+            'urgent response','claim now','risk-free','try it now','instant access',
+            'money back','free quote','no obligation','easy money','investment opportunity',
+            'donation','lotto','casino','bet','guaranteed results','special promotion',
+            // Polish spam keywords
+            'okazja','promocja','wyprzedaż','rabat','gratisy','za darmo','darmowy','kup teraz',
+            'oferta ograniczona','ostatnia szansa','nie przegap','tylko dziś','promocja specjalna',
+            'super okazja','ekskluzywna oferta','zdobądź','zamów teraz','kliknij tutaj',
+            'nagroda','wygraj','wygrana','gratulacje','pilne','ważne','alert','limitowana oferta',
+            'zarób','dodatkowy dochód','praca z domu','łatwy zarobek','bez ryzyka','inwestycja',
+            'pewny zysk','kredyt','pożyczka','chwilówka','gotówka','darmowa próbka',
+            'gwarancja zwrotu','najniższa cena','oszczędź','zniżka','specjalna oferta',
+            'ekstra bonus','oferta dnia','bez zobowiązań','natychmiastowy dostęp','wyjątkowa okazja',
+            'nie usuwaj','ważne informacje','kliknij poniżej','aktualizacja konta','uwaga',
+            'alert bezpieczeństwa','promocja ograniczona czasowo','super oferta','bonus','kupon',
+            'wyślij sms','sprawdź teraz','zarejestruj się','otrzymaj za darmo'
         ];
 
-        // 1) analiza tematu
-        const subj = subject.toString();
-        const subjLength = subj.length;
+        // wagi (możesz dostroić)
+        const W = {
+            subject_suboptimal: 5,
+            subject_uppercase: 12,
+            subject_exclaim: 6,
+            spamword_subject: 8,
+            personalization_missing: 10,
+            personalization_present: -8,
+            body_too_short: 10,
+            body_too_long: 3,
+            body_optimal: -4,
+            footer_missing: 6,
+            footer_present: -8,
+            dirty_html: 8,
+            clean_html: -6,
+            missing_alt: 6,
+            all_alt: -5,
+            from_free_provider: 5,
+            from_invalid: 10,
+            from_valid: -8,
+            links_excess_per: 6,
+            links_excess_cap: 30,
+            bad_link: 5,
+            bad_link_cap: 25,
+            too_many_images: 6,
+            spamword_body_scale_factor: 6,
+            unsubscribe_missing: 22,
+            unsubscribe_present: -8,
+            auth_missing_spfdkimdmarc: 18,
+            ip_reputation_bad: 25,
+            bounce_penalty_scale: 40,
+            complaint_penalty_scale: 100
+        };
 
-        // Test: Optymalna długość tematu
-        if (subject && subjLength >= 20 && subjLength <= 60) {
-            score -= 7;
+        let rawScore = 0;
+        const lowerContent = content.toLowerCase();
+        const lowerSubject = subject.toLowerCase();
+
+        // ===== ANALIZA TEMAT =====
+        const subjLen = subject.length;
+        details.subjectLength = subjLen;
+        if (subjLen === 0) {
+            details.subjectMissing = true;
+            rawScore += 3;
+        } else if (subjLen >= 20 && subjLen <= 60) {
             details.optimalSubjectLength = true;
-        } else if (subjLength > 0) {
-            score += 5;
+            rawScore -= W.subject_suboptimal;
+        } else {
             details.suboptimalSubjectLength = true;
+            rawScore += W.subject_suboptimal;
         }
 
-        // Test: Wielkie litery w temacie
-        const upperCount = (subj.match(/[A-ZĄĆĘŁŃÓŚŹŻ]/g) || []).length;
-        const upperRatio = subjLength > 0 ? upperCount / subjLength : 0;
-        if (upperRatio > 0.6 && subjLength > 5) {
-            score += 12;
+        const subjUpperCount = (subject.match(/[A-ZĄĆĘŁŃÓŚŹŻ]/g) || []).length;
+        const subjUpperRatio = subjLen > 0 ? subjUpperCount / subjLen : 0;
+        details.subjectUpperRatio = subjUpperRatio;
+        if (subjUpperRatio > 0.6 && subjLen > 5) {
             details.subjectUppercase = true;
+            rawScore += W.subject_uppercase;
         }
 
-        // Test: Wykrzykniki w temacie
-        const exclam = (subj.match(/!/g) || []).length;
-        if (exclam >= 3) { 
-            score += 6; 
-            details.subjectExclaim = exclam; 
+        const subjExclam = (subject.match(/!/g) || []).length;
+        details.subjectExclaimCount = subjExclam;
+        if (subjExclam >= 3) {
+            details.subjectExclaim = subjExclam;
+            rawScore += W.subject_exclaim;
         }
 
-        // Test: Spam words w temacie
         const foundSpamInSubject = [];
         for (const w of spamWords) {
-            if (subj.toLowerCase().includes(w)) {
-                score += 8;
+            if (w && lowerSubject.includes(w)) {
                 foundSpamInSubject.push(w);
+                rawScore += W.spamword_subject;
             }
         }
         details.foundSpamInSubject = foundSpamInSubject;
 
-        // 2) analiza treści
-        const bodyLower = content.toLowerCase();
-
-        // Test: Personalizacja
-        const personalizationRegex = /%[A-Za-z_]+%|\{\{[A-Za-z_]+\}\}|\[imię\]|\[nazwisko\]|\[firma\]/g;
+        // ===== ANALIZA TREŚCI =====
+        const personalizationRegex = /%[A-Za-z0-9_]+%|\{\{[A-Za-z0-9_]+\}\}|\[imię\]|\[nazwisko\]|\[firma\]|\$\([A-Za-z0-9_]+\)|{{\s*first_name\s*}}/i;
         const hasPersonalization = personalizationRegex.test(content);
-        if (hasPersonalization) {
-            score -= 10;
-            details.personalization = true;
-        } else {
-            score += 10;
-            details.noPersonalization = true;
-        }
+        details.personalization = !!hasPersonalization;
+        rawScore += hasPersonalization ? W.personalization_present : W.personalization_missing;
 
-        // Test: Długość treści
-        const textLen = (content.replace(/<[^>]*>/g, '') || '').trim().length;
+        const plainText = (content.replace(/<[^>]*>/g, '') || '').trim();
+        const textLen = plainText.length;
         details.textLength = textLen;
         if (textLen >= 100 && textLen <= 2000) {
-            score -= 5;
             details.optimalLength = true;
+            rawScore += W.body_optimal;
         } else if (textLen < 50) {
-            score += 10;
             details.tooShort = true;
+            rawScore += W.body_too_short;
         } else if (textLen > 2000) {
-            score += 3;
             details.tooLong = true;
+            rawScore += W.body_too_long;
         }
 
-        // Test: Profesjonalna stopka
-        const footerRegex = /(?:stopka|footer|kontakt|contact|tel|phone|address|adres|nip|regon|krs)/i;
-        if (footerRegex.test(content)) {
-            score -= 8;
-            details.hasFooter = true;
+        const footerRegex = /(?:stopka|footer|kontakt|contact|tel|phone|address|adres|nip|regon|krs|zgoda|rodo)/i;
+        const hasFooter = footerRegex.test(content);
+        details.hasFooter = !!hasFooter;
+        rawScore += hasFooter ? W.footer_present : W.footer_missing;
+
+        const dirtyHtmlRegex = /<font\b|<center\b|<marquee\b|style=.*?;|<table[^>]*cellpadding|<iframe\b/i;
+        const hasDirtyHtml = dirtyHtmlRegex.test(content);
+        details.dirtyHtml = !!hasDirtyHtml;
+        rawScore += hasDirtyHtml ? W.dirty_html : W.clean_html;
+
+        const imgTags = content.match(/<img[^>]*>/gi) || [];
+        const imgSrcs = [];
+        const imgAltMissing = [];
+        for (const t of imgTags) {
+            const srcMatch = t.match(/src=(?:'|")([^'"]+)(?:'|")/i);
+            if (srcMatch) imgSrcs.push(srcMatch[1]);
+            if (!/alt=(?:'|")[^'"]+(?:'|")/i.test(t)) imgAltMissing.push(t);
+        }
+        details.imageCount = imgSrcs.length;
+        details.imageList = imgSrcs;
+        if (imgSrcs.length > 0) {
+            rawScore += imgAltMissing.length === 0 ? W.all_alt : W.missing_alt;
+        }
+        if (imgSrcs.length > 5) rawScore += W.too_many_images;
+
+        // ===== FROM i uwierzytelnienie =====
+        details.from = from || null;
+        if (!from) {
+            details.missingFrom = true;
+            rawScore += W.from_invalid;
         } else {
-            score += 5;
-            details.noFooter = true;
-        }
-
-        // Test: Formatowanie HTML
-        const hasCleanHtml = !/<font|<center|<marquee|style=/i.test(content) && 
-                           /<(p|div|header|footer|section|article|h[1-6]|ul|ol|li|table)[^>]*>/i.test(content);
-        if (hasCleanHtml) {
-            score -= 7;
-            details.cleanHtml = true;
-        } else if (/<font|<center|<marquee/.test(content)) {
-            score += 8;
-            details.dirtyHtml = true;
-        }
-
-        // Test: Alt teksty przy obrazkach
-
-        // Test: Alt teksty przy obrazkach
-        const imgTags = content.match(/<img[^>]+>/g) || [];
-        const altTexts = imgTags.filter(tag => /alt=["'][^"']+["']/i.test(tag));
-        if (imgTags.length > 0) {
-            if (altTexts.length === imgTags.length) {
-                score -= 5;
-                details.hasAltTexts = true;
-            } else {
-                score += 6;
-                details.missingAltTexts = true;
-            }
-        }
-
-        // Test: Nagłówek From
-        if (from && typeof from === 'string') {
-            const validFromRegex = /^[^@]+@[^.]+\.[a-z]{2,}$/i;
-            const isValidFrom = validFromRegex.test(from) && !from.includes('noreply') && !from.includes('no-reply');
-            if (isValidFrom) {
-                score -= 8;
+            const validFrom = /^[^@]+@[^.]+\.[a-z]{2,}$/i.test(from) && !/noreply|no[-]?reply/i.test(from);
+            const domainMatch = from.match(/@([\w.-]+)/);
+            const domain = domainMatch ? domainMatch[1].toLowerCase() : null;
+            const freeProviders = ['gmail.com','yahoo.com','hotmail.com','onet.pl','wp.pl','o2.pl','tlen.pl'];
+            if (validFrom) {
                 details.validFromHeader = true;
+                rawScore += W.from_valid;
+            } else if (domain && freeProviders.includes(domain)) {
+                details.freeProviderFrom = true;
+                rawScore += W.from_free_provider;
             } else {
-                const domainMatch = from.match(/@([\w.-]+)/);
-                const domain = domainMatch ? domainMatch[1].toLowerCase() : '';
-                const freeProviders = ['gmail.com','yahoo.com','hotmail.com','onet.pl','wp.pl','o2.pl'];
-                if (freeProviders.includes(domain)) { 
-                    score += 4; 
-                    details.freeProviderFrom = true;
-                } else if (!domain || from.includes('noreply') || from.includes('no-reply')) {
-                    score += 8;
-                    details.invalidFrom = true;
+                details.invalidFrom = true;
+                rawScore += W.from_invalid;
+            }
+
+            if (domain) {
+                try {
+                    const spfTxt = await resolveTxtSafe(domain);
+                    const hasSpf = spfTxt && /v=spf1/i.test(spfTxt);
+                    details.spf = !!hasSpf;
+
+                    const dmarcTxt = await resolveTxtSafe(`_dmarc.${domain}`);
+                    const hasDmarc = dmarcTxt && /v=DMARC1/i.test(dmarcTxt);
+                    details.dmarc = !!hasDmarc;
+
+                    let hasDkim = false;
+                    const selectors = ['default','mail','selector1','s1'];
+                    for (const sel of selectors) {
+                        const k = await resolveTxtSafe(`${sel}._domainkey.${domain}`);
+                        if (k && /v=DKIM1/i.test(k)) { hasDkim = true; break; }
+                    }
+                    details.dkim = hasDkim;
+
+                    const missingAuthCount = [hasSpf, hasDkim, hasDmarc].filter(x => !x).length;
+                    if (missingAuthCount > 0) {
+                        const authPenalty = Math.round(W.auth_missing_spfdkimdmarc * (missingAuthCount / 3));
+                        details.authPenalty = authPenalty;
+                        rawScore += authPenalty;
+                    } else {
+                        details.authOk = true;
+                        rawScore -= 8;
+                    }
+                } catch (e) {
+                    details.authCheckError = e.message || String(e);
                 }
             }
-        } else {
-            score += 8;
-            details.missingFrom = true;
         }
 
-        // Wyliczanie listy linków i obrazów bezpośrednio z treści (zawsze)
-        let m;
-        const hrefRegex = /href=(?:\"|\')([^\"']+)(?:\"|\')/gi;
-        const urlRegex = /\bhttps?:\/\/[^\s\"'>)]+/gi;
-        const hrefMatches = [];
-        while ((m = hrefRegex.exec(content)) !== null) {
-            hrefMatches.push(m[1]);
-        }
-        const urlMatches = content.match(urlRegex) || [];
-        const linkList = Array.from(new Set([...hrefMatches, ...urlMatches]));
-        const linkCount = linkList.length;
-        details.linkCount = linkCount;
+        // ===== LINKI =====
+        const hrefRegex2 = /href=(?:'|")([^'"]+)(?:'|")/gi;
+        const urlRegex2 = /\bhttps?:\/\/[^\s"'>)]+/gi;
+        const hrefMatches2 = [];
+        let mm;
+        while ((mm = hrefRegex2.exec(content)) !== null) hrefMatches2.push(mm[1]);
+        const urlMatches2 = content.match(urlRegex2) || [];
+        const linkList = Array.from(new Set([...hrefMatches2, ...urlMatches2]));
         details.linkList = linkList;
-        if (linkCount > 2) score += Math.min((linkCount - 2) * 6, 30);
+        details.linkCount = linkList.length;
+        if (linkList.length > 2) rawScore += Math.min((linkList.length - 2) * W.links_excess_per, W.links_excess_cap);
 
-        // Walidacja poprawności linków (sprawdzamy wszystkie linki http/https ze ścisłym timeoutem)
         const httpLinks = linkList.filter(u => /^https?:\/\//i.test(u));
-        const TIMEOUT_MS = 1000; // bardzo szybka odpowiedź wymagana
-        const MAX_CONCURRENCY = 8; // batch'owanie, aby przyspieszyć bez przeciążenia
-
-        async function checkUrl(url) {
-            const start = Date.now();
+        const TIMEOUT_MS = 2000;
+        const MAX_CONCURRENCY = 8;
+        async function checkUrl(u) {
             try {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-                let resp = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: controller.signal });
+                let resp = await fetch(u, { method: 'HEAD', redirect: 'follow', signal: controller.signal });
                 clearTimeout(timeout);
-                // Gdy HEAD jest zablokowane – spróbuj GET dla 405/501 (również ze ścisłym timeoutem)
                 if (!resp.ok && (resp.status === 405 || resp.status === 501)) {
                     const controller2 = new AbortController();
                     const timeout2 = setTimeout(() => controller2.abort(), TIMEOUT_MS);
-                    resp = await fetch(url, { method: 'GET', redirect: 'follow', signal: controller2.signal });
+                    resp = await fetch(u, { method: 'GET', redirect: 'follow', signal: controller2.signal });
                     clearTimeout(timeout2);
                 }
-                const durationMs = Date.now() - start;
-                // Traktuj długą odpowiedź jako błąd
-                const ok = resp.ok && durationMs < TIMEOUT_MS;
-                return { url, ok, status: resp.status, durationMs };
+                return { url: u, ok: resp.ok, status: resp.status };
             } catch (e) {
-                const durationMs = Date.now() - start; // traktujemy jako timeout/błąd
-                return { url, ok: false, status: null, durationMs, error: e?.name || String(e) };
+                return { url: u, ok: false, error: e?.name || String(e) };
             }
         }
 
-        let checked = 0;
-        const results = [];
-        for (let i = 0; i < httpLinks.length; i += MAX_CONCURRENCY) {
+        const linkResults = [];
+        for (let i=0; i < httpLinks.length; i += MAX_CONCURRENCY) {
             const slice = httpLinks.slice(i, i + MAX_CONCURRENCY);
             const batch = await Promise.all(slice.map(u => checkUrl(u)));
-            results.push(...batch);
-            checked += batch.length;
+            linkResults.push(...batch);
         }
+        const badLinks = linkResults.filter(r => !r.ok);
+        details.linkValidation = { checked: linkResults.length, bad: badLinks.map(x => x.url) };
+        if (badLinks.length > 0) rawScore += Math.min(badLinks.length * W.bad_link, W.bad_link_cap);
 
-        let linkValidationSuggestion = null;
-        if (checked > 0) {
-            const invalid = results.filter(r => !r.ok);
-            const invalidUrls = invalid.map(r => r.url);
-            details.linkValidation = {
-                checked,
-                total: httpLinks.length,
-                invalidCount: invalidUrls.length,
-                invalidUrls,
-                timeoutMs: TIMEOUT_MS
-            };
-            const invalidLinksPenalty = Math.min(invalidUrls.length * 5, 25);
-            if (invalidLinksPenalty > 0) {
-                score += invalidLinksPenalty;
-                linkValidationSuggestion = {
-                    problem: "Niesprawne lub zbyt wolno odpowiadające linki w treści",
-                    impact: `Zwiększa wynik spam o ${invalidLinksPenalty} punktów (sprawdzono ${checked}/${httpLinks.length}, próg ${TIMEOUT_MS}ms)`,
-                    fix: "Sprawdź wszystkie linki w wiadomości – popraw błędne adresy, usuń niedziałające i zadbaj o szybkie odpowiedzi serwera.",
-                    scoreValue: invalidLinksPenalty
-                };
-            }
-        }
-
-        // Wyliczanie obrazków (src z tagów <img>)
-        const imgSrcRegex = /<img[^>]+src=(?:\"|\')([^\"']+)(?:\"|\')/gi;
-        const imageList = [];
-        while ((m = imgSrcRegex.exec(content)) !== null) {
-            imageList.push(m[1]);
-        }
-        const imageCount = imageList.length;
-        details.imageCount = imageCount;
-        details.imageList = imageList;
-        if (imageCount > 5) score += 6;
-
-        // spam words in body
-        let spamHits = 0;
+        // ===== SŁOWA SPAMOWE W TREŚCI =====
         const foundSpamInBody = [];
+        let spamHits = 0;
         for (const w of spamWords) {
-            const re = new RegExp(`\\b${w.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}\\b`, 'gi');
-            const m = (bodyLower.match(re) || []).length;
-            if (m > 0) {
-                spamHits += m;
-                foundSpamInBody.push({ word: w, count: m });
+            if (!w) continue;
+            let count = 0;
+            let idx = 0;
+            const target = lowerContent;
+            while ((idx = target.indexOf(w, idx)) !== -1) {
+                count++;
+                idx += w.length;
+            }
+            if (count > 0) {
+                foundSpamInBody.push({ word: w, count });
+                spamHits += count;
             }
         }
         details.foundSpamInBody = foundSpamInBody;
-        if (spamHits > 0) score += Math.min(spamHits * 3, 30);
-
-        // unsubscribe presence
-        let hasUnsubscribe = false;
-        if (typeof unsubscribe === 'string' && unsubscribe.length > 0) hasUnsubscribe = true;
-        if (unsubscribe === true) hasUnsubscribe = true;
-        if (/unsubscribe|wypisz|odsubskrybuj|unsubscribe_url|list-unsubscribe/gi.test(content)) hasUnsubscribe = true;
-        details.hasUnsubscribe = hasUnsubscribe;
-        if (!hasUnsubscribe) {
-            score += 22;
-        } else {
-            score -= 8;
+        if (spamHits > 0) {
+            const spamPenalty = Math.min(Math.log2(spamHits + 1) * W.spamword_body_scale_factor, 30);
+            rawScore += spamPenalty;
+            details.spamPenalty = Math.round(spamPenalty);
         }
 
-        // normalize to 0-100
-        // Ustal bazę na 50 punktów i dodaj/odejmij score
-        let finalScore = Math.max(0, Math.min(100, Math.round(50 + score)));
+        // ===== UNSUBSCRIBE / COMPLIANCE =====
+        let hasUnsubscribe = false;
+        if (unsubscribeField === true || (typeof unsubscribeField === 'string' && unsubscribeField.length)) hasUnsubscribe = true;
+        if (/unsubscribe|wypisz|odsubskrybuj|list-unsubscribe|wycofaj zgodę|rodo/gi.test(content)) hasUnsubscribe = true;
+        details.hasUnsubscribe = hasUnsubscribe;
+        rawScore += hasUnsubscribe ? W.unsubscribe_present : W.unsubscribe_missing;
+
+        // ===== REPUTATION METRICS =====
+        if (typeof bounceRate === 'number') {
+            details.bounceRate = bounceRate;
+            const bouncePenalty = Math.round(Math.min(bounceRate * W.bounce_penalty_scale, W.bounce_penalty_scale));
+            rawScore += bouncePenalty;
+        }
+        if (typeof complaintRate === 'number') {
+            details.complaintRate = complaintRate;
+            const complaintPenalty = Math.round(Math.min(complaintRate * W.complaint_penalty_scale, W.complaint_penalty_scale));
+            rawScore += complaintPenalty;
+        }
+        if (typeof sendingIpReputation === 'number') {
+            details.sendingIpReputation = sendingIpReputation;
+            if (sendingIpReputation < -20) {
+                const repPenalty = Math.min(Math.round((Math.abs(sendingIpReputation)/100) * W.ip_reputation_bad), W.ip_reputation_bad);
+                rawScore += repPenalty;
+            } else if (sendingIpReputation > 20) {
+                rawScore -= Math.round(sendingIpReputation / 10);
+            }
+        }
+
+        // ===== Integracja z APIVOID (przykład) dla sendingIp =====
+        if (sendingIp) {
+            try {
+                const apiKey = process.env.APIVOID_API_KEY;
+                if (apiKey) {
+                    const resp = await fetch('https://endpoint.apivoid.com/iprep/v1/pay-as-you-go/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ api_key: apiKey, ip: sendingIp })
+                    });
+                    const j = await resp.json();
+                    details.reputationApi = j;
+                    const detections = (j?.data?.reports?.[0]?.blacklist_count) || (j?.data?.report?.blacklists?.detections) || 0;
+                    if (detections > 0) {
+                        const repPenalty = Math.min(detections * 5, 30);
+                        rawScore += repPenalty;
+                        suggestions.push({
+                            problem: `IP nadawcy (${sendingIp}) na ${detections} blacklistach`,
+                            impact: `Zwiększa wynik spam o ~${repPenalty} pkt`,
+                            fix: "Usuń IP z list blokujących lub użyj innego, czystego IP.",
+                            scoreValue: repPenalty
+                        });
+                    }
+                } else {
+                    details.reputationApiNote = 'Brak klucza APIVOID (APIVOID_API_KEY)';
+                }
+            } catch (e) {
+                details.reputationApiError = e.message || String(e);
+            }
+        }
+
+        // ===== FINALIZACJA: normalizacja i rating =====
+        let finalScore = Math.round(50 + rawScore);
+        finalScore = Math.max(0, Math.min(100, finalScore));
+        details.rawScore = Math.round(rawScore);
 
         let rating = 'low';
         if (finalScore >= 61) rating = 'high';
         else if (finalScore >= 31) rating = 'medium';
 
-        const result = {
-            score: finalScore,
-            rating,
-            details,
-            suggestions: []
-        };
-
-        // Dodajemy konkretne sugestie dla marketerów na podstawie wykrytych problemów
-
-        if (details.suboptimalSubjectLength) {
-            result.suggestions.push({
-                problem: "Nieoptymalna długość tematu",
-                impact: "Zwiększa wynik spam o 5 punktów",
-                fix: "Temat powinien mieć 20-60 znaków. Zbyt krótkie tematy mogą być niejasne, zbyt długie – obcięte w skrzynce odbiorczej.",
-                scoreValue: 5
-            });
+        // ===== GENEROWANIE SUGESTII (kompletne) =====
+        // używamy details i wag do zbudowania listy sugestii (unikamy duplikatów)
+        function pushUniqueSuggestion(obj) {
+            const key = `${obj.problem}|${obj.fix}|${obj.scoreValue}`;
+            if (!pushUniqueSuggestion._seen) pushUniqueSuggestion._seen = new Set();
+            if (pushUniqueSuggestion._seen.has(key)) return;
+            pushUniqueSuggestion._seen.add(key);
+            suggestions.push(obj);
         }
 
+        // SUBJECT
         if (details.suboptimalSubjectLength) {
-            result.suggestions.push({
+            pushUniqueSuggestion({
                 problem: "Nieoptymalna długość tematu",
-                impact: "Zwiększa wynik spam o 5 punktów",
-                fix: "Temat powinien mieć 20-60 znaków. Zbyt krótkie tematy mogą być niejasne, zbyt długie – obcięte w skrzynce odbiorczej.",
-                scoreValue: 5
+                impact: `Zwiększa wynik spam o ${W.subject_suboptimal} pkt`,
+                fix: "Upewnij się, że temat ma 20–60 znaków; testuj warianty A/B.",
+                scoreValue: W.subject_suboptimal
             });
-        }
-
-        if (details.optimalSubjectLength) {
-            result.suggestions.push({
+        } else if (details.optimalSubjectLength) {
+            pushUniqueSuggestion({
                 problem: "Optymalna długość tematu",
-                impact: "Zmniejsza wynik spam o 7 punktów",
-                fix: "Temat ma odpowiednią długość (20-60 znaków) – zwiększa to wiarygodność wiadomości.",
-                scoreValue: -7
+                impact: `Zmniejsza ryzyko oznaczenia jako spam`,
+                fix: "Temat ma optymalną długość (20–60 znaków).",
+                scoreValue: -W.subject_suboptimal
             });
         }
-
         if (details.subjectUppercase) {
-            result.suggestions.push({
-                problem: "Zbyt wiele wielkich liter w temacie",
-                impact: "Zwiększa wynik spam o 12 punktów",
-                fix: "Użyj wielkich liter tylko na początku zdań i w nazwach własnych. Unikaj pisania całych słów wielkimi literami.",
-                scoreValue: 12
+            pushUniqueSuggestion({
+                problem: "Zbyt dużo wielkich liter w temacie",
+                impact: `Zwiększa wynik spam o ${W.subject_uppercase} pkt`,
+                fix: "Używaj wielkich liter tylko tam, gdzie to konieczne.",
+                scoreValue: W.subject_uppercase
             });
         }
-
         if (details.subjectExclaim) {
-            result.suggestions.push({
-                problem: "Zbyt wiele wykrzykników w temacie",
-                impact: "Zwiększa wynik spam o 6 punktów",
-                fix: "Ogranicz liczbę wykrzykników do maksymalnie jednego lub dwóch. Używaj ich tylko gdy są naprawdę potrzebne.",
-                scoreValue: 6
+            pushUniqueSuggestion({
+                problem: "Nadmierna liczba wykrzykników w temacie",
+                impact: `Zwiększa wynik spam o ${W.subject_exclaim} pkt`,
+                fix: "Ogranicz wykrzykniki do 0-1 w temacie.",
+                scoreValue: W.subject_exclaim
+            });
+        }
+        if (details.foundSpamInSubject && details.foundSpamInSubject.length) {
+            pushUniqueSuggestion({
+                problem: `Słowa kojarzone ze spamem w temacie: ${details.foundSpamInSubject.join(', ')}`,
+                impact: `Każde słowo ~${W.spamword_subject} pkt`,
+                fix: "Usuń lub złagodź słowa typu 'free', 'promocja', 'kup teraz' itp.",
+                scoreValue: details.foundSpamInSubject.length * W.spamword_subject
             });
         }
 
-        if (details.foundSpamInSubject.length > 0) {
-            const spamSubjectScore = details.foundSpamInSubject.length * 8;
-            result.suggestions.push({
-                problem: `Znaleziono słowa kluczowe często występujące w spamie: ${details.foundSpamInSubject.join(", ")}`,
-                impact: "Każde słowo zwiększa wynik spam o 8 punktów",
-                fix: "Unikaj używania tych słów w temacie lub zastąp je synonimami. Szczególnie unikaj słów związanych z promocjami i nagłymi okazjami.",
-                scoreValue: spamSubjectScore
-            });
-        }
-
-        if (details.noPersonalization) {
-            result.suggestions.push({
+        // PERSONALIZACJA
+        if (!details.personalization) {
+            pushUniqueSuggestion({
                 problem: "Brak personalizacji",
-                impact: "Zwiększa wynik spam o 10 punktów",
-                fix: "Użyj znaczników personalizacji (np. %imie%, {{nazwisko}}, [firma]) aby zwiększyć wiarygodność wiadomości.",
-                scoreValue: 10
-            });
-        }
-
-        if (details.personalization) {
-            result.suggestions.push({
-                problem: "Personalizacja treści",
-                impact: "Zmniejsza wynik spam o 10 punktów",
-                fix: "Użycie znaczników personalizacji zwiększa wiarygodność wiadomości.",
-                scoreValue: -10
-            });
-        }
-
-        if (details.tooShort) {
-            result.suggestions.push({
-                problem: "Zbyt krótka treść wiadomości",
-                impact: "Zwiększa wynik spam o 10 punktów",
-                fix: "Rozbuduj treść wiadomości. Zbyt krótkie wiadomości często są oznaczane jako spam. Dodaj więcej wartościowej treści dla odbiorcy.",
-                scoreValue: 10
-            });
-        }
-
-        if (details.tooLong) {
-            result.suggestions.push({
-                problem: "Zbyt długa treść wiadomości",
-                impact: "Zwiększa wynik spam o 3 punkty",
-                fix: "Treść przekracza 2000 znaków. Rozważ skrócenie lub podział na kilka sekcji z linkami do dalszej treści.",
-                scoreValue: 3
-            });
-        }
-
-        if (details.optimalLength) {
-            result.suggestions.push({
-                problem: "Optymalna długość treści",
-                impact: "Zmniejsza wynik spam o 5 punktów",
-                fix: "Treść między 100 a 2000 znaków jest uznawana za optymalną.",
-                scoreValue: -5
-            });
-        }
-
-        if (details.noFooter) {
-            result.suggestions.push({
-                problem: "Brak profesjonalnej stopki",
-                impact: "Zwiększa wynik spam o 5 punktów",
-                fix: "Dodaj stopkę z danymi kontaktowymi firmy (adres, telefon, NIP itp.) – zwiększa to wiarygodność.",
-                scoreValue: 5
-            });
-        }
-
-        if (details.hasFooter) {
-            result.suggestions.push({
-                problem: "Profesjonalna stopka",
-                impact: "Zmniejsza wynik spam o 8 punktów",
-                fix: "Obecność stopki z danymi kontaktowymi zwiększa wiarygodność.",
-                scoreValue: -8
-            });
-        }
-
-        if (details.dirtyHtml) {
-            result.suggestions.push({
-                problem: "Przestarzałe znaczniki HTML",
-                impact: "Zwiększa wynik spam o 8 punktów",
-                fix: "Usuń przestarzałe znaczniki HTML (font, center, marquee, inline style). Użyj semantycznego HTML5.",
-                scoreValue: 8
-            });
-        }
-
-        if (details.cleanHtml) {
-            result.suggestions.push({
-                problem: "Poprawne formatowanie HTML",
-                impact: "Zmniejsza wynik spam o 7 punktów",
-                fix: "Używanie semantycznego HTML bez przestarzałych znaczników.",
-                scoreValue: -7
-            });
-        }
-
-        if (details.missingAltTexts) {
-            result.suggestions.push({
-                problem: "Brak opisów alternatywnych obrazków",
-                impact: "Zwiększa wynik spam o 6 punktów",
-                fix: "Dodaj opisy alt do wszystkich obrazków – to nie tylko zmniejsza wynik spam, ale poprawia dostępność.",
-                scoreValue: 6
-            });
-        }
-
-        if (details.hasAltTexts) {
-            result.suggestions.push({
-                problem: "Opisy alternatywne obrazków",
-                impact: "Zmniejsza wynik spam o 5 punktów",
-                fix: "Wszystkie obrazki mają poprawne opisy alt.",
-                scoreValue: -5
-            });
-        }
-
-        if (details.freeProviderFrom || details.invalidFrom || details.missingFrom) {
-            const penalty = details.freeProviderFrom ? 4 : 8;
-            let fixMsg = "Używaj profesjonalnego adresu email z własnej domeny zamiast darmowych providerów lub noreply.";
-            if (details.missingFrom) fixMsg = "Dodaj prawidłowy adres nadawcy w polu From.";
-            result.suggestions.push({
-                problem: "Problematyczny adres nadawcy",
-                impact: `Zwiększa wynik spam o ${penalty} punktów`,
-                fix: fixMsg,
-                scoreValue: penalty
-            });
-        }
-
-        if (details.validFromHeader) {
-            result.suggestions.push({
-                problem: "Poprawny adres nadawcy",
-                impact: "Zmniejsza wynik spam o 8 punktów",
-                fix: "Użycie spersonalizowanego adresu email zwiększa wiarygodność.",
-                scoreValue: -8
-            });
-        }
-
-        if (details.linkCount > 2) {
-            const linkScore = Math.min((details.linkCount - 2) * 6, 30);
-            result.suggestions.push({
-                problem: "Zbyt duża liczba linków",
-                impact: `Zwiększa wynik spam o ${linkScore} punktów`,
-                fix: "Ogranicz liczbę linków do maksymalnie 2-3 najważniejszych. Każdy dodatkowy link zwiększa ryzyko oznaczenia jako spam.",
-                scoreValue: linkScore
-            });
-        }
-
-        if (details.imageCount > 5) {
-            result.suggestions.push({
-                problem: "Zbyt dużo obrazków",
-                impact: "Zwiększa wynik spam o 6 punktów",
-                fix: "Ogranicz liczbę obrazków do maksymalnie 4-5. Używaj tylko niezbędnych grafik.",
-                scoreValue: 6
-            });
-        }
-
-        if (details.foundSpamInBody.length > 0) {
-            let spamBodyScore = 0;
-            for (const s of details.foundSpamInBody) spamBodyScore += s.count * 3;
-            spamBodyScore = Math.min(spamBodyScore, 30);
-            result.suggestions.push({
-                problem: "Znaleziono słowa kluczowe często występujące w spamie w treści wiadomości",
-                impact: "Każde wystąpienie zwiększa wynik spam o 3 punkty (max 30)",
-                fix: "Przejrzyj listę znalezionych słów i zastąp je alternatywnymi określeniami. Szczególnie uważaj na słowa związane z promocjami i pilnością oferty.",
-                scoreValue: spamBodyScore
-            });
-        }
-
-        if (!details.hasUnsubscribe) {
-            result.suggestions.push({
-                problem: "Brak linku do wypisania się z newslettera",
-                impact: "Zwiększa wynik spam o 22 punkty",
-                fix: "Dodaj wyraźny link do wypisania się z newslettera. To nie tylko zmniejszy wynik spam, ale jest też wymagane przez przepisy prawa.",
-                scoreValue: 22
+                impact: `Zwiększa wynik spam o ${W.personalization_missing} pkt`,
+                fix: "Dodaj znaczniki personalizacji (np. %imie%, {{first_name}}).",
+                scoreValue: W.personalization_missing
             });
         } else {
-            result.suggestions.push({
-                problem: "Link do wypisania się obecny",
-                impact: "Zmniejsza wynik spam o 8 punktów",
-                fix: "Obecność linku wypisania się jest zgodna z przepisami i zmniejsza wynik spam.",
-                scoreValue: -8
+            pushUniqueSuggestion({
+                problem: "Personalizacja obecna",
+                impact: "Zmniejsza ryzyko oznaczenia jako spam",
+                fix: "Personalizuj wiadomości, aby zwiększyć zaangażowanie.",
+                scoreValue: W.personalization_present
             });
         }
 
-        // Sugestia dotycząca linków (po utworzeniu result)
-        if (linkValidationSuggestion) {
-            result.suggestions.push(linkValidationSuggestion);
+        // DŁUGOŚĆ TREŚCI
+        if (details.tooShort) {
+            pushUniqueSuggestion({
+                problem: "Treść zbyt krótka",
+                impact: `Zwiększa wynik spam o ${W.body_too_short} pkt`,
+                fix: "Dodaj więcej wartościowej treści opisującej ofertę/korzyść.",
+                scoreValue: W.body_too_short
+            });
+        }
+        if (details.tooLong) {
+            pushUniqueSuggestion({
+                problem: "Treść zbyt długa",
+                impact: `Zwiększa wynik spam o ${W.body_too_long} pkt`,
+                fix: "Skróć treść lub podziel ją na sekcje z linkami do szczegółów.",
+                scoreValue: W.body_too_long
+            });
+        }
+        if (details.optimalLength) {
+            pushUniqueSuggestion({
+                problem: "Optymalna długość treści",
+                impact: "Pozytywny sygnał",
+                fix: "Utrzymaj treść w zakresie 100–2000 znaków.",
+                scoreValue: -W.body_optimal
+            });
         }
 
-        // Zapisz scoring i sugestie do bazy
-        await campaign.update({
-            scoring: result.score,
-            suggestions: result.suggestions
-        });
-        res.send(new Response(result, true, 'Spam rating calculated successfully'));
+        // STOPKA / RODO
+        if (!details.hasFooter) {
+            pushUniqueSuggestion({
+                problem: "Brak stopki / informacji RODO",
+                impact: `Zwiększa wynik spam o ${W.footer_missing} pkt`,
+                fix: "Dodaj stopkę z danymi firmy, informacją o przetwarzaniu danych i kontakcie.",
+                scoreValue: W.footer_missing
+            });
+        } else {
+            pushUniqueSuggestion({
+                problem: "Stopka i informacje RODO obecne",
+                impact: "Zmniejsza ryzyko",
+                fix: "Upewnij się, że dane kontaktowe i instrukcja wypisania są widoczne.",
+                scoreValue: -W.footer_present
+            });
+        }
+
+        // HTML / obrazy
+        if (details.dirtyHtml) {
+            pushUniqueSuggestion({
+                problem: "Przestarzałe lub nieczyste HTML",
+                impact: `Zwiększa wynik spam o ${W.dirty_html} pkt`,
+                fix: "Użyj semantycznego HTML5, unikaj <font>, <marquee>, inline style.",
+                scoreValue: W.dirty_html
+            });
+        } else {
+            pushUniqueSuggestion({
+                problem: "Poprawne formatowanie HTML",
+                impact: "Zmniejsza ryzyko",
+                fix: "Utrzymuj semantyczne tagi i minimalny inline CSS.",
+                scoreValue: -W.clean_html
+            });
+        }
+        if (details.imageCount > 5) {
+            pushUniqueSuggestion({
+                problem: "Zbyt dużo obrazków",
+                impact: `Zwiększa wynik spam o ${W.too_many_images} pkt`,
+                fix: "Ogranicz liczbę obrazków do 3-5 i dodaj alt teksty.",
+                scoreValue: W.too_many_images
+            });
+        }
+        if (details.imageCount > 0 && imgAltMissing.length > 0) {
+            pushUniqueSuggestion({
+                problem: "Brak alt tekstów przy obrazkach",
+                impact: `Zwiększa wynik spam o ${W.missing_alt} pkt`,
+                fix: "Dodaj alt do wszystkich <img> (poprawia też dostępność).",
+                scoreValue: W.missing_alt
+            });
+        } else if (details.imageCount > 0) {
+            pushUniqueSuggestion({
+                problem: "Alt teksty dla obrazów obecne",
+                impact: "Zmniejsza ryzyko",
+                fix: "Utrzymuj alt dla wszystkich obrazków.",
+                scoreValue: -W.all_alt
+            });
+        }
+
+        // FROM / auth
+        if (details.missingFrom) {
+            pushUniqueSuggestion({
+                problem: "Brak pola From",
+                impact: `Zwiększa wynik spam o ${W.from_invalid} pkt`,
+                fix: "Uzupełnij prawidłowy adres nadawcy.",
+                scoreValue: W.from_invalid
+            });
+        } else {
+            if (details.freeProviderFrom) {
+                pushUniqueSuggestion({
+                    problem: "Adres z darmowego provider'a",
+                    impact: `Zwiększa wynik spam o ${W.from_free_provider} pkt`,
+                    fix: "Używaj adresu z własnej domeny (no-reply niezalecane).",
+                    scoreValue: W.from_free_provider
+                });
+            }
+            if (details.invalidFrom) {
+                pushUniqueSuggestion({
+                    problem: "Problem z adresem nadawcy",
+                    impact: `Zwiększa wynik spam o ${W.from_invalid} pkt`,
+                    fix: "Upewnij się, że adres From jest prawidłowy i znaczący.",
+                    scoreValue: W.from_invalid
+                });
+            }
+            if (details.authPenalty) {
+                pushUniqueSuggestion({
+                    problem: "Brak lub niepełne SPF/DKIM/DMARC",
+                    impact: `Zwiększa wynik spam o ${details.authPenalty} pkt`,
+                    fix: "Skonfiguruj SPF, DKIM i DMARC; monitoruj DMARC aggregate reports.",
+                    scoreValue: details.authPenalty
+                });
+            } else if (details.authOk) {
+                pushUniqueSuggestion({
+                    problem: "Poprawne SPF/DKIM/DMARC",
+                    impact: "Zmniejsza ryzyko",
+                    fix: "Utrzymuj ustawienia i monitoruj raporty DMARC.",
+                    scoreValue: -8
+                });
+            }
+        }
+
+        // LINKI
+        if (details.linkCount > 2) {
+            pushUniqueSuggestion({
+                problem: "Zbyt dużo linków",
+                impact: `Zwiększa wynik spam (patrz szczegóły)`,
+                fix: "Ogranicz linki do 2-3 najważniejszych.",
+                scoreValue: Math.min((details.linkCount - 2) * W.links_excess_per, W.links_excess_cap)
+            });
+        }
+        if (details.linkValidation && details.linkValidation.bad && details.linkValidation.bad.length) {
+            pushUniqueSuggestion({
+                problem: "Niesprawne lub wolne linki",
+                impact: `Każdy może dodać ~${W.bad_link} pkt`,
+                fix: "Usuń lub popraw niedziałające linki; zapewnij szybkie odpowiedzi serwera.",
+                scoreValue: Math.min(details.linkValidation.bad.length * W.bad_link, W.bad_link_cap)
+            });
+        }
+
+        // SPAM WORDS
+        if (details.foundSpamInBody && details.foundSpamInBody.length) {
+            const estimated = Math.min(Math.log2(spamHits + 1) * W.spamword_body_scale_factor, 30);
+            pushUniqueSuggestion({
+                problem: "Słowa kojarzone ze spamem w treści",
+                impact: `Może dodać ~${Math.round(estimated)} pkt`,
+                fix: "Zastąp słowa reklamowe alternatywnymi określeniami.",
+                scoreValue: Math.round(estimated)
+            });
+        }
+        if (details.foundSpamInSubject && details.foundSpamInSubject.length) {
+            // już dodano powyżej, ale jeszcze raz w razie potrzeby
+        }
+
+        // UNSUBSCRIBE
+        if (!details.hasUnsubscribe) {
+            pushUniqueSuggestion({
+                problem: "Brak linku do wypisania się",
+                impact: `Zwiększa wynik spam o ${W.unsubscribe_missing} pkt`,
+                fix: "Dodaj wyraźny link lub instrukcję wypisania się.",
+                scoreValue: W.unsubscribe_missing
+            });
+        } else {
+            pushUniqueSuggestion({
+                problem: "Link do wypisania się obecny",
+                impact: `Zmniejsza wynik spam o ${-W.unsubscribe_present} pkt`,
+                fix: "Upewnij się, że link działa i jest widoczny.",
+                scoreValue: -W.unsubscribe_present
+            });
+        }
+
+        // REPUTATION / METRYKI
+        if (typeof bounceRate === 'number' && bounceRate > 0.05) {
+            pushUniqueSuggestion({
+                problem: "Wysoki bounce rate",
+                impact: "Negatywnie wpływa na reputację nadawcy",
+                fix: "Oczyść listę adresów; użyj walidatora e-mail.",
+                scoreValue: Math.round(Math.min(bounceRate * W.bounce_penalty_scale, W.bounce_penalty_scale))
+            });
+        }
+        if (typeof complaintRate === 'number' && complaintRate > 0.002) {
+            pushUniqueSuggestion({
+                problem: "Wysoki complaint rate",
+                impact: "Bardzo negatywnie wpływa na reputację",
+                fix: "Segmentuj listę, uprość proces wypisu, popraw targetowanie.",
+                scoreValue: Math.round(Math.min(complaintRate * W.complaint_penalty_scale, W.complaint_penalty_scale))
+            });
+        }
+        if (typeof sendingIpReputation === 'number' && sendingIpReputation < -20) {
+            pushUniqueSuggestion({
+                problem: "Słaba reputacja IP",
+                impact: "Znacznie podnosi ryzyko trafienia do spamu",
+                fix: "Sprawdź IP w RBL, rozważ zmianę IP lub kontakt z dostawcą.",
+                scoreValue: Math.min(Math.round((Math.abs(sendingIpReputation)/100) * W.ip_reputation_bad), W.ip_reputation_bad)
+            });
+        }
+
+        // jeśli gdzieś były już dodane suggestions (np. z APIVOID), są już w tablicy
+
+        // ===== ZAPIS I WYJŚCIE =====
+        const result = { score: finalScore, rating, details, suggestions };
+
+        await campaign.update({ scoring: result.score, suggestions: result.suggestions });
+
+        return res.send(new Response(result, true, 'Spam rating (with reputation API + suggestions) calculated successfully'));
     } catch (err) {
-        res.send(new Response(null, false, `Failed to calculate spam rating: ${err.message}`));
+        return res.send(new Response(null, false, `Failed to calculate spam rating: ${err.message}`));
     }
 }
+
+
+
 
 // ============= IMPORT EXCEL =============
 

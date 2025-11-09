@@ -57,6 +57,27 @@ const CampaignReply = sequelize.define('campaign_replies', {
         allowNull: true,
         field: 'body_preview'
     },
+    imapUid: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        field: 'imap_uid'
+    },
+    bodyFull: {
+        type: DataTypes.TEXT('medium'),
+        allowNull: true,
+        field: 'body_full'
+    },
+    isRead: {
+        type: DataTypes.TINYINT,
+        allowNull: false,
+        defaultValue: 0,
+        field: 'is_read'
+    },
+    readAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        field: 'read_at'
+    },
     createdAt: {
         type: DataTypes.DATE,
         allowNull: false,

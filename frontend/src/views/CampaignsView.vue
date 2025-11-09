@@ -115,6 +115,10 @@
               <v-icon left>mdi-account-multiple</v-icon>
               Odbiorcy
             </v-tab>
+            <v-tab value="replies">
+              <v-icon left>mdi-reply</v-icon>
+              Odpowiedzi
+            </v-tab>
             <v-tab value="scheduling" v-if="false">
               <v-icon left>mdi-calendar-clock</v-icon>
               Planowanie
@@ -177,6 +181,11 @@
 
                   <CampaignRecipients v-if="false" :campaign="selectedCampaign" @edit-recipients="editRecipients" />
                 </div>
+              </v-window-item>
+
+              <!-- Replies Tab -->
+              <v-window-item value="replies">
+                <CampaignReplies :campaign="selectedCampaign" />
               </v-window-item>
 
               <!-- Scheduling Tab -->
@@ -375,6 +384,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import CampaignContent from '../components/campaigns/CampaignContent.vue'
 import CampaignRecipients from '../components/campaigns/CampaignRecipients.vue'
+import CampaignReplies from '../components/campaigns/CampaignReplies.vue'
 import CampaignDialog from '../components/campaigns/CampaignDialog.vue'
 import ScheduleDialog from '../components/campaigns/ScheduleDialog.vue'
 import DatabaseSelectionDialog from '../components/campaigns/DatabaseSelectionDialog.vue'

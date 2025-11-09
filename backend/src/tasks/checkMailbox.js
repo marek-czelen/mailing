@@ -184,9 +184,6 @@ class CheckMailboxTask {
                     }
                 }
 
-                // Przygotuj body_preview (opcjonalnie można pobrać z treści, na razie pusty)
-                const bodyPreview = null;
-
                 // Parsuj datę
                 let receivedAt = new Date();
                 if (date) {
@@ -198,7 +195,7 @@ class CheckMailboxTask {
                     }
                 }
 
-                // Zapisz odpowiedź do bazy
+                // Zapisz odpowiedź do bazy (bodyPreview i bodyFull będą NULL - pobierane na żądanie)
                 await CampaignReply.create({
                     campaignId: targetCampaignId,
                     mailAddressId,
@@ -207,7 +204,11 @@ class CheckMailboxTask {
                     receivedAt,
                     messageId: messageId || null,
                     replyHash: hash,
-                    bodyPreview
+                    imapUid: uid ? String(uid) : null,
+                    bodyPreview: null,
+                    bodyFull: null,
+                    isRead: 0,
+                    readAt: null
                 });
 
                 // Aktualizacja rekordu wysyłki (oznacz odpowiedź / przeczytanie) jeśli mamy mailAddressId i referencję

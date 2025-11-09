@@ -1,0 +1,22 @@
+meta {
+  name: replies full
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{backendUrl}}/mailing/replies/19/full
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "email": "user2@o.pl",
+    "password":"111"
+  }
+}

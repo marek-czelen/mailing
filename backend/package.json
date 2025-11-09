@@ -26,6 +26,7 @@
     "imapflow": "^1.0.164",
     "jade": "~1.11.0",
     "jsonwebtoken": "^9.0.2",
+    "mailparser": "^3.9.0",
     "morgan": "~1.10.0",
     "multer": "^2.0.2",
     "mysql2": "^3.12.0",

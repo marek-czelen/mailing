@@ -26,6 +26,7 @@ import {
 } from '../controller/mailing.js';
 
 import { sendEmail } from '../controller/mailProcessing.js';
+import { getCampaignReplies, getReplyById, getCampaignRepliesStats, getReplyFullContent } from '../controller/campaignReplies.js';
 
 const router = express.Router();
 
@@ -97,5 +98,18 @@ router.post('/contactAdd', contactAdd);
 router.post('/sendEmail', sendEmail);
 
 router.delete('/contactDelete/:contactId', contactDelete);
+
+// ============= CAMPAIGN REPLIES =============
+// Pobierz odpowiedzi do kampanii (z paginacją i filtrowaniem)
+router.get('/campaigns/:campaignId/replies', getCampaignReplies);
+
+// Pobierz statystyki odpowiedzi kampanii
+router.get('/campaigns/:campaignId/replies/stats', getCampaignRepliesStats);
+
+// Pobierz szczegóły pojedynczej odpowiedzi
+router.get('/replies/:replyId', getReplyById);
+
+// Pobierz pełną treść odpowiedzi (oznacza jako odczytaną)
+router.get('/replies/:replyId/full', getReplyFullContent);
 
 export default router;
