@@ -243,7 +243,9 @@ export class Mail {
         text,
         placeholders = {},
         attachments = [],
-        headers = {}
+        headers = {},
+        campaignId = null,
+        mailAddressId = null
       } = options;
 
       if (!smtp || !from || !to || !subject) {
@@ -259,6 +261,9 @@ export class Mail {
       const processedSubject = Mail.processPlaceholders(subject, placeholders);
 
       // Przygotuj opcje wiadomości
+      // Wygeneruj Message-ID wcześniej aby móc go również zwrócić i zapisać do tabeli wyników
+      const generatedMessageId = Mail.generateMessageId();
+
       const mailOptions = {
         from,
         to: Array.isArray(to) ? to.join(', ') : to,
@@ -267,7 +272,10 @@ export class Mail {
         text: processedText,
         attachments,
         headers: {
-          'Message-ID': Mail.generateMessageId(),
+          'Message-ID': generatedMessageId,
+          // Dodatkowe nagłówki do śledzenia kampanii i kontaktu (nie wszystkie serwery zawsze je zachowują)
+          ...(campaignId ? { 'X-Campaign-ID': String(campaignId) } : {}),
+          ...(mailAddressId ? { 'X-Mail-Address-ID': String(mailAddressId) } : {}),
           ...headers
         }
       };
@@ -277,8 +285,15 @@ export class Mail {
       
       return {
         success: true,
-        messageId: result.messageId,
-        response: result.response
+        messageId: result.messageId || generatedMessageId,
+        campaignId: campaignId || null,
+        mailAddressId: mailAddressId || null,
+        response: result.response,
+        trackingHeaders: {
+          'Message-ID': generatedMessageId,
+          ...(campaignId ? { 'X-Campaign-ID': String(campaignId) } : {}),
+          ...(mailAddressId ? { 'X-Mail-Address-ID': String(mailAddressId) } : {})
+        }
       };
 
     } catch (error) {

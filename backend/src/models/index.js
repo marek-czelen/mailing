@@ -1,6 +1,7 @@
 import sequelize from '../include/db.js';
 import EmailTemplate from './EmailTemplate.js';
 import TemplateBlock from './TemplateBlock.js';
+import CampaignReply from './campaignReply.model.js';
 
 // Import innych modeli jeśli potrzebne
 // import Customer from './customers.model.js';
@@ -10,6 +11,7 @@ import TemplateBlock from './TemplateBlock.js';
 const models = {
   EmailTemplate,
   TemplateBlock,
+  CampaignReply,
   // Customer,
   // Database,
 };
@@ -39,6 +41,7 @@ export {
   sequelize,
   EmailTemplate,
   TemplateBlock,
+  CampaignReply,
 };
 
 export default models;

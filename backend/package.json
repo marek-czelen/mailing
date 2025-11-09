@@ -11,7 +11,7 @@
     "prod": "babel ./src --out-dir dist_server --copy-files",
     "start:built": "NODE_ENV=production node ./dist_server/bin/www.js",
     "postinstall": "npm run setup:production",
-    "setup:production": "if [ \"$NODE_ENV\" = \"production\" ]; then echo 'Production environment detected'; fi"
+    "setup:production": "node -e \"if (process.env.NODE_ENV==='production'){console.log('Production environment detected')}\""
   },
   "dependencies": {
     "axios": "^1.11.0",
@@ -23,6 +23,7 @@
     "express": "~4.21.2",
     "express-validator": "^7.3.0",
     "http-errors": "~2.0.0",
+    "imapflow": "^1.0.164",
     "jade": "~1.11.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "~1.10.0",
@@ -30,6 +31,7 @@
     "mysql2": "^3.12.0",
     "nodemailer": "^7.0.10",
     "openai": "^5.20.0",
+    "poplib": "^0.1.7",
     "run-all": "^1.0.1",
     "sequelize": "^6.37.5",
     "xlsx": "^0.18.5"

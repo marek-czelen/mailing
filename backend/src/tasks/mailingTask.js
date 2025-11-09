@@ -91,6 +91,8 @@ class MailingTask {
                             to: address.mailAddress,
                             subject: campaign.subject,
                             html: campaign.htmlContent,
+                            campaignId: campaign.id,
+                            mailAddressId: address.id,
                             placeholders: {
                                 UNSUBSCRIBE_URL: `${unsubscribeBase}/${address.hash}`,
                                 ENVIRONMENT: EnvironmentConfig.get('NODE_ENV'),
@@ -115,10 +117,14 @@ class MailingTask {
                                     marketingCampaniesId: campaign.id,
                                     mailAddressesId: address.id,
                                     isSend: true,
-                                    sendData: new Date()
+                                    sendDate: new Date(),
+                                    messageId: result.messageId || null
                                 }).catch(err => {
                                     console.error(`Błąd zapisu statusu wysyłki dla ${address.mailAddress}:`, err && err.message ? err.message : err);
                                 });
+                                if (EnvironmentConfig.isDevelopment()) {
+                                    console.log(`✉️ [MailingTask] Wysłano: campaignId=${campaign.id} mailAddressId=${address.id} messageId=${result.messageId}`);
+                                }
                             }
                         });
 

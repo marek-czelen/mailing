@@ -35,6 +35,11 @@ const MarketingCampaniesMailingResult = sequelize.define('marketing_campanies_ma
         type:DataTypes.DATE,
         field:"send_date"
     },
+    messageId:{
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: "message_id"
+    },
     error:{
       type: DataTypes.BOOLEAN,
       field: "error",

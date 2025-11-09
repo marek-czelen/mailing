@@ -69,13 +69,22 @@ export async function createCampaign(req, res) {
             progress: data.progress ? Number(data.progress) : 0,
             customerId: data.customerId ? Number(data.customerId) : 1,
             // suggestions już jest JSON w modelu — obsługiwane automatycznie
+            replyCheckEnabled: (data.replyCheckEnabled === true || data.replyCheckEnabled === 'true' || data.replyCheckEnabled === 1 || data.replyCheckEnabled === '1') || false,
+            replyMailboxHost: data.replyMailboxHost || null,
+            replyMailboxPort: data.replyMailboxPort ? Number(data.replyMailboxPort) : 993,
+            replyMailboxUser: data.replyMailboxUser || null,
+            replyMailboxPass: data.replyMailboxPass || null,
+            replyMailboxProtocol: data.replyMailboxProtocol || 'IMAP',
+            replyMailboxFolder: data.replyMailboxFolder || 'INBOX',
+            replyMailboxTls: data.replyMailboxTls !== undefined ? (data.replyMailboxTls === true || data.replyMailboxTls === 'true' || data.replyMailboxTls === 1 || data.replyMailboxTls === '1') : null,
+            replyMailboxAllowSelfSigned: (data.replyMailboxAllowSelfSigned === true || data.replyMailboxAllowSelfSigned === 'true' || data.replyMailboxAllowSelfSigned === 1 || data.replyMailboxAllowSelfSigned === '1') || false
         };
 
         // Utwórz kampanię
         const newCampaign = await MarketingCampanies.create(normalized);
 
         // Automatycznie licz scoring i sugestie po utworzeniu kampanii
-        await computeSpamRating({ body: { id: newCampaign.id } }, { send: () => {} });
+    await computeSpamRating({ body: { id: newCampaign.id } }, { send: () => {} });
         
         res.send(new Response(newCampaign, true, "Campaign created successfully."));
     } catch (error) {
@@ -104,20 +113,28 @@ export async function updateCampaign(req, res) {
         if (req.body.suggestions !== undefined) updateData.suggestions = req.body.suggestions; // JSON
         if (req.body.databaseId !== undefined) updateData.databaseId = Number(req.body.databaseId);
         if (req.body.customerId !== undefined) updateData.customerId = Number(req.body.customerId);
+        // Pola konfiguracji sprawdzania skrzynki
+        if (req.body.replyCheckEnabled !== undefined) updateData.replyCheckEnabled = (req.body.replyCheckEnabled === true || req.body.replyCheckEnabled === 'true' || req.body.replyCheckEnabled === 1 || req.body.replyCheckEnabled === '1');
+        if (req.body.replyMailboxHost !== undefined) updateData.replyMailboxHost = req.body.replyMailboxHost;
+        if (req.body.replyMailboxPort !== undefined) updateData.replyMailboxPort = Number(req.body.replyMailboxPort);
+        if (req.body.replyMailboxUser !== undefined) updateData.replyMailboxUser = req.body.replyMailboxUser;
+        if (req.body.replyMailboxPass !== undefined) updateData.replyMailboxPass = req.body.replyMailboxPass;
+        if (req.body.replyMailboxProtocol !== undefined) updateData.replyMailboxProtocol = req.body.replyMailboxProtocol;
+        if (req.body.replyMailboxFolder !== undefined) updateData.replyMailboxFolder = req.body.replyMailboxFolder;
+        if (req.body.replyMailboxTls !== undefined) updateData.replyMailboxTls = (req.body.replyMailboxTls === true || req.body.replyMailboxTls === 'true' || req.body.replyMailboxTls === 1 || req.body.replyMailboxTls === '1') ? true : (req.body.replyMailboxTls === false || req.body.replyMailboxTls === 'false' || req.body.replyMailboxTls === 0 || req.body.replyMailboxTls === '0') ? false : null;
+        if (req.body.replyMailboxAllowSelfSigned !== undefined) updateData.replyMailboxAllowSelfSigned = (req.body.replyMailboxAllowSelfSigned === true || req.body.replyMailboxAllowSelfSigned === 'true' || req.body.replyMailboxAllowSelfSigned === 1 || req.body.replyMailboxAllowSelfSigned === '1');
         
         const userData = await Admin.getCurrentUserData(req.headers.authorization);
         const [updated] = await MarketingCampanies.update(updateData, {
             where: { id: req.params.id, customerId: userData.customerId }
         });
-        if (!updated) {
-            return res.status(403).send(new Response(null, false, "Campaign not found."));
-        }
+
         const updatedCampaign = await MarketingCampanies.findOne({
             where: { id: req.params.id, customerId: userData.customerId }
         });
         // Automatycznie licz scoring i sugestie po edycji kampanii
 
-        await computeSpamRating({ body: { id: updatedCampaign.id } }, { send: () => {} });
+    await computeSpamRating({ body: { id: updatedCampaign.id } }, { send: () => {} });
 
         res.status(200).send(new Response(updatedCampaign, true, "Campaign updated successfully."));
     } catch (error) {

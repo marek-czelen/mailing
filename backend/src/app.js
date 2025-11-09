@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import Auth from './include/auth.js';
 import {unauthorized} from './include/errors.js';
 import MailingTask from './tasks/mailingTask.js';
+import CheckMailboxTask from './tasks/checkMailbox.js';
 import EnvironmentConfig from './config/environment.config.js';
 
 import authRouter from './routes/auth.js';
@@ -127,5 +128,6 @@ app.use(function(err, req, res, next) {
 
 // Uruchomienie zadania cyklicznego
 MailingTask.run();
+CheckMailboxTask.run();
 
 export default app;
