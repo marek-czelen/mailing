@@ -141,12 +141,15 @@ export async function getCampaignReplies(req, res) {
                 subject: reply.subject,
                 receivedAt: reply.receivedAt,
                 hasContact: !!reply.mailAddressId,
+                isBounce: !!reply.isBounce,
+                bounceType: reply.bounceType,
                 mailAddress: reply.MailAddress ? {
                     id: reply.MailAddress.id,
                     email: reply.MailAddress.mailAddress,
                     miasto: reply.MailAddress.miasto,
                     rodzaj: reply.MailAddress.rodzaj,
-                    active: reply.MailAddress.active
+                    active: reply.MailAddress.active,
+                    bounceCount: reply.MailAddress.bounceCount || 0
                 } : null,
                 bodyPreview: reply.bodyPreview ? reply.bodyPreview.substring(0, 200) : null
             })),
@@ -242,6 +245,9 @@ export async function getReplyById(req, res) {
                 messageId: reply.messageId,
                 replyHash: reply.replyHash,
                 bodyPreview: reply.bodyPreview,
+                isBounce: !!reply.isBounce,
+                bounceType: reply.bounceType,
+                bounceReason: reply.bounceReason,
                 createdAt: reply.createdAt,
                 campaign: {
                     id: reply.Campaign.id,
@@ -258,7 +264,9 @@ export async function getReplyById(req, res) {
                     rodzaj: reply.MailAddress.rodzaj,
                     phone: reply.MailAddress.phone,
                     active: reply.MailAddress.active,
-                    unsubscribed: !!reply.MailAddress.unsubscribesDate
+                    unsubscribed: !!reply.MailAddress.unsubscribesDate,
+                    bounceDate: reply.MailAddress.bounceDate,
+                    bounceCount: reply.MailAddress.bounceCount || 0
                 } : null
             }
         };
@@ -562,7 +570,7 @@ export async function getCampaignRepliesStats(req, res) {
         // Pobierz wszystkie odpowiedzi dla kampanii
         const replies = await CampaignReply.findAll({
             where: { campaignId },
-            attributes: ['fromEmail', 'receivedAt', 'mailAddressId'],
+            attributes: ['fromEmail', 'receivedAt', 'mailAddressId', 'isBounce', 'bounceType'],
             raw: true
         });
 
@@ -570,6 +578,9 @@ export async function getCampaignRepliesStats(req, res) {
         const totalReplies = replies.length;
         const identifiedReplies = replies.filter(r => r.mailAddressId !== null).length;
         const unidentifiedReplies = totalReplies - identifiedReplies;
+        const totalBounces = replies.filter(r => r.isBounce).length;
+        const hardBounces = replies.filter(r => r.isBounce && r.bounceType === 'hard').length;
+        const softBounces = replies.filter(r => r.isBounce && r.bounceType === 'soft').length;
 
         // Rozkład w czasie (grupowanie po dniu)
         const repliesByDay = {};
@@ -604,6 +615,10 @@ export async function getCampaignRepliesStats(req, res) {
                 identifiedReplies,
                 unidentifiedReplies,
                 identificationRate: totalReplies > 0 ? Math.round((identifiedReplies / totalReplies) * 100) : 0,
+                totalBounces,
+                hardBounces,
+                softBounces,
+                bounceRate: totalReplies > 0 ? Math.round((totalBounces / totalReplies) * 100) : 0,
                 repliesByDay: repliesByDayArray,
                 topRespondents
             }

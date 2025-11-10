@@ -44,6 +44,19 @@ const MailAddress = sequelize.define('mail_addresses', {
         type:DataTypes.DATE,
         field:"unsubscribes_date",
     },
+    bounceDate:{
+        type: DataTypes.DATE,
+        field: "bounce_date"
+    },
+    bounceReason:{
+        type: DataTypes.TEXT,
+        field: "bounce_reason"
+    },
+    bounceCount:{
+        type: DataTypes.INTEGER,
+        field: "bounce_count",
+        defaultValue: 0
+    },
     databaseId:{
       type: DataTypes.INTEGER,
       field: "database_id",

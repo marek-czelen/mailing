@@ -78,6 +78,22 @@ const CampaignReply = sequelize.define('campaign_replies', {
         allowNull: true,
         field: 'read_at'
     },
+    isBounce: {
+        type: DataTypes.TINYINT,
+        allowNull: false,
+        defaultValue: 0,
+        field: 'is_bounce'
+    },
+    bounceType: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        field: 'bounce_type'
+    },
+    bounceReason: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        field: 'bounce_reason'
+    },
     createdAt: {
         type: DataTypes.DATE,
         allowNull: false,
