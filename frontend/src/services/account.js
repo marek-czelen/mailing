@@ -41,10 +41,10 @@ export class Account {
   static async getCurrentUser() {
     try {
       // Sprawdź cache w localStorage
-      const cachedUser = localStorage.getItem('user_data');
-      if (cachedUser) {
-        return JSON.parse(cachedUser);
-      }
+      // const cachedUser = localStorage.getItem('user_data');
+      // if (cachedUser) {
+      //   return JSON.parse(cachedUser);
+      // }
 
       // Jeśli brak cache, pobierz z API
       const response = await axios.get('/auth/me');

@@ -1,0 +1,22 @@
+meta {
+  name: getCampaignRepliesStats
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{backendUrl}}/mailing/campaigns/27/replies
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "email": "user2@o.pl",
+    "password":"111"
+  }
+}

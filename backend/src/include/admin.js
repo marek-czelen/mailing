@@ -59,7 +59,6 @@ export class Admin {
             include: [{
                model: Customers,
                as: 'Customer',
-               attributes: ['id', 'name']
             }]
          });
          return user;

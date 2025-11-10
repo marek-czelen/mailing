@@ -151,6 +151,39 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
       allowNull: false,
       defaultValue: false,
       field: 'reply_mailbox_allow_self_signed'
+    },
+    // --- Ustawienia SMTP dla wysyłki kampanii ---
+    smtpHost: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'smtp_host'
+    },
+    smtpPort: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'smtp_port'
+    },
+    smtpUser: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'smtp_user'
+    },
+    smtpPass: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'smtp_pass'
+    },
+    smtpSecure: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: true,
+      field: 'smtp_secure'
+    },
+    smtpAllowSelfSigned: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'smtp_allow_self_signed'
     }
   }, {
     tableName: 'marketing_campanies',

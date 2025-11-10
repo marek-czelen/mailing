@@ -1,0 +1,25 @@
+meta {
+  name: customrs
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{backendUrl}}/admin/getCustomers
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+  
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("token",res.body.data.token)
+}

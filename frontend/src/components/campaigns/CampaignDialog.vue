@@ -1,29 +1,18 @@
 <template>
 
-  <v-dialog 
-    :model-value="modelValue" 
+
+  <GeneralDialog
+    :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    max-width="800px"
+    :title="isEditing ? 'Edytuj kampanię' : 'Nowa kampania marketingowa'"
+    min-width="800px"
     persistent
   >
-    <v-card class="campaign-dialog">
-      <v-card-title class="dialog-header">
-        <h2>{{ isEditing ? 'Edytuj kampanię' : 'Nowa kampania marketingowa' }}</h2>
-        <v-btn 
-          icon 
-          variant="text" 
-          @click="close"
-          class="close-btn"
-        >
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-      </v-card-title>
-
-      <v-card-text class="dialog-content">
-        <!-- Step Header -->
+  <template #default>
+            <!-- Step Header -->
         <div class="step-header">
           <div 
-            v-for="i in 4" 
+            v-for="i in 5" 
             :key="i"
             class="step-indicator"
             :class="{ 
@@ -191,12 +180,217 @@
             </div>
           </div>
 
-          <!-- Step 4: Settings -->
+          <!-- Step 4: Email Accounts -->
           <div v-if="step === 4">
-            <h3>Ustawienia kampanii</h3>
-            <p>Skonfiguruj opcje wysyłki</p>
+            <h3>Skonfiguruj konta do wysyłki i odbioru odpowiedzi</h3>
+        
 
-            <v-radio-group v-model="formData.sendMode" density="compact">
+            <!-- SMTP Configuration -->
+            <div class="mail-config-section">
+              <h4>
+                <v-icon left color="primary">mdi-email-send</v-icon>
+                Konto wysyłkowe (SMTP)
+              </h4>
+              <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+                Wymagane do wysyłki kampanii. Brak konfiguracji zablokuje wysyłkę.
+              </v-alert>
+
+              <v-row>
+                <v-col cols="12" md="8">
+                  <v-text-field
+                    v-model="formData.smtpHost"
+                    label="Host SMTP *"
+                    density="compact"
+                    variant="outlined"
+                    placeholder="smtp.gmail.com"
+                    :rules="[rules.required]"
+                  />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    v-model.number="formData.smtpPort"
+                    label="Port *"
+                    density="compact"
+                    variant="outlined"
+                    type="number"
+                    placeholder="587"
+                    :rules="[rules.required]"
+                  />
+                </v-col>
+              </v-row>
+
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="formData.smtpUser"
+                    label="Użytkownik SMTP *"
+                    density="compact"
+                    variant="outlined"
+                    placeholder="user@gmail.com"
+                    :rules="[rules.required]"
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="formData.smtpPass"
+                    label="Hasło SMTP *"
+                    density="compact"
+                    variant="outlined"
+                    type="password"
+                    placeholder="••••••••"
+                    :rules="[rules.required]"
+                  />
+                </v-col>
+              </v-row>
+
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-switch
+                    v-model="formData.smtpSecure"
+                    label="Użyj TLS/SSL"
+                    color="primary"
+                    density="compact"
+                    hide-details
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-switch
+                    v-model="formData.smtpAllowSelfSigned"
+                    label="Akceptuj self-signed certyfikaty"
+                    color="primary"
+                    density="compact"
+                    hide-details
+                  />
+                </v-col>
+              </v-row>
+
+              <v-btn
+                color="primary"
+                variant="outlined"
+                class="mt-2"
+                :loading="testingSmtp"
+                @click="testSmtpConnection"
+              >
+                <v-icon left>mdi-test-tube</v-icon>
+                Testuj połączenie SMTP
+              </v-btn>
+            </div>
+
+            <v-divider class="my-6" />
+
+            <!-- IMAP Configuration -->
+            <div class="mail-config-section">
+              <h4>
+                <v-icon left color="primary">mdi-email-receive</v-icon>
+                Konto odbiorcze (IMAP)
+              </h4>
+              <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+                Opcjonalne - do monitorowania odpowiedzi i odbić.
+              </v-alert>
+
+              <v-switch
+                v-model="formData.replyCheckEnabled"
+                label="Śledź odpowiedzi i odbicia"
+                color="primary"
+                density="compact"
+                hide-details
+                class="mb-4"
+              />
+
+              <template v-if="formData.replyCheckEnabled">
+                <v-row>
+                  <v-col cols="12" md="8">
+                    <v-text-field
+                      v-model="formData.replyMailboxHost"
+                      label="Host IMAP"
+                      density="compact"
+                      variant="outlined"
+                      placeholder="imap.gmail.com"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="4">
+                    <v-text-field
+                      v-model.number="formData.replyMailboxPort"
+                      label="Port"
+                      density="compact"
+                      variant="outlined"
+                      type="number"
+                      placeholder="993"
+                    />
+                  </v-col>
+                </v-row>
+
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="formData.replyMailboxUser"
+                      label="Użytkownik IMAP"
+                      density="compact"
+                      variant="outlined"
+                      placeholder="user@gmail.com"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="formData.replyMailboxPass"
+                      label="Hasło IMAP"
+                      density="compact"
+                      variant="outlined"
+                      type="password"
+                      placeholder="••••••••"
+                    />
+                  </v-col>
+                </v-row>
+
+                <v-row>
+                  <v-col cols="12" md="4">
+                    <v-text-field
+                      v-model="formData.replyMailboxFolder"
+                      label="Folder"
+                      density="compact"
+                      variant="outlined"
+                      placeholder="INBOX"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="4">
+                    <v-switch
+                      v-model="formData.replyMailboxTls"
+                      label="Użyj TLS/SSL"
+                      color="primary"
+                      density="compact"
+                      hide-details
+                    />
+                  </v-col>
+                  <v-col cols="12" md="4">
+                    <v-switch
+                      v-model="formData.replyMailboxAllowSelfSigned"
+                      label="Self-signed cert"
+                      color="primary"
+                      density="compact"
+                      hide-details
+                    />
+                  </v-col>
+                </v-row>
+
+                <v-btn
+                  color="primary"
+                  variant="outlined"
+                  class="mt-2"
+                  :loading="testingImap"
+                  @click="testImapConnection"
+                >
+                  <v-icon left>mdi-test-tube</v-icon>
+                  Testuj połączenie IMAP
+                </v-btn>
+              </template>
+            </div>
+          </div>
+
+          <!-- Step 5: Settings -->
+          <div v-if="step === 5">
+            <h3>Planowanie kampanii</h3>
+
+            <v-radio-group v-model="formData.sendMode" >
               <v-radio label="Wyślij natychmiast" value="immediate" disabled/>
               <v-radio label="Zaplanuj wysyłkę" value="scheduled" />
             </v-radio-group>
@@ -210,30 +404,14 @@
               variant="outlined"
             />
 
-            <div class="tracking-options">
-              <h4>Śledzenie</h4>
-              <v-switch
-                density="compact"
-                hide-details
-                disabled
-                v-model="formData.trackOpens"
-                label="Śledź otwieranie"
-                color="primary"
-              />
-              <v-switch
-                density="compact"
-                hide-details
-                disabled
-                v-model="formData.trackClicks"
-                label="Śledź kliknięcia"
-                color="primary"
-              />
-            </div>
           </div>
         </div>
 
-        <!-- Navigation -->
-        <div class="step-navigation">
+
+
+  </template>
+  <template #actions>
+
           <v-btn
             v-if="step > 1"
             variant="outlined"
@@ -246,7 +424,7 @@
           <v-spacer />
           
           <v-btn
-            v-if="step < 4"
+            v-if="step < 5"
             color="primary"
             :disabled="!canProceed"
             @click="nextStep"
@@ -263,10 +441,10 @@
             <v-icon left>mdi-check</v-icon>
             {{ isEditing ? 'Zapisz zmiany' : 'Utwórz kampanię' }}
           </v-btn>
-        </div>
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+       
+  </template> 
+
+  </GeneralDialog>
 </template>
 
 <script setup>
@@ -276,6 +454,7 @@ import { Databases } from '../../services/databases.js'
 import { Campaigns } from '../../services/campaigns.js'
 import templatesIndex from '../../templates/index.json'
 import { CustomerService } from '../../services/customer.js'
+import GeneralDialog from '../GeneralDialog.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -290,6 +469,8 @@ const step = ref(1)
 const saving = ref(false)
 const contentMode = ref('no-template') // 'template', 'html', 'no-template'
 const customerSettings = ref({})
+const testingSmtp = ref(false)
+const testingImap = ref(false)
 
 // Form data
 const formData = ref({
@@ -302,6 +483,23 @@ const formData = ref({
   htmlContent: '',
   senderName: customerSettings.value.smtpUser || '',
   senderEmail: customerSettings.value.smtpFrom || '',
+  // SMTP Configuration
+  smtpHost: customerSettings.value.smtpHost || '',
+  smtpPort: customerSettings.value.smtpPort || 587,
+  smtpUser: customerSettings.value.smtpUser || '',
+  smtpPass: customerSettings.value.smtpPass || '',
+  smtpSecure: customerSettings.value.smtpSecure !== undefined ? customerSettings.value.smtpSecure : false,
+  smtpAllowSelfSigned: false,
+  // IMAP Configuration  
+  replyCheckEnabled: false,
+  replyMailboxHost: customerSettings.value.imapHost || '',
+  replyMailboxPort: customerSettings.value.imapPort || 993,
+  replyMailboxUser: customerSettings.value.imapUser || '',
+  replyMailboxPass: customerSettings.value.imapPass || '',
+  replyMailboxProtocol: 'IMAP',
+  replyMailboxFolder: 'INBOX',
+  replyMailboxTls: true,
+  replyMailboxAllowSelfSigned: false,
   sendMode: 'scheduled', // 'immediate', 'scheduled', 'draft'
   scheduledAt: null,
   trackOpens: true,
@@ -350,6 +548,20 @@ const canProceed = computed(() => {
       const hasValidSender = formData.value.senderName && formData.value.senderEmail
       return hasValidContent && hasValidSender
     case 4:
+      // SMTP is required
+      const hasSmtp = formData.value.smtpHost && 
+                      formData.value.smtpPort && 
+                      formData.value.smtpUser && 
+                      formData.value.smtpPass
+      // IMAP is optional, but if enabled must be valid
+      const imapValid = !formData.value.replyCheckEnabled || (
+        formData.value.replyMailboxHost &&
+        formData.value.replyMailboxPort &&
+        formData.value.replyMailboxUser &&
+        formData.value.replyMailboxPass
+      )
+      return hasSmtp && imapValid
+    case 5:
       return true
     default:
       return true
@@ -374,7 +586,8 @@ function getStepLabel(stepNumber) {
     1: 'Podstawy',
     2: 'Odbiorcy', 
     3: 'Treść',
-    4: 'Ustawienia'
+    4: 'Serwery',
+    5: 'Planowanie'
   }
   return labels[stepNumber] || ''
 }
@@ -386,7 +599,7 @@ function nextStep() {
     formData: formData.value
   })
   
-  if (canProceed.value && step.value < 4) {
+  if (canProceed.value && step.value < 5) {
     step.value++
     console.log('Step changed to:', step.value)
   }
@@ -395,6 +608,61 @@ function nextStep() {
 function prevStep() {
   if (step.value > 1) {
     step.value--
+  }
+}
+
+async function testSmtpConnection() {
+  testingSmtp.value = true
+  try {
+    const config = {
+      host: formData.value.smtpHost,
+      port: formData.value.smtpPort,
+      user: formData.value.smtpUser,
+      pass: formData.value.smtpPass,
+      secure: formData.value.smtpSecure,
+      allowSelfSigned: formData.value.smtpAllowSelfSigned
+    }
+    
+    const result = await Campaigns.testSmtpConnection(config)
+    
+    if (result.success) {
+      alert('✅ Połączenie SMTP działa poprawnie!')
+    } else {
+      alert('❌ Test połączenia SMTP nie powiódł się: ' + (result.message || 'Nieznany błąd'))
+    }
+  } catch (error) {
+    console.error('Błąd testowania SMTP:', error)
+    alert('❌ Błąd testowania połączenia SMTP: ' + (error.response?.data?.message || error.message))
+  } finally {
+    testingSmtp.value = false
+  }
+}
+
+async function testImapConnection() {
+  testingImap.value = true
+  try {
+    const config = {
+      host: formData.value.replyMailboxHost,
+      port: formData.value.replyMailboxPort,
+      user: formData.value.replyMailboxUser,
+      pass: formData.value.replyMailboxPass,
+      tls: formData.value.replyMailboxTls,
+      allowSelfSigned: formData.value.replyMailboxAllowSelfSigned,
+      folder: formData.value.replyMailboxFolder
+    }
+    
+    const result = await Campaigns.testImapConnection(config)
+    
+    if (result.success) {
+      alert('✅ Połączenie IMAP działa poprawnie!')
+    } else {
+      alert('❌ Test połączenia IMAP nie powiódł się: ' + (result.message || 'Nieznany błąd'))
+    }
+  } catch (error) {
+    console.error('Błąd testowania IMAP:', error)
+    alert('❌ Błąd testowania połączenia IMAP: ' + (error.response?.data?.message || error.message))
+  } finally {
+    testingImap.value = false
   }
 }
 
@@ -648,9 +916,7 @@ async function loadDatabases() {
   loadingDatabases.value = true
   try {
     console.log('Ładowanie ustawień klienta...')
-    customerSettings.value = await  CustomerService.getCurrentCustomerSettings();
-    formData.value.senderName = customerSettings.value.smtpUser || ''
-    formData.value.senderEmail = customerSettings.value.smtpFrom || ''
+    customerSettings.value = await  CustomerService.getCurrentCustomerSettings();   
     console.log('Ładowanie baz danych...')
     const databases = await Databases.getList()
     console.log('Pobrane bazy danych:', databases)
@@ -703,6 +969,7 @@ function loadTemplates() {
 // Watch for campaign changes
 watch(() => props.campaign, (newCampaign) => {
   if (newCampaign) {
+    step.value = 1
     formData.value = {
       name: newCampaign.name || '',
       subject: newCampaign.subject || '',
@@ -712,8 +979,23 @@ watch(() => props.campaign, (newCampaign) => {
       template: newCampaign.template || null,
       contentType: newCampaign.contentType || 'no-template',
       htmlContent: newCampaign.htmlContent || '',
-      senderName: newCampaign.senderName || customerSettings.value.smtpUser || '',
-      senderEmail: newCampaign.senderEmail || customerSettings.value.smtpFrom || '',
+      senderName: newCampaign.senderName || '',
+      senderEmail: newCampaign.senderEmail ||  '',
+      smtpHost: newCampaign.smtpHost || '',
+      smtpPort: newCampaign.smtpPort || 587,
+      smtpUser: newCampaign.smtpUser || '',
+      smtpPass: newCampaign.smtpPass || '',
+      smtpSecure: newCampaign.smtpSecure || false,
+      smtpAllowSelfSigned: newCampaign.smtpAllowSelfSigned || false,
+      replyCheckEnabled: newCampaign.replyCheckEnabled || false,
+      replyMailboxHost: newCampaign.replyMailboxHost || '',
+      replyMailboxPort: newCampaign.replyMailboxPort || 993,
+      replyMailboxUser: newCampaign.replyMailboxUser || '',
+      replyMailboxPass: newCampaign.replyMailboxPass || '',
+      replyMailboxProtocol: newCampaign.replyMailboxProtocol || 'IMAP',
+      replyMailboxFolder: newCampaign.replyMailboxFolder || 'INBOX',
+      replyMailboxTls: newCampaign.replyMailboxTls || false,
+      replyMailboxAllowSelfSigned: newCampaign.replyMailboxAllowSelfSigned || false,
       sendMode: newCampaign.sendMode || 'scheduled',
       scheduledAt: newCampaign.dateStart
           ? (() => {
@@ -744,15 +1026,55 @@ watch(() => props.campaign, (newCampaign) => {
       sendMode: 'scheduled',
       scheduledAt: null,
       trackOpens: true,
-      trackClicks: true
+      trackClicks: true,
+      // SMTP Configuration
+      smtpHost: customerSettings.value.smtpHost || '',
+      smtpPort: customerSettings.value.smtpPort || 587,
+      smtpUser: customerSettings.value.smtpUser || '',
+      smtpPass: customerSettings.value.smtpPass || '',
+      smtpSecure: customerSettings.value.smtpSecure || false,
+      smtpAllowSelfSigned: customerSettings.value.smtpAllowSelfSigned || false,
+      // IMAP Configuration
+      replyCheckEnabled: false,
+      replyMailboxHost: customerSettings.value.imapHost || '',
+      replyMailboxPort: customerSettings.value.imapPort || 993,
+      replyMailboxUser: customerSettings.value.imapUser || '',
+      replyMailboxPass: customerSettings.value.imapPass || '',
+      replyMailboxProtocol: 'IMAP',
+      replyMailboxFolder: customerSettings.value.imapFolder || 'INBOX',
+      replyMailboxTls: customerSettings.value.imapTls !== undefined ? customerSettings.value.imapTls : false,
+      replyMailboxAllowSelfSigned: customerSettings.value.imapAllowSelfSigned || false
+
     }
   }
 }, { immediate: true })
+
+// Load customer settings
+async function loadCustomerSettings() {
+  try {
+    const settings = await CustomerService.getCurrentCustomerSettings()
+    customerSettings.value = settings
+    
+    // Initialize SMTP/IMAP defaults from customer settings
+    if (!props.campaign) {
+      formData.value.senderName = settings.smtpUser || ''
+      formData.value.senderEmail = settings.smtpFrom || ''
+      formData.value.smtpHost = settings.smtpHost || ''
+      formData.value.smtpPort = settings.smtpPort || 587
+      formData.value.smtpUser = settings.smtpUser || ''
+      formData.value.smtpPass = settings.smtpPass || ''
+      formData.value.smtpSecure = settings.smtpSecure !== undefined ? settings.smtpSecure : false
+    }
+  } catch (error) {
+    console.error('Nie udało się załadować ustawień klienta:', error)
+  }
+}
 
 // Load data on component mount
 onMounted(() => {
   loadDatabases()
   loadTemplates()
+  loadCustomerSettings()
 })
 </script>
 
@@ -989,6 +1311,20 @@ onMounted(() => {
 
 .html-helper {
   margin-top: 8px;
+}
+
+/* Mail Configuration Section */
+.mail-config-section {
+  margin-bottom: 24px;
+}
+
+.mail-config-section h4 {
+  margin: 0 0 16px 0;
+  font-weight: 600;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Responsive */

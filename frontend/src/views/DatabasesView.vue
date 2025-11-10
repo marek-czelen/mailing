@@ -98,7 +98,7 @@
       <div v-if="selectedDatabase" class="database-details">
         <!-- Database Stats Cards -->
           <StatGrid :statElements="[
-            { icon: 'mdi-account-group', title: 'Kontaktów', value: selectedDatabase.contacts?.length || 0, class: 'contacts' },
+            { icon: 'mdi-account-group', title: 'Kontaktów', value: selectedDatabase.contactsCount || 0, class: 'contacts' },
             { icon: 'mdi-check-circle', title: 'Aktywnych', value: selectedDatabase.contacts?.filter(contact => contact.active == 1).length || 0, class: 'active' },
             { icon: 'mdi-email-multiple', title: 'Wypisanych', value: selectedDatabase.contacts?.filter(contact => contact.unsubscribesDate).length || 0, class: 'campaigns' },
           ]" />

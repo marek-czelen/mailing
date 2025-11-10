@@ -1,0 +1,44 @@
+meta {
+  name: /mailing/updateCampaign
+  type: http
+  seq: 25
+}
+
+put {
+  url: {{backendUrl}}/mailing/updateCampaign/27
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "name": "test",
+    "subject": "test",
+    "description": "",
+    "databaseId": 21,
+    "htmlContent": "\n<div style=\"\n  margin-top: 40px;\n  padding-top: 20px;\n  border-top: 1px solid #e0e0e0;\n  font-size: 12px;\n  color: #666666;\n  text-align: center;\n  line-height: 1.4;\n\">\n  <p>Ta wiadomość została wysłana do Ciebie, ponieważ wyraziłeś zgodę na otrzymywanie informacji marketingowych.</p>\n  \n  <p>Zgodnie z RODO, informujemy że:</p>\n  <ul style=\"text-align: left; display: inline-block; margin: 10px 0;\">\n    <li>Administratorem Twoich danych osobowych jest sprzedaz@verx.pl</li>\n    <li>Twoje dane są przetwarzane w celu prowadzenia marketingu bezpośredniego</li>\n    <li>Masz prawo do wycofania zgody w dowolnym momencie</li>\n    <li>Masz prawo dostępu, sprostowania, usunięcia lub ograniczenia przetwarzania swoich danych</li>\n  </ul>\n  \n  <p>\n    <a href=\"{{UNSUBSCRIBE_URL}}\" \n       style=\"color: #007bff; text-decoration: underline;\">\n      Wypisz się z listy mailingowej\n    </a>\n  </p>\n  \n  <p style=\"margin-top: 15px; font-size: 11px; color: #999999;\">\n    sprzedaz@verx.pl | sprzedaz@verx.pl\n  </p>\n</div>",
+    "senderName": "sprzedaz@verx.pl",
+    "senderEmail": "sprzedaz@verx.pl",
+    "from": "sprzedaz@verx.pl",
+    "dateStart": "2025-11-04T19:39",
+    "replyCheckEnabled": true,
+    "replyMailboxHost": "mail.aculeo.pl",
+    "replyMailboxPort": 993,
+    "replyMailboxUser": "sprzedaz@verx.pl",
+    "replyMailboxPass": "Verx@123!",
+    "replyMailboxProtocol": "IMAP",
+    "replyMailboxFolder": "INBOX",
+    "replyMailboxTls": true,
+    "replyMailboxAllowSelfSigned": true,
+    "smtpHost": "mail.aculeo.pl",
+    "smtpPort": 465,
+    "smtpUser": "sprzedaz@verx.pl",
+    "smtpPass": "Verx@123!",
+    "smtpSecure": true,
+    "smtpAllowSelfSigned": true
+  }
+}

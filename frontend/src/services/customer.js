@@ -188,7 +188,19 @@ W przypadku pytań dotyczących przetwarzania danych osobowych, prosimy o kontak
       smtpFrom: apiData.smtpFrom || apiData.smtp_from || '',
       rodoFooter: apiData.rodoFooter || apiData.rodo_footer || '',
       internalMailServer: apiData.internalMailServer ?? apiData.use_internal_mail_server ?? true,
-      active: apiData.active ?? true
+      active: apiData.active ?? true,
+      smtpSecure: apiData.smtpSecure ?? apiData.smtp_secure ?? false,
+      smtpAllowSelfSigned: apiData.smtpAllowSelfSigned ?? apiData.smtp_allow_self_signed ?? false,
+      replyCheckEnabled: apiData.replyCheckEnabled ?? apiData.reply_check_enabled ?? false,
+      replyMailboxHost: apiData.replyMailboxHost || apiData.reply_mailbox_host || '',
+      replyMailboxPort: apiData.replyMailboxPort || apiData.reply_mailbox_port || 993,
+      replyMailboxUser: apiData.replyMailboxUser || apiData.reply_mailbox_user || '',
+      replyMailboxPass: apiData.replyMailboxPass || apiData.reply_mailbox_pass || '',
+      replyMailboxProtocol: apiData.replyMailboxProtocol || apiData.reply_mailbox_protocol || 'imap',
+      replyMailboxFolder: apiData.replyMailboxFolder || apiData.reply_mailbox_folder || 'INBOX',
+      replyMailboxTls: apiData.replyMailboxTls ?? apiData.reply_mailbox_tls ?? true,
+      replyMailboxAllowSelfSigned: apiData.replyMailboxAllowSelfSigned ?? apiData.reply_mailbox_allow_self_signed ?? false,
+      
     };
   }
 
@@ -212,7 +224,18 @@ W przypadku pytań dotyczących przetwarzania danych osobowych, prosimy o kontak
       smtpFrom: componentData.smtpFrom,
       rodoFooter: componentData.rodoFooter,
       internalMailServer: componentData.internalMailServer,
-      active: componentData.active
+      active: componentData.active,
+      smtpSecure: componentData.smtpSecure,
+      smtpAllowSelfSigned: componentData.smtpAllowSelfSigned,
+      replyCheckEnabled: componentData.replyCheckEnabled,
+      replyMailboxHost: componentData.replyMailboxHost,
+      replyMailboxPort: componentData.replyMailboxPort,
+      replyMailboxUser: componentData.replyMailboxUser,
+      replyMailboxPass: componentData.replyMailboxPass,
+      replyMailboxProtocol: componentData.replyMailboxProtocol,
+      replyMailboxFolder: componentData.replyMailboxFolder,
+      replyMailboxTls: componentData.replyMailboxTls,
+      replyMailboxAllowSelfSigned: componentData.replyMailboxAllowSelfSigned,
     };
   }
 

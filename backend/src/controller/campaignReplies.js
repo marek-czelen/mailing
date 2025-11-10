@@ -8,7 +8,7 @@ import { Op } from 'sequelize';
 /**
  * GET /mailing/campaigns/:campaignId/replies
  * 
- * Pobiera listę odpowiedzi dla danej kampanii marketingowej.
+ * Pobiera listę TYLKO PRAWIDŁOWYCH odpowiedzi (isBounce=false) dla danej kampanii marketingowej.
  * Wspiera paginację, sortowanie i filtrowanie.
  * 
  * Parametry URL:
@@ -69,8 +69,11 @@ export async function getCampaignReplies(req, res) {
             return res.status(404).send(new Response(null, false, "Campaign not found."));
         }
 
-        // Budowa warunku where
-        const whereClause = { campaignId: campaignId };
+        // Budowa warunku where - TYLKO odpowiedzi (bez bounce)
+        const whereClause = { 
+            campaignId: campaignId,
+            isBounce: { [Op.or]: [0, null] }  // Tylko nie-bounce
+        };
 
         // Filtr wyszukiwania
         const trimmedSearch = (search || '').trim();
@@ -122,10 +125,14 @@ export async function getCampaignReplies(req, res) {
             offset: offset
         });
 
-        // Statystyki
+        // Statystyki (tylko dla odpowiedzi, nie bounce)
         const totalReplies = count;
         const identifiedReplies = await CampaignReply.count({
-            where: { campaignId, mailAddressId: { [Op.ne]: null } }
+            where: { 
+                campaignId, 
+                mailAddressId: { [Op.ne]: null },
+                isBounce: { [Op.or]: [0, null] }
+            }
         });
         const unidentifiedReplies = totalReplies - identifiedReplies;
 
@@ -141,15 +148,12 @@ export async function getCampaignReplies(req, res) {
                 subject: reply.subject,
                 receivedAt: reply.receivedAt,
                 hasContact: !!reply.mailAddressId,
-                isBounce: !!reply.isBounce,
-                bounceType: reply.bounceType,
                 mailAddress: reply.MailAddress ? {
                     id: reply.MailAddress.id,
                     email: reply.MailAddress.mailAddress,
                     miasto: reply.MailAddress.miasto,
                     rodzaj: reply.MailAddress.rodzaj,
-                    active: reply.MailAddress.active,
-                    bounceCount: reply.MailAddress.bounceCount || 0
+                    active: reply.MailAddress.active
                 } : null,
                 bodyPreview: reply.bodyPreview ? reply.bodyPreview.substring(0, 200) : null
             })),
@@ -171,6 +175,203 @@ export async function getCampaignReplies(req, res) {
     } catch (error) {
         console.error('[getCampaignReplies] Error:', error);
         res.status(500).send(new Response(null, false, `Failed to fetch campaign replies. ${error.message}`));
+    }
+}
+
+/**
+ * GET /mailing/campaigns/:campaignId/bounces
+ * 
+ * Pobiera listę TYLKO BOUNCE messages (isBounce=true) dla danej kampanii marketingowej.
+ * Wspiera paginację, sortowanie i filtrowanie.
+ * 
+ * Parametry URL:
+ * - campaignId: ID kampanii (wymagane)
+ * 
+ * Query params:
+ * - page: numer strony (domyślnie 1)
+ * - limit: liczba rekordów na stronę (domyślnie 50, max 200)
+ * - sortBy: pole sortowania (domyślnie 'receivedAt')
+ * - sortOrder: kierunek sortowania 'asc'|'desc' (domyślnie 'desc')
+ * - search: wyszukiwanie po from_email lub subject (opcjonalne)
+ * - bounceType: filtr po bounce_type - 'hard'|'soft'|'unknown' (opcjonalne)
+ * - hasContact: filtr po mail_address_id - 'true' (tylko zidentyfikowane) | 'false' (tylko niezidentyfikowane) | null (wszystkie)
+ * - dateFrom: filtr po dacie >= (format ISO)
+ * - dateTo: filtr po dacie <= (format ISO)
+ * 
+ * Zwraca:
+ * {
+ *   campaign: { id, name, subject },
+ *   bounces: [{ id, fromEmail, subject, receivedAt, bounceType, bounceReason, mailAddress }],
+ *   pagination: { total, page, limit, totalPages },
+ *   summary: { totalBounces, hardBounces, softBounces, unknownBounces, identifiedBounces, unidentifiedBounces }
+ * }
+ */
+export async function getCampaignBounces(req, res) {
+    try {
+        const { campaignId } = req.params;
+        const {
+            page = 1,
+            limit = 50,
+            sortBy = 'receivedAt',
+            sortOrder = 'desc',
+            search = '',
+            bounceType = null,
+            hasContact = null,
+            dateFrom = null,
+            dateTo = null
+        } = req.query;
+
+        // Walidacja parametrów
+        if (!campaignId) {
+            return res.send(new Response(null, false, "Campaign ID is required."));
+        }
+
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, "Unauthorized."));
+        }
+
+        // Sprawdź czy kampania istnieje i należy do klienta
+        const campaign = await MarketingCampanies.findOne({
+            where: {
+                id: campaignId,
+                customerId: userData.customerId
+            },
+            attributes: ['id', 'name', 'subject', 'customerId', 'databaseId']
+        });
+
+        if (!campaign) {
+            return res.status(404).send(new Response(null, false, "Campaign not found."));
+        }
+
+        // Budowa warunku where - TYLKO bounce
+        const whereClause = { 
+            campaignId: campaignId,
+            isBounce: 1  // Tylko bounce
+        };
+
+        // Filtr wyszukiwania
+        const trimmedSearch = (search || '').trim();
+        if (trimmedSearch) {
+            whereClause[Op.or] = [
+                { fromEmail: { [Op.like]: `%${trimmedSearch}%` } },
+                { subject: { [Op.like]: `%${trimmedSearch}%` } },
+                { bounceReason: { [Op.like]: `%${trimmedSearch}%` } }
+            ];
+        }
+
+        // Filtr po typie bounce
+        if (bounceType && ['hard', 'soft', 'unknown'].includes(bounceType)) {
+            whereClause.bounceType = bounceType;
+        }
+
+        // Filtr po identyfikacji kontaktu
+        if (hasContact === 'true') {
+            whereClause.mailAddressId = { [Op.ne]: null };
+        } else if (hasContact === 'false') {
+            whereClause.mailAddressId = null;
+        }
+
+        // Filtr po dacie
+        if (dateFrom) {
+            whereClause.receivedAt = { ...whereClause.receivedAt, [Op.gte]: new Date(dateFrom) };
+        }
+        if (dateTo) {
+            whereClause.receivedAt = { ...whereClause.receivedAt, [Op.lte]: new Date(dateTo) };
+        }
+
+        // Paginacja
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(200, Math.max(1, parseInt(limit)));
+        const offset = (pageNum - 1) * limitNum;
+
+        // Sortowanie
+        const validSortFields = ['receivedAt', 'fromEmail', 'subject', 'id', 'bounceType'];
+        const sortField = validSortFields.includes(sortBy) ? sortBy : 'receivedAt';
+        const sortDir = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+        // Pobierz bounce z relacjami
+        const { count, rows: bounces } = await CampaignReply.findAndCountAll({
+            where: whereClause,
+            include: [
+                {
+                    model: MailAddress,
+                    as: 'MailAddress',
+                    attributes: ['id', 'mailAddress', 'miasto', 'rodzaj', 'active', 'bounceCount', 'bounceDate'],
+                    required: false
+                }
+            ],
+            order: [[sortField, sortDir]],
+            limit: limitNum,
+            offset: offset
+        });
+
+        // Statystyki bounce
+        const totalBounces = count;
+        const hardBounces = await CampaignReply.count({
+            where: { campaignId, isBounce: 1, bounceType: 'hard' }
+        });
+        const softBounces = await CampaignReply.count({
+            where: { campaignId, isBounce: 1, bounceType: 'soft' }
+        });
+        const unknownBounces = await CampaignReply.count({
+            where: { campaignId, isBounce: 1, bounceType: 'unknown' }
+        });
+        const identifiedBounces = await CampaignReply.count({
+            where: { 
+                campaignId, 
+                isBounce: 1,
+                mailAddressId: { [Op.ne]: null }
+            }
+        });
+        const unidentifiedBounces = totalBounces - identifiedBounces;
+
+        const result = {
+            campaign: {
+                id: campaign.id,
+                name: campaign.name,
+                subject: campaign.subject
+            },
+            bounces: bounces.map(bounce => ({
+                id: bounce.id,
+                fromEmail: bounce.fromEmail,
+                subject: bounce.subject,
+                receivedAt: bounce.receivedAt,
+                bounceType: bounce.bounceType,
+                bounceReason: bounce.bounceReason,
+                hasContact: !!bounce.mailAddressId,
+                mailAddress: bounce.MailAddress ? {
+                    id: bounce.MailAddress.id,
+                    email: bounce.MailAddress.mailAddress,
+                    miasto: bounce.MailAddress.miasto,
+                    rodzaj: bounce.MailAddress.rodzaj,
+                    active: bounce.MailAddress.active,
+                    bounceCount: bounce.MailAddress.bounceCount || 0,
+                    bounceDate: bounce.MailAddress.bounceDate
+                } : null,
+                bodyPreview: bounce.bodyPreview ? bounce.bodyPreview.substring(0, 200) : null
+            })),
+            pagination: {
+                total: totalBounces,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(totalBounces / limitNum)
+            },
+            summary: {
+                totalBounces,
+                hardBounces,
+                softBounces,
+                unknownBounces,
+                identifiedBounces,
+                unidentifiedBounces
+            }
+        };
+
+        res.send(new Response(result, true, "Campaign bounces retrieved successfully."));
+
+    } catch (error) {
+        console.error('[getCampaignBounces] Error:', error);
+        res.status(500).send(new Response(null, false, `Failed to fetch campaign bounces. ${error.message}`));
     }
 }
 

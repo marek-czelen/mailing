@@ -94,7 +94,7 @@
                     density="compact"
                     hide-details
                     v-model="campaign.active"
-                    label="Aktywna kampania"
+                    label="Kampania gotowa do wysyłki"
                     color="primary"
                     @click="activateCampaign"
                   ></v-switch>
@@ -102,14 +102,14 @@
               </div>
                <div class="info-row">
                  <span class="info-label">
-                   <v-switch
-                     density="compact"
-                     hide-details
-                     v-model="rodoEnabled"
-                     label="Stopka RODO"
+                   <v-btn 
+                     variant="outlined" 
                      color="primary"
-                     @update:modelValue="onRodoSwitchChange"
-                   ></v-switch>
+                     size="small"
+                     @click="onRodoSwitchChange()"
+                   >
+                     Dodaj stopkę RODO
+                   </v-btn>
                  </span>
                </div>
             </div>
@@ -139,9 +139,17 @@
               color="primary"
               size="small"
               @click="testSend"
-              :disabled="!isTestEmailValid"
+              :disabled="!isTestEmailValid || testEmailSending"
             >
-              <v-icon left>mdi-email-send-outline</v-icon>
+              <v-icon left v-if="!testEmailSending">mdi-email-send-outline</v-icon>
+              <v-progress-circular
+                v-else
+                indeterminate
+                size="16"
+                width="2"
+                color="primary"
+                class="mr-2"
+              ></v-progress-circular>
               Test email
             </v-btn>
              <v-btn 
@@ -209,6 +217,7 @@ const testEmail = ref('')
 const customerConfig = ref({})
 // Reactive data
 const previewDevice = ref('desktop')
+const testEmailSending = ref(false)
 
 // Email validation
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -301,7 +310,7 @@ function testSend() {
   }
 
   console.log('Wysyłanie test email dla kampanii:', props.campaign.name)
-
+  testEmailSending.value = true
   MailingService.sendTestEmail(
     testEmail.value,
     props.campaign.subject || 'Testowy email',
@@ -317,10 +326,12 @@ function testSend() {
   )
     .then(response => {
       console.log('Test email wysłany pomyślnie:', response)
+      testEmailSending.value = false
       showSnackbar('Testowy email został wysłany', 'success')
     })
     .catch(error => {
       console.error('Błąd podczas wysyłania testowego e-maila:', error)
+      testEmailSending.value = false
       showSnackbar('Nie udało się wysłać testowego e-maila', 'error')
     })
 }
@@ -336,6 +347,8 @@ function previewInBrowser() {
 const rodoEnabled = ref(false)
 const RODO_START = '<!-- RODO_FOOTER_START -->'
 const RODO_END = '<!-- RODO_FOOTER_END -->'
+const COMPANY_NAME = computed(() => customerConfig.value.companyName )
+const COMPANY_ADDRESS = computed(() => `${customerConfig.value.companyAddressLine1} ${customerConfig.value.companyAddressLine2} ${customerConfig.value.companyAddressPostalCode} ${customerConfig.value.companyAddressCity}`.trim())
 
 onMounted(() => {
   const html = String(props.campaign?.htmlContent || '')
@@ -356,7 +369,7 @@ function buildDefaultRodoFooter() {
   return `\n${RODO_START}
   <div class="rodo-footer" style="font-size:12px;color:#666;margin-top:24px;border-top:1px solid #eee;padding-top:12px;text-align:center;line-height:1.4;">
     Otrzymałeś(-aś) tę wiadomość, ponieważ adres e-mail znajduje się w naszej bazie.\n
-    Administratorem danych jest {{COMPANY_NAME}} ({{COMPANY_ADDRESS}}).\n
+    Administratorem danych jest ${COMPANY_NAME.value} (${COMPANY_ADDRESS.value}).\n
     Jeśli nie chcesz otrzymywać od nas wiadomości, możesz się wypisać klikając\n
     <a href="{{UNSUBSCRIBE_URL}}" style="color:#666;">tutaj</a>.
   </div>
@@ -374,29 +387,17 @@ function insertBeforeBodyEnd(html, block) {
 
 function addRodoFooterToContent() {
   const current = String(props.campaign?.htmlContent || '')
-  if (hasRodoFooter(current)) return
   const footer = buildDefaultRodoFooter()
   const updated = insertBeforeBodyEnd(current, footer)
   props.campaign.htmlContent = updated
 }
 
-function removeRodoFooterFromContent() {
-  const current = String(props.campaign?.htmlContent || '')
-  if (!current) return
-  const regex = new RegExp(`${RODO_START.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\s\S]*?${RODO_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g')
-  const updated = current.replace(regex, '')
-  props.campaign.htmlContent = updated
-}
 
-function onRodoSwitchChange(val) {
+function onRodoSwitchChange() {
   try {
-    if (val) {
-      addRodoFooterToContent()
-      showSnackbar('Dodano stopkę RODO do treści', 'success')
-    } else {
-      removeRodoFooterFromContent()
-      showSnackbar('Usunięto stopkę RODO z treści', 'success')
-    }
+  addRodoFooterToContent()
+  showSnackbar('Dodano stopkę RODO do treści', 'success')
+
   emit('update:campaign', props.campaign)
   } catch (e) {
     console.error('Błąd podczas aktualizacji stopki RODO:', e)

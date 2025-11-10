@@ -21,7 +21,7 @@ const DEBUG_MAILBOX = ['true', '1', 'yes', 'on'].includes(String(EnvironmentConf
  * Na razie przetwarzanie odpowiedzi jest mockowane.
  */
 class CheckMailboxTask {
-    static interval = EnvironmentConfig.get('CHECK_MAILBOX_INTERVAL', 60000); // domyślnie 5 min
+    static interval = EnvironmentConfig.get('CHECK_MAILBOX_INTERVAL', 600000); // domyślnie 10 min
 
     /**
      * Główna pętla sprawdzania skrzynek włączonych kampanii
@@ -161,8 +161,17 @@ class CheckMailboxTask {
                 let targetCampaignId = campaign.id;
                 let mailAddressId = null;
                 const refIds = [];
-                if (inReplyTo) refIds.push(inReplyTo);
-                if (Array.isArray(references)) refIds.push(...references);
+                // Normalizuj Message-ID: zawsze z nawiasami <>
+                if (inReplyTo) {
+                    const normalized = inReplyTo.startsWith('<') ? inReplyTo : `<${inReplyTo}>`;
+                    refIds.push(normalized);
+                }
+                if (Array.isArray(references)) {
+                    references.forEach(ref => {
+                        const normalized = ref.startsWith('<') ? ref : `<${ref}>`;
+                        refIds.push(normalized);
+                    });
+                }
                 
                 // 1a) Dla bounce: jeśli nie ma In-Reply-To/References, szukaj oryginalnego Message-ID w załącznikach
                 if (bounceInfo.isBounce && refIds.length === 0 && uid) {
@@ -325,8 +334,17 @@ class CheckMailboxTask {
                 try {
                     if (mailAddressId && (inReplyTo || (references && references.length))) {
                         const refMatchIds = [];
-                        if (inReplyTo) refMatchIds.push(inReplyTo);
-                        if (Array.isArray(references)) refMatchIds.push(...references);
+                        // Normalizuj Message-ID: zawsze z nawiasami <>
+                        if (inReplyTo) {
+                            const normalized = inReplyTo.startsWith('<') ? inReplyTo : `<${inReplyTo}>`;
+                            refMatchIds.push(normalized);
+                        }
+                        if (Array.isArray(references)) {
+                            references.forEach(ref => {
+                                const normalized = ref.startsWith('<') ? ref : `<${ref}>`;
+                                refMatchIds.push(normalized);
+                            });
+                        }
                         if (refMatchIds.length) {
                             const orig = await MarketingCampaniesMailingResult.findOne({
                                 where: { messageId: { [Op.in]: refMatchIds } },
@@ -736,7 +754,7 @@ class CheckMailboxTask {
                         // Szukaj nagłówka Message-ID: w załączonym message
                         const messageIdMatch = attachmentContent.match(/^Message-ID:\s*<(.+)>$/mi);
                         if (messageIdMatch) {
-                            const originalMessageId = messageIdMatch[1];
+                            const originalMessageId = `<${messageIdMatch[1]}>`;  // Zachowaj nawiasy <>
                             if (DEBUG_MAILBOX) console.log(`  [extractOriginalMessageId] Found Message-ID in attachment: ${originalMessageId}`);
                             return originalMessageId;
                         }
@@ -748,7 +766,7 @@ class CheckMailboxTask {
             const combinedText = `${parsed.text || ''} ${parsed.html || ''}`;
             const messageIdMatch = combinedText.match(/Message-ID:\s*<?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})>?/i);
             if (messageIdMatch) {
-                const originalMessageId = messageIdMatch[1];
+                const originalMessageId = `<${messageIdMatch[1]}>`;  // Zachowaj nawiasy <>
                 if (DEBUG_MAILBOX) console.log(`  [extractOriginalMessageId] Found Message-ID in text: ${originalMessageId}`);
                 return originalMessageId;
             }

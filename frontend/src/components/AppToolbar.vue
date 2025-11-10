@@ -94,8 +94,7 @@
 <!-- User Settings Dialog -->
 <UserSettingsDialog
   v-model="showSettingsDialog"
-  v-model:user="currentUser"
-  v-model:customer-settings="customerSettings"
+  :user="currentUser"
   @settings-saved="onSettingsSaved"
 />
 </template>
@@ -112,8 +111,7 @@ const isMobile = ref(false);
 
 // Dialog state
 const showSettingsDialog = ref(false);
-const currentUser = ref(null);
-const customerSettings = ref(null);
+const currentUser = ref({});
 
 // Define emits
 const emit = defineEmits(['toggle-drawer']);
@@ -127,19 +125,13 @@ onMounted(async () => {
   checkMobile();
   window.addEventListener('resize', checkMobile);
   
-  // Pobierz dane tylko jeśli nie jesteśmy na publicznej stronie
-  const currentPath = router.currentRoute.value.path;
-  const isPublicPage = currentPath === '/login' || currentPath.startsWith('/unsubscribe/');
-  
-  if (!isPublicPage) {
-    // Pobierz ID bieżącego klienta
     try {
-      customerSettings.value = await CustomerService.getCurrentCustomerSettings();
+      //customerSettings.value = await CustomerService.getCurrentCustomerSettings();
       currentUser.value = await Account.getCurrentUser();
+      console.log('Pobrano dane bieżącego klienta:', currentUser.value);
     } catch (error) {
       console.warn('Nie udało się pobrać danych bieżącego klienta:', error);
     }
-  }
 });
 
 onUnmounted(() => {
@@ -156,10 +148,11 @@ function settings() {
   showSettingsDialog.value = true;
 }
 
-function onSettingsSaved(settingsData) {
+async function onSettingsSaved(settingsData) {
   // Odśwież cache ustawień klienta
   CustomerService.clearCustomerSettingsCache();
-  
+  currentUser.value = await Account.getCurrentUser();
+  CustomerService.getCurrentCustomerSettings(true);
   console.log('Ustawienia zostały zapisane:', settingsData);
 }
 </script>

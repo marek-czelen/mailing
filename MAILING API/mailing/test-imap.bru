@@ -1,0 +1,27 @@
+meta {
+  name: test-imap
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{backendUrl}}/mailing/test-imap
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "host": "mail.aculeo.pl",
+    "port": 993,
+    "user": "sprzedaz@verx.pl",
+    "pass": "Verx@123!",
+    "tls": true,
+    "allowSelfSigned": true,
+    "folder": "INBOX"
+  }
+}

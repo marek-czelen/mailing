@@ -26,7 +26,8 @@ import {
 } from '../controller/mailing.js';
 
 import { sendEmail } from '../controller/mailProcessing.js';
-import { getCampaignReplies, getReplyById, getCampaignRepliesStats, getReplyFullContent } from '../controller/campaignReplies.js';
+import { getCampaignReplies, getCampaignBounces, getReplyById, getCampaignRepliesStats, getReplyFullContent } from '../controller/campaignReplies.js';
+import { testSmtpConnection, testImapConnection } from '../controller/connectionTest.js';
 
 const router = express.Router();
 
@@ -100,8 +101,11 @@ router.post('/sendEmail', sendEmail);
 router.delete('/contactDelete/:contactId', contactDelete);
 
 // ============= CAMPAIGN REPLIES =============
-// Pobierz odpowiedzi do kampanii (z paginacją i filtrowaniem)
+// Pobierz odpowiedzi do kampanii (tylko prawidłowe odpowiedzi, bez bounce)
 router.get('/campaigns/:campaignId/replies', getCampaignReplies);
+
+// Pobierz bounce messages do kampanii (tylko bounce)
+router.get('/campaigns/:campaignId/bounces', getCampaignBounces);
 
 // Pobierz statystyki odpowiedzi kampanii
 router.get('/campaigns/:campaignId/replies/stats', getCampaignRepliesStats);
@@ -111,5 +115,12 @@ router.get('/replies/:replyId', getReplyById);
 
 // Pobierz pełną treść odpowiedzi (oznacza jako odczytaną)
 router.get('/replies/:replyId/full', getReplyFullContent);
+
+// ============= CONNECTION TESTS =============
+// Testuj połączenie SMTP
+router.post('/test-smtp', testSmtpConnection);
+
+// Testuj połączenie IMAP
+router.post('/test-imap', testImapConnection);
 
 export default router;

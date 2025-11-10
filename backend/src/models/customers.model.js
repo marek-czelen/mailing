@@ -38,6 +38,66 @@ const Customers = sequelize.define('customers', {
       field: "smtp_from",
       allowNull: true
     },
+    smtpSecure: {
+      type: DataTypes.BOOLEAN,
+      field: "smtp_secure",
+      allowNull: true
+    },
+    smtpAllowSelfSigned: {
+      type: DataTypes.BOOLEAN,
+      field: "smtp_allow_self_signed",
+      allowNull: true
+    },
+        replyCheckEnabled: {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
+          field: 'reply_check_enabled'
+        },
+        replyMailboxHost: {
+          type: DataTypes.STRING,
+          allowNull: true,
+          field: 'reply_mailbox_host'
+        },
+        replyMailboxPort: {
+          type: DataTypes.INTEGER,
+          allowNull: true,
+          defaultValue: 993,
+          field: 'reply_mailbox_port'
+        },
+        replyMailboxUser: {
+          type: DataTypes.STRING,
+          allowNull: true,
+          field: 'reply_mailbox_user'
+        },
+        replyMailboxPass: {
+          type: DataTypes.STRING,
+          allowNull: true,
+          field: 'reply_mailbox_pass'
+        },
+        replyMailboxProtocol: {
+          type: DataTypes.STRING,
+          allowNull: true,
+          defaultValue: 'IMAP',
+          field: 'reply_mailbox_protocol'
+        },
+        replyMailboxFolder: {
+          type: DataTypes.STRING,
+          allowNull: true,
+          defaultValue: 'INBOX',
+          field: 'reply_mailbox_folder'
+        },
+        replyMailboxTls: {
+          type: DataTypes.BOOLEAN,
+          allowNull: true,
+          field: 'reply_mailbox_tls'
+        },
+        replyMailboxAllowSelfSigned: {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
+          field: 'reply_mailbox_allow_self_signed'
+        },
     rodoFooter: {
       type: DataTypes.STRING,
       field: "rodo_footer",

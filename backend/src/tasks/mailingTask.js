@@ -42,6 +42,12 @@ class MailingTask {
                     continue;
                 }
 
+                // Sprawdź konfigurację SMTP kampanii - jeśli brak, pomiń wysyłkę
+                if (!campaign.smtpHost || !campaign.smtpPort || !campaign.smtpUser || !campaign.smtpPass) {
+                    console.warn(`⚠️ Kampania ${campaign.id} "${campaign.name}": Brak konfiguracji SMTP - pomijam wysyłkę`);
+                    continue;
+                }
+
                 // Pobierz listę adresów dla klienta
                 const mailAddresses = await MailAddress.findAll({
                     where: {
@@ -54,23 +60,20 @@ class MailingTask {
 
                 console.log(`Kampania ${campaign.name} (klient ${customer.id}): znaleziono ${mailAddresses.length} adresów do wysyłki`);
 
-                // Konfiguracja SMTP klienta (fallback na zmienne środowiskowe)
-                const smtpHost = customer.smtpHost || EnvironmentConfig.get('SMTP_HOST');
-                const smtpPort = customer.smtpPort || EnvironmentConfig.get('SMTP_PORT');
-                const smtpUser = customer.smtpUser || EnvironmentConfig.get('SMTP_USER');
-                const smtpPass = customer.smtpPass || EnvironmentConfig.get('SMTP_PASS');
-                const smtpFrom = customer.smtpFrom || EnvironmentConfig.get('SMTP_FROM');
+                // Konfiguracja SMTP z kampanii
+                const smtpHost = campaign.smtpHost;
+                const smtpPort = campaign.smtpPort;
+                const smtpUser = campaign.smtpUser;
+                const smtpPass = campaign.smtpPass;
+                const smtpSecure = campaign.smtpSecure !== null ? campaign.smtpSecure : (smtpPort === 465);
+                const smtpAllowSelfSigned = campaign.smtpAllowSelfSigned || false;
                 const unsubscribeBase = customer.unsubscribeUrl || EnvironmentConfig.get('UNSUBSCRIBE_URL');
                 
-                // Konfiguracja SSL/TLS na podstawie środowiska
-                const smtpSecure = smtpPort === 465;
-                const ignoreTLS = EnvironmentConfig.get('SMTP_IGNORE_TLS', false);
-                const rejectUnauthorized = EnvironmentConfig.get('SMTP_REJECT_UNAUTHORIZED', true);
+                // Konfiguracja TLS
+                const ignoreTLS = !smtpSecure;
+                const rejectUnauthorized = !smtpAllowSelfSigned; // Nie weryfikuj jeśli self-signed dozwolone
 
-                if (!smtpHost || !smtpPort) {
-                    console.warn(`Brak konfiguracji SMTP dla klienta ${customer.id} - pomijam wysyłkę kampanii ${campaign.id}`);
-                    continue;
-                }
+                console.log(`📤 [MailingTask] Kampania ${campaign.id}: SMTP ${smtpHost}:${smtpPort} user=${smtpUser} secure=${smtpSecure} allowSelfSigned=${smtpAllowSelfSigned}`);
 
 
 
@@ -85,7 +88,7 @@ class MailingTask {
                                 tls: {
                                     rejectUnauthorized: rejectUnauthorized
                                 },
-                                auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined
+                                auth: { user: smtpUser, pass: smtpPass }
                             },
                             from: `${campaign.senderName}<${campaign.senderEmail}>`,
                             to: address.mailAddress,
@@ -95,6 +98,7 @@ class MailingTask {
                             mailAddressId: address.id,
                             placeholders: {
                                 UNSUBSCRIBE_URL: `${unsubscribeBase}/${address.hash}`,
+                                UNSUBSCRIBE_LINK: `${unsubscribeBase}/${address.hash}`,
                                 ENVIRONMENT: EnvironmentConfig.get('NODE_ENV'),
                                 APP_NAME: EnvironmentConfig.get('APP_NAME'),
                                 BASE_URL: EnvironmentConfig.get('BASE_URL'),

@@ -119,6 +119,10 @@
               <v-icon left>mdi-reply</v-icon>
               Odpowiedzi
             </v-tab>
+            <v-tab value="bounces">
+              <v-icon left>mdi-email-alert</v-icon>
+              Odbicia
+            </v-tab>
             <v-tab value="scheduling" v-if="false">
               <v-icon left>mdi-calendar-clock</v-icon>
               Planowanie
@@ -186,6 +190,11 @@
               <!-- Replies Tab -->
               <v-window-item value="replies">
                 <CampaignReplies :campaign="selectedCampaign" />
+              </v-window-item>
+
+              <!-- Bounces Tab -->
+              <v-window-item value="bounces">
+                <CampaignBounces :campaign="selectedCampaign" />
               </v-window-item>
 
               <!-- Scheduling Tab -->
@@ -385,6 +394,7 @@ import { useRouter, useRoute } from 'vue-router'
 import CampaignContent from '../components/campaigns/CampaignContent.vue'
 import CampaignRecipients from '../components/campaigns/CampaignRecipients.vue'
 import CampaignReplies from '../components/campaigns/CampaignReplies.vue'
+import CampaignBounces from '../components/campaigns/CampaignBounces.vue'
 import CampaignDialog from '../components/campaigns/CampaignDialog.vue'
 import ScheduleDialog from '../components/campaigns/ScheduleDialog.vue'
 import DatabaseSelectionDialog from '../components/campaigns/DatabaseSelectionDialog.vue'

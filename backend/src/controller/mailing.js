@@ -123,6 +123,12 @@ export async function updateCampaign(req, res) {
         if (req.body.replyMailboxFolder !== undefined) updateData.replyMailboxFolder = req.body.replyMailboxFolder;
         if (req.body.replyMailboxTls !== undefined) updateData.replyMailboxTls = (req.body.replyMailboxTls === true || req.body.replyMailboxTls === 'true' || req.body.replyMailboxTls === 1 || req.body.replyMailboxTls === '1') ? true : (req.body.replyMailboxTls === false || req.body.replyMailboxTls === 'false' || req.body.replyMailboxTls === 0 || req.body.replyMailboxTls === '0') ? false : null;
         if (req.body.replyMailboxAllowSelfSigned !== undefined) updateData.replyMailboxAllowSelfSigned = (req.body.replyMailboxAllowSelfSigned === true || req.body.replyMailboxAllowSelfSigned === 'true' || req.body.replyMailboxAllowSelfSigned === 1 || req.body.replyMailboxAllowSelfSigned === '1');
+        if (req.body.smtpHost !== undefined) updateData.smtpHost = req.body.smtpHost;
+        if (req.body.smtpPort !== undefined) updateData.smtpPort = Number(req.body.smtpPort);
+        if (req.body.smtpUser !== undefined) updateData.smtpUser = req.body.smtpUser;
+        if (req.body.smtpPass !== undefined) updateData.smtpPass = req.body.smtpPass;
+        if (req.body.smtpSecure !== undefined) updateData.smtpSecure = (req.body.smtpSecure === true || req.body.smtpSecure === 'true' || req.body.smtpSecure === 1 || req.body.smtpSecure === '1');
+        if (req.body.smtpAllowSelfSigned !== undefined) updateData.smtpAllowSelfSigned = (req.body.smtpAllowSelfSigned === true || req.body.smtpAllowSelfSigned === 'true' || req.body.smtpAllowSelfSigned === 1 || req.body.smtpAllowSelfSigned === '1');  
         
         const userData = await Admin.getCurrentUserData(req.headers.authorization);
         const [updated] = await MarketingCampanies.update(updateData, {
