@@ -99,6 +99,12 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
       allowNull: false,
       defaultValue: false,
       field: "sent"
+    },
+    sendingInProgress:{
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: "sending_in_progress"
     }
     ,
     // --- Ustawienia sprawdzania skrzynki pod odpowiedzi ---

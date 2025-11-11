@@ -8,7 +8,7 @@ import MarketingCampaniesMailingResult from '../models/marketingCampaniesMailing
 import EnvironmentConfig from '../config/environment.config.js';
 
 // Interwał na podstawie zmiennej środowiskowej
-let interval = EnvironmentConfig.get('MAILING_TASK_INTERVAL', 60000); // domyślnie 1 minuta
+let interval = EnvironmentConfig.get('MAILING_TASK_INTERVAL', 600000); // domyślnie 10 minut
 
 /**
  * Pobiera i wysyła maile dla aktywnych kampanii, używając konfiguracji SMTP przypisanej do klienta
@@ -25,11 +25,13 @@ class MailingTask {
                 where: {
                     active: true,
                     sent: false,
+                    sendingInProgress: false,
                     dateStart: {
                         [Op.lte]: new Date()
                     },
                 },
-                include: [{ model: Customers, as: 'Customer' }]
+                include: [{ model: Customers, as: 'Customer' }],
+                limit: 1
             });
 
             console.log(`Znaleziono ${activeCampaigns.length} aktywnych kampanii`);
@@ -47,6 +49,8 @@ class MailingTask {
                     console.warn(`⚠️ Kampania ${campaign.id} "${campaign.name}": Brak konfiguracji SMTP - pomijam wysyłkę`);
                     continue;
                 }
+
+                await campaign.update({ sendingInProgress: true });
 
                 // Pobierz listę adresów dla klienta
                 const mailAddresses = await MailAddress.findAll({
