@@ -21,7 +21,7 @@ class MailingTask {
             }
 
             // Pobierz aktywne kampanie razem z danymi klienta
-            const activeCampaigns = await MarketingCampanies.findAll({
+            const activeCampaign = await MarketingCampanies.findOne({
                 where: {
                     active: true,
                     sent: false,
@@ -31,74 +31,70 @@ class MailingTask {
                     },
                 },
                 include: [{ model: Customers, as: 'Customer' }],
-                limit: 1
             });
 
-            console.log(`Znaleziono ${activeCampaigns.length} aktywnych kampanii`);
+            console.log(`Znaleziono ${activeCampaign ? 1 : 0} aktywną kampanię`);
 
-            for (const campaign of activeCampaigns) {
-                const customer = campaign.Customer || null;
+            const customer = activeCampaign.Customer || null;
 
-                if (!customer) {
-                    console.warn(`Kampania ${campaign.id} nie ma przypisanego klienta - pomijam`);
-                    continue;
+            if (!customer) {
+                console.warn(`Kampania ${activeCampaign.id} nie ma przypisanego klienta - pomijam`);
+                return;
+            }
+
+            // Sprawdź konfigurację SMTP kampanii - jeśli brak, pomiń wysyłkę
+            if (!activeCampaign.smtpHost || !activeCampaign.smtpPort || !activeCampaign.smtpUser || !activeCampaign.smtpPass) {
+                console.warn(`⚠️ Kampania ${activeCampaign.id} "${activeCampaign.name}": Brak konfiguracji SMTP - pomijam wysyłkę`);
+                return;
+            }
+
+            await activeCampaign.update({ sendingInProgress: true });
+
+            // Pobierz listę adresów dla klienta
+            const mailAddresses = await MailAddress.findAll({
+                where: {
+                    active: 1,
+                    customerId: activeCampaign.customerId,
+                    databaseId: activeCampaign.databaseId,
+                    unsubscribesDate: null
                 }
+            });
 
-                // Sprawdź konfigurację SMTP kampanii - jeśli brak, pomiń wysyłkę
-                if (!campaign.smtpHost || !campaign.smtpPort || !campaign.smtpUser || !campaign.smtpPass) {
-                    console.warn(`⚠️ Kampania ${campaign.id} "${campaign.name}": Brak konfiguracji SMTP - pomijam wysyłkę`);
-                    continue;
-                }
+            console.log(`Kampania ${activeCampaign.name} (klient ${customer.id}): znaleziono ${mailAddresses.length} adresów do wysyłki`);
 
-                await campaign.update({ sendingInProgress: true });
+            // Konfiguracja SMTP z kampanii
+            const smtpHost = activeCampaign.smtpHost;
+            const smtpPort = activeCampaign.smtpPort;
+            const smtpUser = activeCampaign.smtpUser;
+            const smtpPass = activeCampaign.smtpPass;
+            const smtpSecure = activeCampaign.smtpSecure !== null ? activeCampaign.smtpSecure : (smtpPort === 465);
+            const smtpAllowSelfSigned = activeCampaign.smtpAllowSelfSigned || false;
+            const unsubscribeBase = customer.unsubscribeUrl || EnvironmentConfig.get('UNSUBSCRIBE_URL');
 
-                // Pobierz listę adresów dla klienta
-                const mailAddresses = await MailAddress.findAll({
-                    where: {
-                        active: 1,
-                        customerId: campaign.customerId,
-                        databaseId: campaign.databaseId,
-                        unsubscribesDate: null
-                    }
-                });
+            // Konfiguracja TLS
+            const ignoreTLS = !smtpSecure;
+            const rejectUnauthorized = !smtpAllowSelfSigned; // Nie weryfikuj jeśli self-signed dozwolone
 
-                console.log(`Kampania ${campaign.name} (klient ${customer.id}): znaleziono ${mailAddresses.length} adresów do wysyłki`);
+            console.log(`📤 [MailingTask] Kampania ${activeCampaign.id}: SMTP ${smtpHost}:${smtpPort} user=${smtpUser} secure=${smtpSecure} allowSelfSigned=${smtpAllowSelfSigned}`);
 
-                // Konfiguracja SMTP z kampanii
-                const smtpHost = campaign.smtpHost;
-                const smtpPort = campaign.smtpPort;
-                const smtpUser = campaign.smtpUser;
-                const smtpPass = campaign.smtpPass;
-                const smtpSecure = campaign.smtpSecure !== null ? campaign.smtpSecure : (smtpPort === 465);
-                const smtpAllowSelfSigned = campaign.smtpAllowSelfSigned || false;
-                const unsubscribeBase = customer.unsubscribeUrl || EnvironmentConfig.get('UNSUBSCRIBE_URL');
-                
-                // Konfiguracja TLS
-                const ignoreTLS = !smtpSecure;
-                const rejectUnauthorized = !smtpAllowSelfSigned; // Nie weryfikuj jeśli self-signed dozwolone
-
-                console.log(`📤 [MailingTask] Kampania ${campaign.id}: SMTP ${smtpHost}:${smtpPort} user=${smtpUser} secure=${smtpSecure} allowSelfSigned=${smtpAllowSelfSigned}`);
-
-
-
-                for (const address of mailAddresses) {
-                    try {
-                        Mail.sendEmail({
-                            smtp: {
-                                host: smtpHost,
-                                port: smtpPort,
-                                secure: smtpSecure,
-                                ignoreTLS: ignoreTLS,
-                                tls: {
-                                    rejectUnauthorized: rejectUnauthorized
-                                },
-                                auth: { user: smtpUser, pass: smtpPass }
+            for (const address of mailAddresses) {
+                try {
+                    Mail.sendEmail({
+                        smtp: {
+                            host: smtpHost,
+                            port: smtpPort,
+                            secure: smtpSecure,
+                            ignoreTLS: ignoreTLS,
+                            tls: {
+                                rejectUnauthorized: rejectUnauthorized
                             },
-                            from: `${campaign.senderName}<${campaign.senderEmail}>`,
-                            to: address.mailAddress,
-                            subject: campaign.subject,
-                            html: campaign.htmlContent,
-                            campaignId: campaign.id,
+                            auth: { user: smtpUser, pass: smtpPass }
+                        },
+                        from: `${activeCampaign.senderName}<${activeCampaign.senderEmail}>`,
+                        to: address.mailAddress,
+                            subject: activeCampaign.subject,
+                            html: activeCampaign.htmlContent,
+                            campaignId: activeCampaign.id,
                             mailAddressId: address.id,
                             placeholders: {
                                 UNSUBSCRIBE_URL: `${unsubscribeBase}/${address.hash}`,
@@ -113,7 +109,7 @@ class MailingTask {
                         .then((result) => {
                             if (!result.success) {
                                 MarketingCampaniesMailingResult.upsert({
-                                    marketingCampaniesId: campaign.id,
+                                    marketingCampaniesId: activeCampaign.id,
                                     mailAddressesId: address.id,
                                     error: true,
                                     errorMessage: result.error
@@ -122,7 +118,7 @@ class MailingTask {
                             }else {
                                 // Zaktualizuj status wysyłki w bazie danych
                                 MarketingCampaniesMailingResult.upsert({
-                                    marketingCampaniesId: campaign.id,
+                                    marketingCampaniesId: activeCampaign.id,
                                     mailAddressesId: address.id,
                                     isSend: true,
                                     sendDate: new Date(),
@@ -131,7 +127,7 @@ class MailingTask {
                                     console.error(`Błąd zapisu statusu wysyłki dla ${address.mailAddress}:`, err && err.message ? err.message : err);
                                 });
                                 if (EnvironmentConfig.isDevelopment()) {
-                                    console.log(`✉️ [MailingTask] Wysłano: campaignId=${campaign.id} mailAddressId=${address.id} messageId=${result.messageId}`);
+                                    console.log(`✉️ [MailingTask] Wysłano: campaignId=${activeCampaign.id} mailAddressId=${address.id} messageId=${result.messageId}`);
                                 }
                             }
                         });
@@ -143,12 +139,10 @@ class MailingTask {
                         console.error(`Błąd wysyłki na adres ${address.mailAddress}:`, error && error.message ? error.message : error);
                         continue;
                     }
-                }
-                campaign.sent = true;
-                await campaign.save();
-                console.log(`Kampania ${campaign.name} (klient ${customer.id}): wysyłka zakończona`);
-
             }
+            activeCampaign.sent = true;
+            await activeCampaign.save();
+            console.log(`Kampania ${activeCampaign.name} (klient ${customer.id}): wysyłka zakończona`);
         } catch (error) {
             console.error('Błąd podczas wysyłania maili:', error && error.message ? error.message : error);
         }
