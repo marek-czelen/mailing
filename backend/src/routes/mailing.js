@@ -22,7 +22,8 @@ import {
     resubscribeContact,
     contactUpdate,
     contactAdd,
-    contactDelete
+    contactDelete,
+    campaignSendingProgress
 } from '../controller/mailing.js';
 
 import { sendEmail } from '../controller/mailProcessing.js';
@@ -33,6 +34,9 @@ const router = express.Router();
 
 // Pobierz wszystkie kampanie
 router.get('/getCampaignsList', getCampaignsList);
+
+// Postęp wysyłki kampanii
+router.get('/campaignSendingProgress/:id', campaignSendingProgress);
 
 // Pobierz kampanię po ID
 router.get('/getCampaignById/:id', getCampaignById);

@@ -10,6 +10,7 @@
           disabled
           color="primary" 
           variant="outlined"
+          :disabled="sendingInProgress || campaignIsSent"
           @click="emit('edit-template')"
         >
           <v-icon left>mdi-pencil</v-icon>
@@ -18,6 +19,7 @@
         <v-btn 
           color="secondary" 
           variant="outlined"
+          :disabled="sendingInProgress || campaignIsSent"
           @click="emit('edit-content')"
         >
           <v-icon left>mdi-code-tags</v-icon>
@@ -89,10 +91,26 @@
             <h4>Ogólne</h4>
             <div class="sending-info">
               <div class="info-row">
+                <span class="info-label">Status kampanii:</span>
+                <span class="info-label">
+                 {{ campaignIsSent ? 'Wysłano' : sendingInProgress ? 'Wysyłanie' : 'Szkic' }} 
+                </span>
+              </div>
+              <div class="info-row" v-if="sendingInProgress && !campaignIsSent">
+                <v-progress-linear 
+                  :model-value="sendingProgress" 
+                  height="10" 
+                  color="primary" 
+                  rounded
+                  style="flex: 1; margin-left: 16px;"
+                ></v-progress-linear>
+              </div>
+              <div class="info-row">
                 <span class="info-label">
                   <v-switch
                     density="compact"
                     hide-details
+                    :disabled="sendingInProgress || campaignIsSent"
                     v-model="campaign.active"
                     label="Kampania gotowa do wysyłki"
                     color="primary"
@@ -104,6 +122,7 @@
                  <span class="info-label">
                    <v-btn 
                      variant="outlined" 
+                     :disabled="sendingInProgress || campaignIsSent"
                      color="primary"
                      size="small"
                      @click="onRodoSwitchChange()"
@@ -116,7 +135,7 @@
           </div>
 
           <div class="detail-section">
-            <h4>SPAM rating</h4>
+            <h4>SPAM rating <v-divider/><div :style="`color: ${spamInfo.color};`">{{ spamInfo.text }} </div></h4>
             <div class="sending-info">
               <div class="info-row">
                 <span class="info-label">Spam rating:</span>
@@ -126,7 +145,7 @@
               <div v-for="(value, index) in (typeof campaign.suggestions === 'string' ? JSON.parse(campaign.suggestions) : campaign.suggestions)" :key="index"
                 class="info-row">
                 <span :style="`color: ${value.scoreValue <= 0 ? '#4caf50' : '#f44336'};`" class= "info-label">{{ value.problem }}</span>
-                <span :style="`color: ${value.scoreValue <= 0 ? '#4caf50' : '#f44336'};`" class="info-label">{{ value.scoreValue }}</span>
+                <v-icon :style="`color: ${value.scoreValue <= 0 ? '#4caf50' : '#f44336'};`" class="info-label">{{ value.scoreValue > 0 ? 'mdi-alert-circle' : 'mdi-check-circle' }}</v-icon>
               </div>
             </div>
           </div>
@@ -152,16 +171,6 @@
               ></v-progress-circular>
               Test email
             </v-btn>
-             <v-btn 
-               disabled
-               variant="outlined" 
-               size="small"
-               color="info"
-               @click="calculateSpamScore"
-             >
-               <v-icon left>mdi-shield-search</v-icon>
-               SPAM scoring
-             </v-btn>
           </div>
           <div class="content-actions">
             <v-text-field 
@@ -199,6 +208,7 @@
 import { ref, computed, onMounted, defineProps, defineEmits } from 'vue'
 import MailingService from '../../services/mailing.js'
 import { CustomerService } from '../../services/customer.js'
+import { ca } from 'vuetify/locale'
 
 const props = defineProps({
   campaign: {
@@ -218,7 +228,25 @@ const customerConfig = ref({})
 // Reactive data
 const previewDevice = ref('desktop')
 const testEmailSending = ref(false)
+const sendingProgress = ref(0)
 
+const campaignIsSent = computed(() => {
+  return props.campaign.sent || false
+})
+
+const sendingInProgress = computed(() => {
+  return props.campaign.sendingInProgress || false
+})
+
+const spamInfo = computed(() => {
+  if (props.campaign.scoring > 70) {
+    return { color: 'red', text: 'SPAM' }
+  } else if (props.campaign.scoring > 30) {
+    return { color: 'orange', text: 'PODEJRZENIE SPAMU' }
+  } else {
+    return { color: 'green', text: 'OK' }
+  }
+})  
 // Email validation
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const isTestEmailValid = computed(() => emailPattern.test(String(testEmail.value || '').trim()))
@@ -352,6 +380,10 @@ const COMPANY_ADDRESS = computed(() => `${customerConfig.value.companyAddressLin
 
 onMounted(() => {
   const html = String(props.campaign?.htmlContent || '')
+  MailingService.getSendingProgress(props.campaign.id).then(data => {
+    sendingProgress.value = data.progress || 0
+  })
+
   rodoEnabled.value = hasRodoFooter(html)
   CustomerService.getCurrentCustomerSettings().then(config => {
     customerConfig.value = config
@@ -407,64 +439,6 @@ function onRodoSwitchChange() {
   }
 }
 
-// --------------------
-// SPAM scoring (frontend heuristic)
-// --------------------
-function calculateSpamScore() {
-  const html = String(props.campaign?.htmlContent || '')
-  const subject = String(props.campaign?.subject || '')
-  const suggestions = []
-  let score = 0
-
-  // Heurystyka 1: temat zbyt długi / pusty
-  if (!subject.trim()) {
-    suggestions.push({ problem: 'Brak tematu wiadomości', scoreValue: 20 })
-    score += 20
-  } else if (subject.length > 78) {
-    suggestions.push({ problem: 'Temat dłuższy niż 78 znaków', scoreValue: 10 })
-    score += 10
-  }
-
-  // Heurystyka 2: nadmiar wykrzykników
-  const exclamations = (html.match(/!/g) || []).length + (subject.match(/!/g) || []).length
-  if (exclamations >= 3) {
-    suggestions.push({ problem: 'Zbyt dużo wykrzykników', scoreValue: 10 })
-    score += 10
-  }
-
-  // Heurystyka 3: słowa potencjalnie spamowe (prosty zestaw)
-  const spamWords = ['free', 'za darmo', 'kup teraz', 'oferta', 'promocja', 'wygrana', 'kliknij', 'pilne']
-  const lower = (subject + ' ' + html.replace(/<[^>]+>/g, ' ')).toLowerCase()
-  let spamHits = 0
-  spamWords.forEach(w => { if (lower.includes(w)) spamHits++ })
-  if (spamHits >= 2) {
-    suggestions.push({ problem: 'Treść zawiera słowa typowe dla spamu', scoreValue: 15 })
-    score += 15
-  }
-
-  // Heurystyka 4: obrazki bez alt
-  const images = html.match(/<img\b[^>]*>/gi) || []
-  const imagesWithoutAlt = images.filter(img => !/\balt\s*=/.test(img)).length
-  if (imagesWithoutAlt > 0) {
-    suggestions.push({ problem: `Obrazki bez atrybutu alt: ${imagesWithoutAlt}`, scoreValue: 5 })
-    score += 5
-  }
-
-  // Heurystyka 5: brak linku wypisu
-  if (!/\{\{\s*UNSUBSCRIBE_LINK\s*\}\}|unsubscribe|wypisz/.test(lower)) {
-    suggestions.push({ problem: 'Brak linku wypisu (unsubscribe)', scoreValue: 20 })
-    score += 20
-  }
-
-  // Ogranicz wynik do 100
-  score = Math.max(0, Math.min(100, score))
-
-  // Zapisz do kampanii
-  props.campaign.scoring = score
-  props.campaign.suggestions = suggestions
-
-  showSnackbar('Zaktualizowano SPAM scoring (heurystyka)', 'success')
-}
 </script>
 
 <style scoped>

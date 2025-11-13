@@ -14,7 +14,7 @@ import Auth from '../include/auth.js';
 import Sequelize from 'sequelize';
 import Mail from '../include/mail.js';
 import { Admin } from '../include/admin.js';
-
+import MarketingCampaniesMailingResult from '../models/marketingCampaniesMailing.model.js';
 
 // Pobierz wszystkie kampanie
 export async function getCampaignsList(req, res) {
@@ -164,7 +164,27 @@ export async function deleteCampaign(req, res) {
     }
 }
 
+export async function campaignSendingProgress(req, res) {
+    try {
+        const { id } = req.params;
+        const campaign = await MarketingCampanies.findByPk(id);
+        if (!campaign) {
+            return res.status(403).send(new Response(null, false, "Campaign not found."));
+        }
 
+        const mailAddressesCount = await MailAddress.count({
+            where: { databaseId: campaign.databaseId }
+        });
+
+        const sentCount = await MarketingCampaniesMailingResult.count({
+            where: { marketingCampaniesId: id}
+        });
+        // Tutaj możesz dodać logikę zwracającą postęp wysyłki kampanii
+        res.status(200).send(new Response({ progress: sentCount *100 / mailAddressesCount }, true, "Progress fetched successfully."));
+    } catch (error) {
+        res.status(500).send(new Response(null, false, `Failed to fetch campaign progress. ${error.message}`));
+    }   
+}
 
 
 const HF_API_KEY = "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"; // ustaw swój token Hugging Face
@@ -711,7 +731,7 @@ export async function computeSpamRating(req, res) {
                 problem: "Optymalna długość treści",
                 impact: "Pozytywny sygnał",
                 fix: "Utrzymaj treść w zakresie 100–2000 znaków.",
-                scoreValue: -W.body_optimal
+                scoreValue: W.body_optimal
             });
         }
 
@@ -728,7 +748,7 @@ export async function computeSpamRating(req, res) {
                 problem: "Stopka i informacje RODO obecne",
                 impact: "Zmniejsza ryzyko",
                 fix: "Upewnij się, że dane kontaktowe i instrukcja wypisania są widoczne.",
-                scoreValue: -W.footer_present
+                scoreValue: W.footer_present
             });
         }
 
@@ -745,7 +765,7 @@ export async function computeSpamRating(req, res) {
                 problem: "Poprawne formatowanie HTML",
                 impact: "Zmniejsza ryzyko",
                 fix: "Utrzymuj semantyczne tagi i minimalny inline CSS.",
-                scoreValue: -W.clean_html
+                scoreValue: W.clean_html
             });
         }
         if (details.imageCount > 5) {
@@ -768,7 +788,7 @@ export async function computeSpamRating(req, res) {
                 problem: "Alt teksty dla obrazów obecne",
                 impact: "Zmniejsza ryzyko",
                 fix: "Utrzymuj alt dla wszystkich obrazków.",
-                scoreValue: -W.all_alt
+                scoreValue: W.all_alt
             });
         }
 
@@ -859,7 +879,7 @@ export async function computeSpamRating(req, res) {
                 problem: "Link do wypisania się obecny",
                 impact: `Zmniejsza wynik spam o ${-W.unsubscribe_present} pkt`,
                 fix: "Upewnij się, że link działa i jest widoczny.",
-                scoreValue: -W.unsubscribe_present
+                scoreValue: W.unsubscribe_present
             });
         }
 

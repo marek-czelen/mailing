@@ -1,6 +1,16 @@
 import axios from 'axios';
 
 export class MailingService {
+  static async getSendingProgress(campaignId) {
+    try {
+      const result = await axios.get(`/mailing/campaignSendingProgress/${campaignId}`);
+      return result.data.data;
+    } catch (error) {
+      console.error('Błąd podczas pobierania postępu wysyłki kampanii:', error);
+      throw error;
+    }
+  }
+
   static async sendTestEmail(emailTo, emailSubject, emailData, smtpConfig) {
     try {
       const result = await axios.post(`/mailing/sendEmail`, {
