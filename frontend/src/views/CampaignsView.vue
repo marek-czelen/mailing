@@ -344,31 +344,35 @@
       persistent 
       >
       <template #default>
-        <TiptapEditor
-          v-model="htmlEditorContent"
-          placeholder="Wprowadź treść kampanii..."
-        />
-      </template>
+            <editor
+              :key="editorKey"
+              api-key="2p3hkyrffhcego8910cy6tydhz46fsjjz1jst5bidxga9e58"
+              v-model="htmlEditorContent"
+              :init="editorConfig"
+              :inline="false"
+              style="height: 100%; margin: 0;"
+            />
+        </template>
 
-      <template #actions>
-        <v-spacer />
-        <v-btn
-          color="grey darken-1"
-          variant="text"
-          @click="cancelHtmlEdit"
-        >
-          Anuluj
-        </v-btn>
-        <v-btn
-          color="primary"
-          variant="elevated"
-          @click="saveHtmlContent"
-          :loading="loading"
-        >
-          Zapisz
-        </v-btn>
-      </template>
-    </GeneralDialog>
+            <template #actions>
+      <v-spacer />
+      <v-btn
+        color="grey darken-1"
+        variant="text"
+        @click="cancelHtmlEdit"
+      >
+        Anuluj
+      </v-btn>
+      <v-btn
+        color="primary"
+        variant="elevated"
+        @click="saveHtmlContent"
+        :loading="loading"
+      >
+        Zapisz
+      </v-btn>
+    </template>
+      </GeneralDialog>
 
     <!-- Snackbar for notifications -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" top>
@@ -399,7 +403,7 @@ import { Databases } from '../services/databases.js'
 import StatCard from '../components/StatCard.vue'
 import PageContent from '../components/PageContent.vue'
 import StatGrid from '../components/StatGrid.vue'
-import TiptapEditor from '../components/TiptapEditor.vue'
+import Editor  from '@tinymce/tinymce-vue'
 import GeneralDialog from '../components/GeneralDialog.vue'
 
 const router = useRouter()
@@ -422,15 +426,227 @@ const testEmail = ref('')
 const loadingCampaignDetails = ref(false)
 const showHtmlEditor = ref(false)
 const htmlEditorContent = ref('<p>Wprowadź treść kampanii...</p>')
+const editorKey = ref(0)
 const snackbar = ref({
   show: false,
   message: '',
   color: 'success'
 })
+const editorConfig = {
+  height: 600,
+  menubar: true, // Włączamy menubar dla większej funkcjonalności
+  readonly: false,
+  
+  // Rozszerzona lista pluginów
+  plugins: [
+    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+    'insertdatetime', 'media', 'table', 'help', 'wordcount', 'emoticons',
+    'template', 'textcolor', 'colorpicker', 'textpattern',
+    'codesample', 'hr', 'pagebreak', 'nonbreaking', 'toc', 'imagetools',
+    'quickbars', 'powerpaste', 'importcss'
+  ],
+  
+  // Zaawansowany toolbar w wielu liniach
+  toolbar1: 'undo redo | bold italic underline strikethrough | subscript superscript | removeformat |bullist numlist | blockquote hr nonbreaking pagebreak | link unlink anchor | image media table | insertdatetime charmap emoticons',
+  toolbar2: 'fontselect fontsizeselect | forecolor backcolor | alignleft aligncenter alignright alignjustify | outdent indent | placeholder',
+  
+  // Konfiguracja menu
+  menu: {
+    file: { title: 'Plik', items: 'newdocument restoredraft | preview | export print | deleteallconversations' },
+    edit: { title: 'Edycja', items: 'undo redo | cut copy paste pastetext | selectall | searchreplace' },
+    view: { title: 'Widok', items: 'code | visualaid visualchars visualblocks | spellchecker | preview fullscreen | showcomments' },
+    insert: { title: 'Wstaw', items: 'image link media addcomment pageembed template codesample inserttable | charmap emoticons hr | pagebreak nonbreaking anchor tableofcontents | insertdatetime' },
+    format: { title: 'Format', items: 'bold italic underline strikethrough superscript subscript codeformat | styles blocks fontfamily fontsize align lineheight | forecolor backcolor | language | removeformat' },
+    tools: { title: 'Narzędzia', items: 'spellchecker spellcheckerlanguage | a11ycheck code wordcount' },
+    table: { title: 'Tabela', items: 'inserttable | cell row column | advtablesort | tableprops deletetable' }
+  },
+  
+  // Konfiguracja obrazków
+  image_advtab: true,
+  image_caption: true,
+  image_list: false,
+  
+  // Konfiguracja linków
+  link_list: false,
+  link_context_toolbar: true,
+  
+  // Konfiguracja tabel
+  table_toolbar: 'tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol',
+  table_appearance_options: true,
+  table_grid: true,
+  table_resize_bars: true,
+  
+  // Szybkie paski narzędzi
+  quickbars_selection_toolbar: 'bold italic | quicklink h2 h3 blockquote quickimage quicktable',
+  quickbars_insert_toolbar: 'quickimage quicktable | hr pagebreak',
+  
+  // Ustawienia czcionek
+  font_formats: 'Arial=arial,helvetica,sans-serif; Courier New=courier new,courier,monospace; AkrutiKndPadmini=Akpdmi-n; Times New Roman=times new roman,times,serif; Verdana=verdana,geneva,sans-serif;',
+  fontsize_formats: '8pt 10pt 12pt 14pt 16pt 18pt 24pt 36pt 48pt',
+  
+  // Szablony dla emaili marketingowych
+  templates: [],
+  
+  // Konfiguracja wklejania
+  paste_data_images: true,
+  paste_as_text: false,
+  paste_retain_style_properties: "color font-size font-family background-color text-decoration text-align",
+  
+  // Automatyczne wzorce tekstu
+  textpattern_patterns: [
+    {start: '*', end: '*', format: 'italic'},
+    {start: '**', end: '**', format: 'bold'},
+    {start: '#', format: 'h1'},
+    {start: '##', format: 'h2'},
+    {start: '###', format: 'h3'},
+    {start: '1. ', cmd: 'InsertOrderedList'},
+    {start: '* ', cmd: 'InsertUnorderedList'},
+    {start: '- ', cmd: 'InsertUnorderedList'}
+  ],
+  
+  // Sprawdzanie pisowni
+  browser_spellcheck: true,
+  
+  setup: (editor) => {
+    editor.on('init', () => {
+      // TinyMCE 6+ udostępnia API przez editor.mode.set('design') zamiast legacy editor.setMode
+      // Dodajemy zachowanie defensywne aby uniknąć błędu TypeError: editor.setMode is not a function
+      try {
+        if (editor.mode && typeof editor.mode.set === 'function') {
+          editor.mode.set('design') // Wymuszenie trybu edycji (tryb edycji / design)
+        } else if (typeof editor.setMode === 'function') {
+          editor.setMode('design') // Kompatybilność ze starszym API
+        } // Jeśli żaden nie istnieje, domyślny tryb już jest edycyjny przy readonly:false
+      } catch (e) {
+        console.warn('Nie udało się ustawić trybu edycji TinyMCE:', e)
+      }
+    })
+    
+    // Dodatkowe przyciski w toolbar
+    editor.ui.registry.addButton('placeholder', {
+      text: 'Placeholder',
+      tooltip: 'Wstaw placeholder',
+      onAction: () => {
+        const placeholders = [
+          '{{CONTACT_FIRST_NAME}}',
+          '{{CONTACT_LAST_NAME}}', 
+          '{{CONTACT_EMAIL}}',
+          '{{COMPANY_NAME}}',
+          '{{COMPANY_ADDRESS}}',
+          '{{UNSUBSCRIBE_LINK}}',
+          '{{CAMPAIGN_NAME}}'
+        ]
+        
+        editor.windowManager.open({
+          title: 'Wybierz placeholder',
+          body: {
+            type: 'panel',
+            items: [{
+              type: 'selectbox',
+              name: 'placeholder',
+              label: 'Placeholder:',
+              items: placeholders.map(p => ({ text: p, value: p }))
+            }]
+          },
+          buttons: [
+            {
+              type: 'cancel',
+              text: 'Anuluj'
+            },
+            {
+              type: 'submit',
+              text: 'Wstaw',
+              primary: true
+            }
+          ],
+          onSubmit: (api) => {
+            const data = api.getData()
+            editor.insertContent(data.placeholder)
+            api.close()
+          }
+        })
+      }
+    })
+  },
+  
+  // Style CSS dla treści
+  content_style: `
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      font-size: 14px; 
+      line-height: 1.6;
+      color: #333;
+      margin: 20px;
+    }
+    .email-container { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    h1, h2, h3 { 
+      color: #2c3e50; 
+      margin-top: 0;
+    }
+    p { 
+      margin-bottom: 16px; 
+    }
+    a { 
+      color: #007bff; 
+      text-decoration: underline;
+    }
+    table { 
+      border-collapse: collapse; 
+      width: 100%; 
+    }
+    td, th { 
+      border: 1px solid #ddd; 
+      padding: 8px; 
+      text-align: left;
+    }
+    th { 
+      background-color: #f2f2f2; 
+      font-weight: bold;
+    }
+    blockquote { 
+      border-left: 4px solid #007bff; 
+      padding-left: 16px; 
+      margin: 16px 0;
+      font-style: italic;
+    }
+    code { 
+      background-color: #f4f4f4; 
+      padding: 2px 4px; 
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+  `,
+  
+  // Ustawienia dodatkowe
+  resize: true,
+  statusbar: true,
+  elementpath: true,
+  branding: false,
+  promotion: false
+}
 
 const emailRules = [
   v => !!v || 'Email jest wymagany',
   v => /.+@.+\..+/.test(v) || 'Email musi być poprawny'
+]
+
+// Konfiguracja toolbar dla VueQuill
+const toolbarOptions = [
+  [{ 'header': [1, 2, 3, false] }],
+  ['bold', 'italic', 'underline', 'strike'],
+  [{ 'color': [] }, { 'background': [] }],
+  [{ 'align': [] }],
+  [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+  ['blockquote', 'code-block'],
+  ['link', 'image'],
+  ['clean']
 ]
 
 
@@ -646,12 +862,15 @@ async function editHtmlContent() {
   if (selectedCampaign.value) {
     console.log('Otwieranie edytora HTML dla kampanii:', selectedCampaign.value.name)
     
-    // Ustaw zawartość edytora
+    // Wyciągnij treść <body> lub użyj całej zawartości, jeśli nie ma <body>
     htmlEditorContent.value = selectedCampaign.value.htmlContent || '<p>Wprowadź treść kampanii...</p>'
     
+    // Zwiększ klucz edytora, aby wymusić ponowne renderowanie
+    editorKey.value++
     await nextTick()
-    // Pokaż dialog
+    // Pokaż dialog/modal (jeśli używasz)
     showHtmlEditor.value = true
+
 
     console.log('Ustawiono zawartość edytora:', htmlEditorContent.value)
   }
@@ -1270,6 +1489,120 @@ async function sendTest() {
   flex-wrap: wrap;
 }
 
+/* HTML Editor Dialog */
+.html-editor-dialog {
+  border-radius: 16px !important;
+}
+
+.dialog-header {
+  background: linear-gradient(135deg, #202950 0%, #515bad 100%) !important;
+  color: white !important;
+  border-radius: 16px 16px 0 0 !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 20px 24px !important;
+}
+
+.dialog-header h2 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.dialog-actions {
+  display: flex;
+  align-items: center;
+}
+
+.editor-container {
+  background: white;
+  min-height: 500px;
+}
+
+/* QuillEditor Custom Styles */
+.editor-container :deep(.ql-toolbar) {
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f8f9fa;
+  padding: 12px;
+}
+
+.editor-container :deep(.ql-container) {
+  border: 1px solid #e0e0e0;
+  border-radius: 0 0 8px 8px;
+  font-size: 14px;
+}
+
+.editor-container :deep(.ql-editor) {
+  min-height: 450px;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+}
+
+.editor-container :deep(.ql-editor.ql-blank::before) {
+  color: #999;
+  font-style: italic;
+}
+
+.editor-container :deep(.ql-editor h1) {
+  font-size: 2em;
+  margin: 0.67em 0;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.editor-container :deep(.ql-editor h2) {
+  font-size: 1.5em;
+  margin: 0.75em 0;
+  font-weight: bold;
+  color: #34495e;
+}
+
+.editor-container :deep(.ql-editor h3) {
+  font-size: 1.17em;
+  margin: 0.83em 0;
+  font-weight: bold;
+  color: #34495e;
+}
+
+.editor-container :deep(.ql-editor p) {
+  margin-bottom: 12px;
+}
+
+.editor-container :deep(.ql-editor ul),
+.editor-container :deep(.ql-editor ol) {
+  margin: 12px 0;
+  padding-left: 2em;
+}
+
+.editor-container :deep(.ql-editor li) {
+  margin: 4px 0;
+}
+
+.editor-container :deep(.ql-editor img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.editor-container :deep(.ql-editor a) {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+.editor-container :deep(.ql-editor a:hover) {
+  text-decoration: underline;
+}
+
+.editor-container :deep(.ql-editor blockquote) {
+  border-left: 4px solid #ccc;
+  margin: 16px 0;
+  padding-left: 16px;
+  color: #666;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .campaigns-content {
@@ -1288,5 +1621,13 @@ async function sendTest() {
     justify-content: center;
   }
 
+  .html-editor-dialog {
+    margin: 10px;
+    max-width: calc(100vw - 20px) !important;
+  }
+
+  .editor-container :deep(.ql-toolbar) {
+    flex-wrap: wrap;
+  }
 }
 </style>
