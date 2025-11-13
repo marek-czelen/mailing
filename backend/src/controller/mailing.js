@@ -60,7 +60,7 @@ export async function createCampaign(req, res) {
     try {
         let data = req.body;
         console.log(data);
-        
+
         // Normalizacja danych dla MySQL/MariaDB
         const normalized = {
             ...data,
@@ -84,8 +84,8 @@ export async function createCampaign(req, res) {
         const newCampaign = await MarketingCampanies.create(normalized);
 
         // Automatycznie licz scoring i sugestie po utworzeniu kampanii
-    await computeSpamRating({ body: { id: newCampaign.id } }, { send: () => {} });
-        
+        await computeSpamRating({ body: { id: newCampaign.id } }, { send: () => { } });
+
         res.send(new Response(newCampaign, true, "Campaign created successfully."));
     } catch (error) {
         res.send(new Response(null, false, `Failed to create campaign. ${error.message}`));
@@ -128,8 +128,8 @@ export async function updateCampaign(req, res) {
         if (req.body.smtpUser !== undefined) updateData.smtpUser = req.body.smtpUser;
         if (req.body.smtpPass !== undefined) updateData.smtpPass = req.body.smtpPass;
         if (req.body.smtpSecure !== undefined) updateData.smtpSecure = (req.body.smtpSecure === true || req.body.smtpSecure === 'true' || req.body.smtpSecure === 1 || req.body.smtpSecure === '1');
-        if (req.body.smtpAllowSelfSigned !== undefined) updateData.smtpAllowSelfSigned = (req.body.smtpAllowSelfSigned === true || req.body.smtpAllowSelfSigned === 'true' || req.body.smtpAllowSelfSigned === 1 || req.body.smtpAllowSelfSigned === '1');  
-        
+        if (req.body.smtpAllowSelfSigned !== undefined) updateData.smtpAllowSelfSigned = (req.body.smtpAllowSelfSigned === true || req.body.smtpAllowSelfSigned === 'true' || req.body.smtpAllowSelfSigned === 1 || req.body.smtpAllowSelfSigned === '1');
+
         const userData = await Admin.getCurrentUserData(req.headers.authorization);
         const [updated] = await MarketingCampanies.update(updateData, {
             where: { id: req.params.id, customerId: userData.customerId }
@@ -140,7 +140,7 @@ export async function updateCampaign(req, res) {
         });
         // Automatycznie licz scoring i sugestie po edycji kampanii
 
-    await computeSpamRating({ body: { id: updatedCampaign.id } }, { send: () => {} });
+        await computeSpamRating({ body: { id: updatedCampaign.id } }, { send: () => { } });
 
         res.status(200).send(new Response(updatedCampaign, true, "Campaign updated successfully."));
     } catch (error) {
@@ -248,13 +248,13 @@ const dnsPromises = dns.promises;
 
 // helper: bezpieczne resolve TXT
 async function resolveTxtSafe(name) {
-  try {
-    const txts = await dnsPromises.resolveTxt(name);
-    // resolveTxt zwraca tablice tablic -> spłaszczamy do stringów
-    return txts.flat().join(' ');
-  } catch (e) {
-    return null;
-  }
+    try {
+        const txts = await dnsPromises.resolveTxt(name);
+        // resolveTxt zwraca tablice tablic -> spłaszczamy do stringów
+        return txts.flat().join(' ');
+    } catch (e) {
+        return null;
+    }
 }
 
 // główna funkcja
@@ -283,32 +283,32 @@ export async function computeSpamRating(req, res) {
         // rozszerzona lista spam words (angielski + polski)
         const spamWords = [
             // English spam keywords
-            'free','buy now','click here','winner','win','prize','urgent','limited','offer',
-            'money','cash','credit','cheap','guarantee','congratulations','act now',
-            'discount','earn','income','investment','get paid','work from home','no cost',
-            'trial','bonus','bargain','exclusive','deal','amazing','special','miracle',
-            'secret','risk free','instant','promo','promotion','cheap meds','lottery',
-            'jackpot','selected','you have been chosen','apply now','order now','get started',
-            'unsubscribe','don’t delete','lowest price','clearance','save big','double your',
-            'increase sales','extra income','hot','winner','reward','gift','100% free',
-            'unsecured','credit card','loan','debt','forex','crypto','bitcoin','get rich',
-            'limited time','final notice','act fast','attention','important update',
-            'this is not spam','click below','read this','apply online','exclusive offer',
-            'urgent response','claim now','risk-free','try it now','instant access',
-            'money back','free quote','no obligation','easy money','investment opportunity',
-            'donation','lotto','casino','bet','guaranteed results','special promotion',
+            'free', 'buy now', 'click here', 'winner', 'win', 'prize', 'urgent', 'limited', 'offer',
+            'money', 'cash', 'credit', 'cheap', 'guarantee', 'congratulations', 'act now',
+            'discount', 'earn', 'income', 'investment', 'get paid', 'work from home', 'no cost',
+            'trial', 'bonus', 'bargain', 'exclusive', 'deal', 'amazing', 'special', 'miracle',
+            'secret', 'risk free', 'instant', 'promo', 'promotion', 'cheap meds', 'lottery',
+            'jackpot', 'selected', 'you have been chosen', 'apply now', 'order now', 'get started',
+            'unsubscribe', 'don’t delete', 'lowest price', 'clearance', 'save big', 'double your',
+            'increase sales', 'extra income', 'hot', 'winner', 'reward', 'gift', '100% free',
+            'unsecured', 'credit card', 'loan', 'debt', 'forex', 'crypto', 'bitcoin', 'get rich',
+            'limited time', 'final notice', 'act fast', 'attention', 'important update',
+            'this is not spam', 'click below', 'read this', 'apply online', 'exclusive offer',
+            'urgent response', 'claim now', 'risk-free', 'try it now', 'instant access',
+            'money back', 'free quote', 'no obligation', 'easy money', 'investment opportunity',
+            'donation', 'lotto', 'casino', 'bet', 'guaranteed results', 'special promotion',
             // Polish spam keywords
-            'okazja','promocja','wyprzedaż','rabat','gratisy','za darmo','darmowy','kup teraz',
-            'oferta ograniczona','ostatnia szansa','nie przegap','tylko dziś','promocja specjalna',
-            'super okazja','ekskluzywna oferta','zdobądź','zamów teraz','kliknij tutaj',
-            'nagroda','wygraj','wygrana','gratulacje','pilne','ważne','alert','limitowana oferta',
-            'zarób','dodatkowy dochód','praca z domu','łatwy zarobek','bez ryzyka','inwestycja',
-            'pewny zysk','kredyt','pożyczka','chwilówka','gotówka','darmowa próbka',
-            'gwarancja zwrotu','najniższa cena','oszczędź','zniżka','specjalna oferta',
-            'ekstra bonus','oferta dnia','bez zobowiązań','natychmiastowy dostęp','wyjątkowa okazja',
-            'nie usuwaj','ważne informacje','kliknij poniżej','aktualizacja konta','uwaga',
-            'alert bezpieczeństwa','promocja ograniczona czasowo','super oferta','bonus','kupon',
-            'wyślij sms','sprawdź teraz','zarejestruj się','otrzymaj za darmo'
+            'okazja', 'promocja', 'wyprzedaż', 'rabat', 'gratisy', 'za darmo', 'darmowy', 'kup teraz',
+            'oferta ograniczona', 'ostatnia szansa', 'nie przegap', 'tylko dziś', 'promocja specjalna',
+            'super okazja', 'ekskluzywna oferta', 'zdobądź', 'zamów teraz', 'kliknij tutaj',
+            'nagroda', 'wygraj', 'wygrana', 'gratulacje', 'pilne', 'ważne', 'alert', 'limitowana oferta',
+            'zarób', 'dodatkowy dochód', 'praca z domu', 'łatwy zarobek', 'bez ryzyka', 'inwestycja',
+            'pewny zysk', 'kredyt', 'pożyczka', 'chwilówka', 'gotówka', 'darmowa próbka',
+            'gwarancja zwrotu', 'najniższa cena', 'oszczędź', 'zniżka', 'specjalna oferta',
+            'ekstra bonus', 'oferta dnia', 'bez zobowiązań', 'natychmiastowy dostęp', 'wyjątkowa okazja',
+            'nie usuwaj', 'ważne informacje', 'kliknij poniżej', 'aktualizacja konta', 'uwaga',
+            'alert bezpieczeństwa', 'promocja ograniczona czasowo', 'super oferta', 'bonus', 'kupon',
+            'wyślij sms', 'sprawdź teraz', 'zarejestruj się', 'otrzymaj za darmo'
         ];
 
         // wagi (możesz dostroić)
@@ -441,7 +441,7 @@ export async function computeSpamRating(req, res) {
             const validFrom = /^[^@]+@[^.]+\.[a-z]{2,}$/i.test(from) && !/noreply|no[-]?reply/i.test(from);
             const domainMatch = from.match(/@([\w.-]+)/);
             const domain = domainMatch ? domainMatch[1].toLowerCase() : null;
-            const freeProviders = ['gmail.com','yahoo.com','hotmail.com','onet.pl','wp.pl','o2.pl','tlen.pl'];
+            const freeProviders = ['gmail.com', 'yahoo.com', 'hotmail.com', 'onet.pl', 'wp.pl', 'o2.pl', 'tlen.pl'];
             if (validFrom) {
                 details.validFromHeader = true;
                 rawScore += W.from_valid;
@@ -464,7 +464,7 @@ export async function computeSpamRating(req, res) {
                     details.dmarc = !!hasDmarc;
 
                     let hasDkim = false;
-                    const selectors = ['default','mail','selector1','s1'];
+                    const selectors = ['default', 'mail', 'selector1', 's1'];
                     for (const sel of selectors) {
                         const k = await resolveTxtSafe(`${sel}._domainkey.${domain}`);
                         if (k && /v=DKIM1/i.test(k)) { hasDkim = true; break; }
@@ -520,7 +520,7 @@ export async function computeSpamRating(req, res) {
         }
 
         const linkResults = [];
-        for (let i=0; i < httpLinks.length; i += MAX_CONCURRENCY) {
+        for (let i = 0; i < httpLinks.length; i += MAX_CONCURRENCY) {
             const slice = httpLinks.slice(i, i + MAX_CONCURRENCY);
             const batch = await Promise.all(slice.map(u => checkUrl(u)));
             linkResults.push(...batch);
@@ -574,7 +574,7 @@ export async function computeSpamRating(req, res) {
         if (typeof sendingIpReputation === 'number') {
             details.sendingIpReputation = sendingIpReputation;
             if (sendingIpReputation < -20) {
-                const repPenalty = Math.min(Math.round((Math.abs(sendingIpReputation)/100) * W.ip_reputation_bad), W.ip_reputation_bad);
+                const repPenalty = Math.min(Math.round((Math.abs(sendingIpReputation) / 100) * W.ip_reputation_bad), W.ip_reputation_bad);
                 rawScore += repPenalty;
             } else if (sendingIpReputation > 20) {
                 rawScore -= Math.round(sendingIpReputation / 10);
@@ -885,7 +885,7 @@ export async function computeSpamRating(req, res) {
                 problem: "Słaba reputacja IP",
                 impact: "Znacznie podnosi ryzyko trafienia do spamu",
                 fix: "Sprawdź IP w RBL, rozważ zmianę IP lub kontakt z dostawcą.",
-                scoreValue: Math.min(Math.round((Math.abs(sendingIpReputation)/100) * W.ip_reputation_bad), W.ip_reputation_bad)
+                scoreValue: Math.min(Math.round((Math.abs(sendingIpReputation) / 100) * W.ip_reputation_bad), W.ip_reputation_bad)
             });
         }
 
@@ -1141,7 +1141,7 @@ export async function getDatabaseInfoById(req, res) {
             where: {
                 databaseId: database.id
             },
-            group:['active']
+            group: ['active']
         })
         const unsubscribedEmailCount = await MailAddress.count({
             where: {
@@ -1197,7 +1197,7 @@ export async function createDatabase(req, res) {
             export_enabled: (export_enabled === true || export_enabled === 'true' || export_enabled === 1 || export_enabled === '1'),
             customer_id: Number(customer_id)
         };
-        
+
         // Walidacja wymaganych pól
         if (!name || rodo_flag === undefined || export_enabled === undefined || !customer_id) {
             return res.send(new Response(null, false, "Required fields: name, rodo_flag, export_enabled, customer_id"));
@@ -1234,7 +1234,7 @@ export async function createDatabase(req, res) {
 export async function updateDatabase(req, res) {
     try {
         const { name, description, tags, rodo_flag, export_enabled, customer_id } = req.body;
-        
+
         // Normalizacja typów (jak w createDatabase) — tylko dla pól przesłanych
         const normalized = {};
         if (name !== undefined) normalized.name = name;
@@ -1243,7 +1243,7 @@ export async function updateDatabase(req, res) {
         if (rodo_flag !== undefined) normalized.rodo_flag = (rodo_flag === true || rodo_flag === 'true' || rodo_flag === 1 || rodo_flag === '1');
         if (export_enabled !== undefined) normalized.export_enabled = (export_enabled === true || export_enabled === 'true' || export_enabled === 1 || export_enabled === '1');
         if (customer_id !== undefined) normalized.customer_id = Number(customer_id);
-        
+
         const userData = await Admin.getCurrentUserData(req.headers.authorization);
         // Sprawdź czy baza istnieje i nie jest usunięta
         const existingDatabase = await Databases.findOne({
@@ -1257,7 +1257,7 @@ export async function updateDatabase(req, res) {
         if (!existingDatabase) {
             return res.send(new Response(null, false, "Database not found or is deleted."));
         }
-        
+
         // Jeśli customer_id jest podany, sprawdź czy istnieje
         if (normalized.customer_id) {
             const customer = await Customers.findByPk(normalized.customer_id);
@@ -1267,7 +1267,7 @@ export async function updateDatabase(req, res) {
         }
 
         const [updated] = await Databases.update(normalized, {
-            where: { 
+            where: {
                 id: req.params.id,
                 deleted_at: null
             }
@@ -1337,7 +1337,7 @@ export async function getDatabasesByCustomer(req, res) {
         }
 
         const databases = await Databases.findAll({
-            where: { 
+            where: {
                 customer_id: customerId,
                 deleted_at: null
             },
@@ -1385,7 +1385,7 @@ export async function getCustomerDatabasesStats(req, res) {
 
         // Pobierz podstawowe statystyki nieusuniętych baz danych
         const databases = await Databases.findAll({
-            where: { 
+            where: {
                 customer_id: customerId,
                 deleted_at: null
             },
@@ -1410,7 +1410,7 @@ export async function getCustomerDatabasesStats(req, res) {
         // Statystyki wzrostu (mockowane - w rzeczywistości wymagałoby historycznych danych)
         const previousMonth = new Date();
         previousMonth.setMonth(previousMonth.getMonth() - 1);
-        
+
         const previousDatabases = Math.max(0, totalDatabases - Math.floor(Math.random() * 3));
         const previousContacts = Math.max(0, totalContacts - Math.floor(totalContacts * 0.1));
         const previousActiveContacts = Math.max(0, totalActiveContacts - Math.floor(totalActiveContacts * 0.08));
@@ -1459,7 +1459,7 @@ export async function getCustomerDatabasesStats(req, res) {
                 allTags.push(...db.tags);
             }
         });
-        
+
         const tagCounts = {};
         allTags.forEach(tag => {
             tagCounts[tag] = (tagCounts[tag] || 0) + Math.floor(Math.random() * 1000) + 100;
@@ -1482,44 +1482,44 @@ export async function getCustomerDatabasesStats(req, res) {
             totalInactiveContacts,
             totalBounced,
             totalUnsubscribed,
-            
+
             // Statystyki wzrostu
             growth: {
                 databases: {
                     current: totalDatabases,
                     previous: previousDatabases,
                     change: totalDatabases - previousDatabases,
-                    changePercent: previousDatabases > 0 ? 
+                    changePercent: previousDatabases > 0 ?
                         Math.round(((totalDatabases - previousDatabases) / previousDatabases) * 100 * 100) / 100 : 0
                 },
                 contacts: {
                     current: totalContacts,
                     previous: previousContacts,
                     change: totalContacts - previousContacts,
-                    changePercent: previousContacts > 0 ? 
+                    changePercent: previousContacts > 0 ?
                         Math.round(((totalContacts - previousContacts) / previousContacts) * 100 * 100) / 100 : 0
                 },
                 activeContacts: {
                     current: totalActiveContacts,
                     previous: previousActiveContacts,
                     change: totalActiveContacts - previousActiveContacts,
-                    changePercent: previousActiveContacts > 0 ? 
+                    changePercent: previousActiveContacts > 0 ?
                         Math.round(((totalActiveContacts - previousActiveContacts) / previousActiveContacts) * 100 * 100) / 100 : 0
                 }
             },
-            
+
             // Rozkład według statusów kontaktów
             contactsByStatus,
-            
+
             // Statystyki według baz danych
             databasesStats,
-            
+
             // Aktywność w czasie
             activityChart,
-            
+
             // Top tagi
             topTags,
-            
+
             // Wykorzystanie RODO i eksportu
             compliance: {
                 rodoDatabases,
@@ -1527,7 +1527,7 @@ export async function getCustomerDatabasesStats(req, res) {
                 exportEnabledDatabases,
                 exportDisabledDatabases: totalDatabases - exportEnabledDatabases
             },
-            
+
             // Ostatnia aktualizacja
             lastUpdated: new Date().toISOString()
         };
@@ -1543,8 +1543,8 @@ export async function getCustomerDatabasesStats(req, res) {
 export async function getDatabaseContacts(req, res) {
     try {
         const { databaseId } = req.params;
-        const {page=1, limit=50, search='', status='', segment='', sortBy='id', sortOrder='asc'} = req.query; // status, segment przyszłościowo
-        
+        const { page = 1, limit = 50, search = '', status = '', segment = '', sortBy = 'id', sortOrder = 'asc' } = req.query; // status, segment przyszłościowo
+
         const userData = await Admin.getCurrentUserData(req.headers.authorization);
         // Sprawdź czy baza danych istnieje i nie jest usunięta
         const database = await Databases.findOne({
@@ -1569,8 +1569,8 @@ export async function getDatabaseContacts(req, res) {
             where: { databaseId: databaseId }
         });
 
-    // Budowa warunku where z opcjonalnym filtrem search i statusem
-    const whereClause = { databaseId: databaseId };
+        // Budowa warunku where z opcjonalnym filtrem search i statusem
+        const whereClause = { databaseId: databaseId };
 
         const trimmedSearch = (search || '').trim();
         if (trimmedSearch !== '') {
@@ -1697,7 +1697,7 @@ export async function unsubscribeContact(req, res) {
             return res.send(new Response(null, false, "Contact hash is required."));
         }
 
-                // Znajdź kontakt należący do danego klienta
+        // Znajdź kontakt należący do danego klienta
         const contact = await MailAddress.findOne({
             where: {
                 hash: contactHash,
@@ -1731,18 +1731,18 @@ export async function unsubscribeContact(req, res) {
                 }
             }
         );
-        
+
         const data = await MailAddress.findOne({
             where: {
                 hash: contactHash,
             }
-        });        
+        });
 
         const result = {
             contact: data,
         };
 
-        const message =  `Contact unsubscribed successfully in all databases.`;
+        const message = `Contact unsubscribed successfully in all databases.`;
 
         res.send(new Response(result, true, message));
 
@@ -1763,7 +1763,7 @@ export async function resubscribeContact(req, res) {
             return res.send(new Response(null, false, "Contact hash is required."));
         }
 
-                // Znajdź kontakt należący do danego klienta
+        // Znajdź kontakt należący do danego klienta
         const contact = await MailAddress.findOne({
             where: {
                 hash: contactHash,
@@ -1795,8 +1795,8 @@ export async function resubscribeContact(req, res) {
             }
         );
 
-        
-        
+
+
         const data = await MailAddress.findOne({
             where: {
                 hash: contactHash,
@@ -1807,7 +1807,7 @@ export async function resubscribeContact(req, res) {
             contact: data,
         };
 
-        const message =  `Contact resubscribed successfully in all databases.`;
+        const message = `Contact resubscribed successfully in all databases.`;
 
         res.send(new Response(result, true, message));
 
@@ -1874,7 +1874,7 @@ export async function contactUpdate(req, res) {
         });
 
         if (!existingContact) {
-            const message = customerId 
+            const message = customerId
                 ? "Contact not found or does not belong to specified customer."
                 : "Contact not found.";
             return res.send(new Response(null, false, message));
@@ -1918,7 +1918,7 @@ export async function contactUpdate(req, res) {
         if (rodzaj !== undefined) updateData.rodzaj = rodzaj;
         if (active !== undefined) updateData.active = active;
         if (databaseId !== undefined) updateData.databaseId = databaseId;
-        if (phone!== undefined) updateData.phone = phone;
+        if (phone !== undefined) updateData.phone = phone;
 
         // Jeśli nie ma żadnych danych do aktualizacji
         if (Object.keys(updateData).length === 0) {
@@ -2223,8 +2223,8 @@ export async function exportDatabaseContacts(req, res) {
         // Jeśli nic nie zostało po walidacji – wróć do default
         const finalFields = exportFields.length > 0 ? exportFields : defaultFields;
 
-    // Pola numeryczne – tylko te NIE będą wymuszały cudzysłowów
-    const numericFields = new Set(['id', 'active', 'databaseId', 'customerId']);
+        // Pola numeryczne – tylko te NIE będą wymuszały cudzysłowów
+        const numericFields = new Set(['id', 'active', 'databaseId', 'customerId']);
 
         // Funkcja pomocnicza do CSV z opcją wymuszenia cudzysłowu dla pól tekstowych
         const escapeCsv = (val, forceQuote = false) => {
