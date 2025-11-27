@@ -489,22 +489,23 @@ const formData = ref({
   smtpUser: customerSettings.value.smtpUser || '',
   smtpPass: customerSettings.value.smtpPass || '',
   smtpSecure: customerSettings.value.smtpSecure !== undefined ? customerSettings.value.smtpSecure : false,
-  smtpAllowSelfSigned: false,
+  smtpAllowSelfSigned: customerSettings.value.smtpAllowSelfSigned !== undefined ? customerSettings.value.smtpAllowSelfSigned : false,
   // IMAP Configuration  
   replyCheckEnabled: false,
-  replyMailboxHost: customerSettings.value.imapHost || '',
-  replyMailboxPort: customerSettings.value.imapPort || 993,
-  replyMailboxUser: customerSettings.value.imapUser || '',
-  replyMailboxPass: customerSettings.value.imapPass || '',
-  replyMailboxProtocol: 'IMAP',
-  replyMailboxFolder: 'INBOX',
-  replyMailboxTls: true,
-  replyMailboxAllowSelfSigned: false,
+  replyMailboxHost: customerSettings.value.replyMailboxHost || '',
+  replyMailboxPort: customerSettings.value.replyMailboxPort || 993,
+  replyMailboxUser: customerSettings.value.replyMailboxUser || '',
+  replyMailboxPass: customerSettings.value.replyMailboxPass || '',
+  replyMailboxProtocol: customerSettings.value.replyMailboxProtocol || 'IMAP',
+  replyMailboxFolder: customerSettings.value.replyMailboxFolder || 'INBOX',
+  replyMailboxTls: customerSettings.value.replyMailboxTls !== undefined ? customerSettings.value.replyMailboxTls : true,
+  replyMailboxAllowSelfSigned: customerSettings.value.replyMailboxAllowSelfSigned !== undefined ? customerSettings.value.replyMailboxAllowSelfSigned : false,
   sendMode: 'scheduled', // 'immediate', 'scheduled', 'draft'
   scheduledAt: null,
   trackOpens: true,
   trackClicks: true
 })
+
 
 // Database data from API
 const availableDatabases = ref([])
@@ -1036,15 +1037,14 @@ watch(() => props.campaign, (newCampaign) => {
       smtpAllowSelfSigned: customerSettings.value.smtpAllowSelfSigned || false,
       // IMAP Configuration
       replyCheckEnabled: false,
-      replyMailboxHost: customerSettings.value.imapHost || '',
-      replyMailboxPort: customerSettings.value.imapPort || 993,
-      replyMailboxUser: customerSettings.value.imapUser || '',
-      replyMailboxPass: customerSettings.value.imapPass || '',
+      replyMailboxHost: customerSettings.value.replyMailboxHost || '',
+      replyMailboxPort: customerSettings.value.replyMailboxPort || 993,
+      replyMailboxUser: customerSettings.value.replyMailboxUser || '',
+      replyMailboxPass: customerSettings.value.replyMailboxPass || '',
       replyMailboxProtocol: 'IMAP',
-      replyMailboxFolder: customerSettings.value.imapFolder || 'INBOX',
-      replyMailboxTls: customerSettings.value.imapTls !== undefined ? customerSettings.value.imapTls : false,
-      replyMailboxAllowSelfSigned: customerSettings.value.imapAllowSelfSigned || false
-
+      replyMailboxFolder: customerSettings.value.replyMailboxFolder || 'INBOX',
+      replyMailboxTls: customerSettings.value.replyMailboxTls !== undefined ? customerSettings.value.replyMailboxTls : false,
+      replyMailboxAllowSelfSigned: customerSettings.value.replyMailboxAllowSelfSigned || false
     }
   }
 }, { immediate: true })
@@ -1064,6 +1064,15 @@ async function loadCustomerSettings() {
       formData.value.smtpUser = settings.smtpUser || ''
       formData.value.smtpPass = settings.smtpPass || ''
       formData.value.smtpSecure = settings.smtpSecure !== undefined ? settings.smtpSecure : false
+      formData.value.smtpAllowSelfSigned = settings.smtpAllowSelfSigned !== undefined ? settings.smtpAllowSelfSigned : false
+      formData.value.replyMailboxHost = settings.replyMailboxHost || ''
+      formData.value.replyMailboxPort = settings.replyMailboxPort || 993
+      formData.value.replyMailboxUser = settings.replyMailboxUser || ''
+      formData.value.replyMailboxPass = settings.replyMailboxPass || ''
+      formData.value.replyMailboxProtocol = settings.replyMailboxProtocol || 'IMAP'
+      formData.value.replyMailboxFolder = settings.replyMailboxFolder || 'INBOX'
+      formData.value.replyMailboxTls = settings.replyMailboxTls !== undefined ? settings.replyMailboxTls : false
+      formData.value.replyMailboxAllowSelfSigned = settings.replyMailboxAllowSelfSigned !== undefined ? settings.replyMailboxAllowSelfSigned : false
     }
   } catch (error) {
     console.error('Nie udało się załadować ustawień klienta:', error)
