@@ -25,7 +25,7 @@ export class MailingService {
               pass: smtpConfig.pass
             }
         },
-        from: "sprzedaz@verx.pl",
+        from: smtpConfig.user,
         to: [emailTo],
         subject: emailSubject,
         html: emailData

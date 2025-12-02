@@ -391,7 +391,7 @@
             <h3>Planowanie kampanii</h3>
 
             <v-radio-group v-model="formData.sendMode" >
-              <v-radio label="Wyślij natychmiast" value="immediate" disabled/>
+              <v-radio label="Wyślij natychmiast" value="immediate"/>
               <v-radio label="Zaplanuj wysyłkę" value="scheduled" />
             </v-radio-group>
 
@@ -680,6 +680,7 @@ function openEditor() {
 
 async function save() {
   saving.value = true
+
   
   try {
     const campaignData = {
@@ -689,11 +690,16 @@ async function save() {
       createdAt: props.campaign?.createdAt || new Date(),
       updatedAt: new Date()
     }
+    if (formData.value.sendMode === 'immediate') {
+      campaignData.scheduledAt = new Date().toISOString()
+      campaignData.sendMode = 'scheduled'
+    }
     
     // Process content (generate HTML from template + add GDPR footer)
+    console.log('Przetwarzanie treści kampanii przed zapisem...', campaignData)
     const processedCampaignData = await processCampaignContent(campaignData)
     
-    let result
+    let result=null
     if (props.campaign?.id) {
       // Update existing campaign
       result = await Campaigns.update(props.campaign.id, processedCampaignData)
@@ -897,7 +903,8 @@ async function processCampaignContent(campaignData) {
   }
 
   // Add GDPR footer to all content
-  const gdprFooter = generateGdprFooter()
+//  const gdprFooter = generateGdprFooter()
+  const gdprFooter = ""
   
   // Insert footer before closing body tag or append if no body tag
   if (finalHtmlContent.includes('</body>')) {

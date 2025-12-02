@@ -25,6 +25,21 @@ export class Campaigns {
       senderEmail: campaign.senderEmail,
       from: campaign.senderEmail,
       dateStart: campaign.scheduledAt,
+      replyCheckEnabled: campaign.replyCheckEnabled,
+      replyMailboxHost: campaign.replyMailboxHost,
+      replyMailboxPort: campaign.replyMailboxPort,
+      replyMailboxUser: campaign.replyMailboxUser,
+      replyMailboxPass: campaign.replyMailboxPass,
+      replyMailboxProtocol: campaign.replyMailboxProtocol,
+      replyMailboxFolder: campaign.replyMailboxFolder,
+      replyMailboxTls: campaign.replyMailboxTls,
+      replyMailboxAllowSelfSigned: campaign.replyMailboxAllowSelfSigned,
+      smtpHost: campaign.smtpHost,
+      smtpPort: campaign.smtpPort,
+      smtpUser: campaign.smtpUser,
+      smtpPass: campaign.smtpPass,
+      smtpSecure: campaign.smtpSecure,
+      smtpAllowSelfSigned: campaign.smtpAllowSelfSigned      
     };
     const response = await axios.post('/mailing/createCampaign', payload, {
       headers: { 'Content-Type': 'application/json' }

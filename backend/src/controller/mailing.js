@@ -576,7 +576,7 @@ export async function computeSpamRating(req, res) {
         // ===== UNSUBSCRIBE / COMPLIANCE =====
         let hasUnsubscribe = false;
         if (unsubscribeField === true || (typeof unsubscribeField === 'string' && unsubscribeField.length)) hasUnsubscribe = true;
-        if (/unsubscribe|wypisz|odsubskrybuj|list-unsubscribe|wycofaj zgodę|rodo/gi.test(content)) hasUnsubscribe = true;
+        if (/unsubscribe|UNSUBSCRIBE_URL|wypisz|odsubskrybuj|list-unsubscribe|wycofaj zgodę|rodo/gi.test(content)) hasUnsubscribe = true;
         details.hasUnsubscribe = hasUnsubscribe;
         rawScore += hasUnsubscribe ? W.unsubscribe_present : W.unsubscribe_missing;
 
