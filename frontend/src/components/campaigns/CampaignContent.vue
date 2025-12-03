@@ -337,7 +337,7 @@ function testSend() {
     return
   }
 
-  console.log('Wysyłanie test email dla kampanii:', props.campaign.name)
+  console.log('Wysyłanie test email dla kampanii:', props.campaign)
   testEmailSending.value = true
   MailingService.sendTestEmail(
     testEmail.value,
@@ -349,7 +349,8 @@ function testSend() {
       secure: true,
       ignoreTLS:  true,
       user: customerConfig.value.smtpUser,
-      pass: customerConfig.value.smtpPass
+      pass: customerConfig.value.smtpPass,
+      from: `${props.campaign.senderName || props.campaign.senderEmail} <${props.campaign.senderEmail}>`,
     }
   )
     .then(response => {

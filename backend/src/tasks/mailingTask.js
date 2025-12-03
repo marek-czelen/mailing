@@ -34,6 +34,10 @@ class MailingTask {
             });
 
             console.log(`Znaleziono ${activeCampaign ? 1 : 0} aktywną kampanię`);
+            if (!activeCampaign) {
+                console.log('Brak aktywnych kampanii do wysłania. Kończę zadanie.');
+                return;
+            }
 
             const customer = activeCampaign.Customer || null;
 
