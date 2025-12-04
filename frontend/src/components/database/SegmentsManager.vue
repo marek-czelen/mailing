@@ -3,12 +3,12 @@
     <!-- Header -->
     <div class="segments-header">
       <div class="header-left">
-        <h3>Segmenty kontaktów</h3>
-        <p>Twórz inteligentne grupy kontaktów na podstawie różnych kryteriów</p>
+        <h3>{{ t('segments.headerTitle') }}</h3>
+        <p>{{ t('segments.headerSubtitle') }}</p>
       </div>
       <v-btn color="primary" @click="openCreateSegment">
         <v-icon left>mdi-plus</v-icon>
-        Nowy segment
+        {{ t('segments.newSegment') }}
       </v-btn>
     </div>
 
@@ -42,26 +42,26 @@
                   <v-list-item @click="editSegment(segment)">
                     <v-list-item-title>
                       <v-icon left size="16">mdi-pencil</v-icon>
-                      Edytuj
+                      {{ t('segments.actions.edit') }}
                     </v-list-item-title>
                   </v-list-item>
                   <v-list-item @click="duplicateSegment(segment)">
                     <v-list-item-title>
                       <v-icon left size="16">mdi-content-copy</v-icon>
-                      Duplikuj
+                      {{ t('segments.actions.duplicate') }}
                     </v-list-item-title>
                   </v-list-item>
                   <v-list-item @click="exportSegment(segment)">
                     <v-list-item-title>
                       <v-icon left size="16">mdi-download</v-icon>
-                      Eksportuj
+                      {{ t('segments.actions.export') }}
                     </v-list-item-title>
                   </v-list-item>
                   <v-divider />
                   <v-list-item @click="deleteSegment(segment)" class="delete-item">
                     <v-list-item-title>
                       <v-icon left size="16">mdi-delete</v-icon>
-                      Usuń
+                      {{ t('segments.actions.delete') }}
                     </v-list-item-title>
                   </v-list-item>
                 </v-list>
@@ -72,10 +72,10 @@
           <h4 class="segment-name">{{ segment.name }}</h4>
           <p class="segment-description">{{ segment.description }}</p>
 
-          <div class="segment-stats">
+              <div class="segment-stats">
             <div class="stat">
               <v-icon size="16" color="grey">mdi-account-group</v-icon>
-              <span>{{ segment.count || 0 }} kontaktów</span>
+              <span>{{ t('segments.contactsCount', { count: segment.count || 0 }) }}</span>
             </div>
             <div class="stat">
               <v-icon size="16" color="grey">mdi-calendar</v-icon>
@@ -94,7 +94,7 @@
               {{ formatRule(rule) }}
             </v-chip>
             <span v-if="segment.rules.length > 2" class="more-rules">
-              +{{ segment.rules.length - 2 }} więcej
+              +{{ segment.rules.length - 2 }} {{ t('segments.more') }}
             </span>
           </div>
         </v-card-text>
@@ -102,13 +102,13 @@
 
       <!-- Empty State -->
       <v-card v-if="segments.length === 0" class="empty-segment-card">
-        <v-card-text class="text-center">
+          <v-card-text class="text-center">
           <v-icon size="48" color="grey-lighten-2">mdi-filter-outline</v-icon>
-          <h3>Brak segmentów</h3>
-          <p>Utwórz pierwszy segment, aby grupować kontakty</p>
+          <h3>{{ t('segments.emptyTitle') }}</h3>
+          <p>{{ t('segments.emptyDescription') }}</p>
           <v-btn color="primary" @click="openCreateSegment">
             <v-icon left>mdi-plus</v-icon>
-            Utwórz segment
+            {{ t('segments.createSegment') }}
           </v-btn>
         </v-card-text>
       </v-card>
@@ -117,8 +117,8 @@
     <!-- Segment Builder Dialog -->
     <v-dialog v-model="showSegmentDialog" max-width="800px" persistent>
       <v-card class="segment-dialog">
-        <v-card-title class="dialog-header">
-          <h2>{{ isEditing ? 'Edytuj segment' : 'Nowy segment' }}</h2>
+          <v-card-title class="dialog-header">
+          <h2>{{ isEditing ? t('segments.editTitle') : t('segments.newTitle') }}</h2>
           <v-btn icon variant="text" @click="closeSegmentDialog">
             <v-icon>mdi-close</v-icon>
           </v-btn>
@@ -128,25 +128,25 @@
           <v-form ref="segmentForm" v-model="segmentFormValid">
             <!-- Basic Info -->
             <div class="form-section">
-              <h3>Podstawowe informacje</h3>
+              <h3>{{ t('segments.basicInfo') }}</h3>
               <v-text-field
                 v-model="segmentData.name"
-                label="Nazwa segmentu"
+                :label="t('segments.name')"
                 :rules="[rules.required]"
                 variant="outlined"
                 required
               />
               <v-textarea
                 v-model="segmentData.description"
-                label="Opis"
+                :label="t('segments.description')"
                 variant="outlined"
                 rows="2"
               />
               <div class="icon-color-row">
-                <v-select
+                  <v-select
                   v-model="segmentData.icon"
                   :items="iconOptions"
-                  label="Ikona"
+                  :label="t('segments.icon')"
                   variant="outlined"
                 >
                   <template v-slot:item="{ props, item }">
@@ -164,7 +164,7 @@
                 <v-select
                   v-model="segmentData.color"
                   :items="colorOptions"
-                  label="Kolor"
+                  :label="t('segments.color')"
                   variant="outlined"
                 >
                   <template v-slot:item="{ props, item }">
@@ -185,15 +185,15 @@
             <!-- Segment Rules -->
             <div class="form-section">
               <div class="section-header">
-                <h3>Reguły segmentu</h3>
+                <h3>{{ t('segments.rulesTitle') }}</h3>
                 <v-btn size="small" variant="outlined" @click="addRule">
                   <v-icon left>mdi-plus</v-icon>
-                  Dodaj regułę
+                  {{ t('segments.addRule') }}
                 </v-btn>
               </div>
 
               <div v-if="segmentData.rules.length === 0" class="no-rules">
-                <p>Brak reguł. Dodaj pierwszą regułę, aby zdefiniować segment.</p>
+                <p>{{ t('segments.noRules') }}</p>
               </div>
 
               <div v-else class="rules-builder">
@@ -216,20 +216,20 @@
                     <v-select
                       v-model="rule.field"
                       :items="fieldOptions"
-                      label="Pole"
+                      :label="t('segments.fieldLabel')"
                       variant="outlined"
                       density="comfortable"
                     />
                     <v-select
                       v-model="rule.condition"
                       :items="getConditionOptions(rule.field)"
-                      label="Warunek"
+                      :label="t('segments.conditionLabel')"
                       variant="outlined"
                       density="comfortable"
                     />
                     <v-text-field
                       v-model="rule.value"
-                      label="Wartość"
+                      :label="t('segments.valueLabel')"
                       variant="outlined"
                       density="comfortable"
                     />
@@ -249,15 +249,15 @@
 
             <!-- Preview -->
             <div class="form-section">
-              <h3>Podgląd</h3>
+              <h3>{{ t('segments.previewTitle') }}</h3>
               <div class="preview-card">
                 <div class="preview-stats">
                   <v-icon>mdi-account-group</v-icon>
-                  <span>Szacowana liczba kontaktów: <strong>{{ estimatedCount }}</strong></span>
+                  <span>{{ t('segments.estimatedContacts', { count: estimatedCount }) }}</span>
                 </div>
                 <v-btn variant="outlined" size="small" @click="previewSegment">
                   <v-icon left>mdi-eye</v-icon>
-                  Podgląd kontaktów
+                  {{ t('segments.previewContacts') }}
                 </v-btn>
               </div>
             </div>
@@ -267,7 +267,7 @@
         <v-card-actions class="dialog-actions">
           <v-spacer />
           <v-btn variant="text" @click="closeSegmentDialog">
-            Anuluj
+            {{ t('common.cancel') }}
           </v-btn>
           <v-btn
             color="primary"
@@ -275,7 +275,7 @@
             :disabled="!segmentFormValid"
             @click="saveSegment"
           >
-            {{ isEditing ? 'Zapisz zmiany' : 'Utwórz segment' }}
+            {{ isEditing ? t('common.save') : t('segments.createSegment') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -285,6 +285,7 @@
 
 <script setup>
 import { ref, computed, defineProps, defineEmits } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   database: Object,
@@ -292,6 +293,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['create-segment', 'edit-segment'])
+
+const { t, locale } = useI18n()
 
 // Reactive data
 const showSegmentDialog = ref(false)
@@ -311,47 +314,47 @@ const segmentData = ref({
 
 // Options
 const iconOptions = [
-  { title: 'Filtr', value: 'mdi-filter' },
-  { title: 'Gwiazda', value: 'mdi-star' },
-  { title: 'Serce', value: 'mdi-heart' },
-  { title: 'Tarcza', value: 'mdi-shield' },
-  { title: 'Korona', value: 'mdi-crown' },
-  { title: 'Cel', value: 'mdi-target' },
-  { title: 'Błyskawica', value: 'mdi-lightning-bolt' },
-  { title: 'Diament', value: 'mdi-diamond' }
+  { title: t('segments.iconOptions.filter'), value: 'mdi-filter' },
+  { title: t('segments.iconOptions.star'), value: 'mdi-star' },
+  { title: t('segments.iconOptions.heart'), value: 'mdi-heart' },
+  { title: t('segments.iconOptions.shield'), value: 'mdi-shield' },
+  { title: t('segments.iconOptions.crown'), value: 'mdi-crown' },
+  { title: t('segments.iconOptions.target'), value: 'mdi-target' },
+  { title: t('segments.iconOptions.flash'), value: 'mdi-lightning-bolt' },
+  { title: t('segments.iconOptions.diamond'), value: 'mdi-diamond' }
 ]
 
 const colorOptions = [
-  { title: 'Niebieski', value: 'primary' },
-  { title: 'Zielony', value: 'success' },
-  { title: 'Pomarańczowy', value: 'warning' },
-  { title: 'Czerwony', value: 'error' },
-  { title: 'Fioletowy', value: 'purple' },
-  { title: 'Różowy', value: 'pink' },
-  { title: 'Cyjan', value: 'cyan' },
-  { title: 'Szary', value: 'grey' }
+  { title: t('segments.colorOptions.blue'), value: 'primary' },
+  { title: t('segments.colorOptions.green'), value: 'success' },
+  { title: t('segments.colorOptions.orange'), value: 'warning' },
+  { title: t('segments.colorOptions.red'), value: 'error' },
+  { title: t('segments.colorOptions.purple'), value: 'purple' },
+  { title: t('segments.colorOptions.pink'), value: 'pink' },
+  { title: t('segments.colorOptions.cyan'), value: 'cyan' },
+  { title: t('segments.colorOptions.grey'), value: 'grey' }
 ]
 
 const fieldOptions = [
-  { title: 'Email', value: 'email' },
-  { title: 'Imię', value: 'firstName' },
-  { title: 'Nazwisko', value: 'lastName' },
-  { title: 'Telefon', value: 'phone' },
-  { title: 'Status', value: 'status' },
-  { title: 'Data utworzenia', value: 'createdAt' },
-  { title: 'Ostatnia aktywność', value: 'lastActivity' },
-  { title: 'Tagi', value: 'tags' },
-  { title: 'Miasto', value: 'city' },
-  { title: 'Kraj', value: 'country' }
+  { title: t('segments.fieldOptions.email'), value: 'email' },
+  { title: t('segments.fieldOptions.firstName'), value: 'firstName' },
+  { title: t('segments.fieldOptions.lastName'), value: 'lastName' },
+  { title: t('segments.fieldOptions.phone'), value: 'phone' },
+  { title: t('segments.fieldOptions.status'), value: 'status' },
+  { title: t('segments.fieldOptions.createdAt'), value: 'createdAt' },
+  { title: t('segments.fieldOptions.lastActivity'), value: 'lastActivity' },
+  { title: t('segments.fieldOptions.tags'), value: 'tags' },
+  { title: t('segments.fieldOptions.city'), value: 'city' },
+  { title: t('segments.fieldOptions.country'), value: 'country' }
 ]
 
 const operatorOptions = [
-  { title: 'I', value: 'AND' },
-  { title: 'LUB', value: 'OR' }
+  { title: t('segments.operator.and'), value: 'AND' },
+  { title: t('segments.operator.or'), value: 'OR' }
 ]
 
 const rules = {
-  required: value => !!value || 'To pole jest wymagane'
+  required: value => !!value || t('validation.required')
 }
 
 // Computed
@@ -408,24 +411,24 @@ function removeRule(index) {
 
 function getConditionOptions(field) {
   const baseConditions = [
-    { title: 'zawiera', value: 'contains' },
-    { title: 'nie zawiera', value: 'not_contains' },
-    { title: 'równa się', value: 'equals' },
-    { title: 'nie równa się', value: 'not_equals' }
+    { title: t('segments.conditions.contains'), value: 'contains' },
+    { title: t('segments.conditions.not_contains'), value: 'not_contains' },
+    { title: t('segments.conditions.equals'), value: 'equals' },
+    { title: t('segments.conditions.not_equals'), value: 'not_equals' }
   ]
 
   if (field === 'createdAt' || field === 'lastActivity') {
     return [
-      { title: 'po dacie', value: 'after' },
-      { title: 'przed datą', value: 'before' },
-      { title: 'w ostatnich dniach', value: 'last_days' }
+      { title: t('segments.conditions.after'), value: 'after' },
+      { title: t('segments.conditions.before'), value: 'before' },
+      { title: t('segments.conditions.last_days'), value: 'last_days' }
     ]
   }
 
   if (field === 'status') {
     return [
-      { title: 'równa się', value: 'equals' },
-      { title: 'nie równa się', value: 'not_equals' }
+      { title: t('segments.conditions.equals'), value: 'equals' },
+      { title: t('segments.conditions.not_equals'), value: 'not_equals' }
     ]
   }
 
@@ -438,7 +441,8 @@ function formatRule(rule) {
 
 function formatDate(date) {
   if (!date) return '-'
-  return new Date(date).toLocaleDateString('pl-PL')
+  const localeTag = locale.value === 'pl' ? 'pl-PL' : 'en-US'
+  return new Date(date).toLocaleDateString(localeTag)
 }
 
 function selectSegment(segment) {
@@ -449,14 +453,14 @@ function duplicateSegment(segment) {
   const duplicate = {
     ...segment,
     id: Date.now(),
-    name: `${segment.name} (kopia)`,
+    name: `${segment.name} (${t('segments.copySuffix')})`,
     count: 0
   }
   emit('create-segment', duplicate)
 }
 
 function deleteSegment(segment) {
-  if (confirm(`Czy na pewno chcesz usunąć segment "${segment.name}"?`)) {
+  if (confirm(t('segments.deleteConfirm', { name: segment.name }))) {
     emit('delete-segment', segment)
   }
 }

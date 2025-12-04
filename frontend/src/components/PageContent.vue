@@ -1,10 +1,10 @@
 <template>
-    <div class="page-container">
-    <!-- Header Section -->
-     <PageHeader
-       :title="props.title"
-       :subtitle="props.subtitle"
-     />
+        <div class="page-container">
+        <!-- Header Section -->
+         <PageHeader
+             :title="titleComputed"
+             :subtitle="subtitleComputed"
+         />
     <v-container fluid class="page-content">
         <v-row>
             <!-- Left Panel - Campaigns List -->
@@ -23,16 +23,24 @@
 <script setup>
 import PageHeader from './PageHeader.vue';
 
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
 const props = defineProps({
     title: {
         type: String,
-        default: 'Page Title'
+        default: ''
     },
     subtitle: {
         type: String,
-        default: 'Page Subtitle'
+        default: ''
     }
 });
+
+const { t } = useI18n();
+
+const titleComputed = computed(() => props.title || t('page.title'));
+const subtitleComputed = computed(() => props.subtitle || t('page.subtitle'));
 </script>
 
 <style scoped>

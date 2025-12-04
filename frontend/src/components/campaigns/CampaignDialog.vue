@@ -4,7 +4,7 @@
   <GeneralDialog
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    :title="isEditing ? 'Edytuj kampanię' : 'Nowa kampania marketingowa'"
+    :title="isEditing ? t('campaigns.editCampaign') : t('campaigns.newCampaign')"
     min-width="800px"
     persistent
   >
@@ -33,12 +33,12 @@
         <div class="step-content">
           <!-- Step 1: Basic Information -->
           <div v-if="step === 1">
-            <h3>Dane podstawowe kampanii</h3>
-            <p>Zdefiniuj podstawowe informacje o kampanii</p>
+            <h3>{{ t('campaigns.basicInfoTitle') }}</h3>
+            <p>{{ t('campaigns.basicInfoDesc') }}</p>
             
             <v-text-field
               v-model="formData.name"
-              label="Nazwa kampanii"
+              :label="t('campaigns.name')"
               density="compact"
               variant="outlined"
               prepend-inner-icon="mdi-email-multiple"
@@ -48,7 +48,7 @@
 
             <v-text-field
               v-model="formData.subject"
-              label="Temat wiadomości"
+              :label="t('campaigns.subject')"
               variant="outlined"
               density="compact"
               prepend-inner-icon="mdi-format-title"
@@ -58,7 +58,7 @@
 
             <v-textarea
               v-model="formData.description"
-              label="Opis kampanii (opcjonalny)"
+              :label="t('campaigns.description')"
               variant="outlined"
               density="compact"
               prepend-inner-icon="mdi-text"
@@ -69,20 +69,20 @@
 
           <!-- Step 2: Recipients -->
           <div v-if="step === 2">
-            <h3>Odbiorcy kampanii</h3>
-            <p>Wybierz bazę danych i segmenty</p>
+            <h3>{{ t('campaigns.recipientsTitle') }}</h3>
+            <p>{{ t('campaigns.recipientsDesc') }}</p>
 
             <v-select
               v-model="formData.databaseId"
               :items="availableDatabases"
               density="compact"
-              label="Baza danych"
+              :label="t('campaigns.database')"
               variant="outlined"
               prepend-inner-icon="mdi-database"
               :rules="[rules.required]"
               :loading="loadingDatabases"
               :disabled="loadingDatabases"
-              :placeholder="loadingDatabases ? 'Ładowanie baz danych...' : 'Wybierz bazę danych'"
+              :placeholder="loadingDatabases ? t('campaigns.loadingDatabases') : t('campaigns.selectDatabase')"
               required
             />
 
@@ -90,7 +90,7 @@
               v-model="formData.segments"
               :disabled="true"
               :items="['All']"
-              label="Segmenty (opcjonalnie)"
+              :label="t('campaigns.segments')"
               variant="outlined"
               density="compact"
               prepend-inner-icon="mdi-filter"
@@ -102,18 +102,18 @@
             <div v-if="availableDatabases.length === 0 && !loadingDatabases" class="no-databases-warning">
               <v-alert type="warning" variant="tonal">
                 <v-icon>mdi-database-alert</v-icon>
-                Brak dostępnych baz danych. Przed utworzeniem kampanii musisz utworzyć przynajmniej jedną bazę danych kontaktów.
+                {{ t('campaigns.noDatabasesAvailable') }}
               </v-alert>
             </div>
 
             <div v-if="formData.databaseId" class="recipients-preview">
-              <h4>Szacowana liczba odbiorców</h4>
+              <h4>{{ t('campaigns.estimatedRecipients') }}</h4>
               <div class="preview-stats">
                 <div class="stat-box">
                   <v-icon color="primary">mdi-account-group</v-icon>
                   <div class="stat-info">
                     <span class="stat-number">{{ estimatedRecipients }}</span>
-                    <span class="stat-label">Odbiorców</span>
+                    <span class="stat-label">{{ t('campaigns.recipients') }}</span>
                   </div>
                 </div>
               </div>
@@ -122,13 +122,13 @@
 
           <!-- Step 3: Content -->
           <div v-if="step === 3">
-            <h3>Treść kampanii</h3>
-            <p>Wybierz sposób tworzenia treści</p>
+            <h3>{{ t('campaigns.contentTitle') }}</h3>
+            <p>{{ t('campaigns.contentDesc') }}</p>
 
             <v-radio-group v-model="contentMode" density="compact">
-              <v-radio label="Użyj szablonu" value="template" disabled/>
-              <v-radio label="Użyj HTML" value="html" disabled/>
-              <v-radio label="Bez szablonu (uzupełnisz później)" value="no-template" />
+              <v-radio :label="t('campaigns.useTemplate')" value="template" disabled/>
+              <v-radio :label="t('campaigns.useHtml')" value="html" disabled/>
+              <v-radio :label="t('campaigns.noTemplate')" value="no-template" />
             </v-radio-group>
 
             <!-- Template Selection -->
@@ -138,7 +138,7 @@
                 :items="availableTemplates"
                 :loading="loadingTemplates"
                 density="compact"
-                label="Szablon email"
+                :label="t('campaigns.emailTemplate')"
                 variant="outlined"
                 prepend-inner-icon="mdi-email-variant"
                 :rules="[rules.required]"
@@ -149,29 +149,29 @@
             <!-- HTML Content -->
             <div v-if="contentMode === 'html'">
               <div class="html-editor-container">
-                <label class="editor-label">Treść HTML</label>
+                <label class="editor-label">{{ t('campaigns.htmlContent') }}</label>
               </div>
               <div class="html-helper">
                 <v-alert type="info" variant="tonal" density="compact">
                   <v-icon>mdi-information</v-icon>
-                  Możesz używać edytora WYSIWYG lub przełączyć się na tryb HTML w pasku narzędzi. Pamiętaj o używaniu inline CSS dla lepszej kompatybilności z klientami email.
+                  {{ t('campaigns.htmlHint') }}
                 </v-alert>
               </div>
             </div>
 
             <div class="sender-info">
-              <h4>Informacje o nadawcy</h4>
+              <h4>{{ t('campaigns.senderInfo') }}</h4>
               <v-text-field
                 v-model="formData.senderName"
                 density="compact"
-                label="Nazwa nadawcy"
+                :label="t('campaigns.senderName')"
                 variant="outlined"
                 :rules="[rules.required]"
                 required
               />
               <v-text-field
                 v-model="formData.senderEmail"
-                label="Email nadawcy"
+                :label="t('campaigns.senderEmail')"
                 density="compact"
                 variant="outlined"
                 :rules="[rules.required, rules.email]"
@@ -182,24 +182,24 @@
 
           <!-- Step 4: Email Accounts -->
           <div v-if="step === 4">
-            <h3>Skonfiguruj konta do wysyłki i odbioru odpowiedzi</h3>
+            <h3>{{ t('campaigns.accountsTitle') }}</h3>
         
 
             <!-- SMTP Configuration -->
             <div class="mail-config-section">
               <h4>
                 <v-icon left color="primary">mdi-email-send</v-icon>
-                Konto wysyłkowe (SMTP)
+                {{ t('campaigns.smtpAccount') }}
               </h4>
               <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-                Wymagane do wysyłki kampanii. Brak konfiguracji zablokuje wysyłkę.
+                {{ t('campaigns.smtpRequired') }}
               </v-alert>
 
               <v-row>
                 <v-col cols="12" md="8">
                   <v-text-field
                     v-model="formData.smtpHost"
-                    label="Host SMTP *"
+                    :label="t('campaigns.smtpHost')"
                     density="compact"
                     variant="outlined"
                     placeholder="smtp.gmail.com"
@@ -209,7 +209,7 @@
                 <v-col cols="12" md="4">
                   <v-text-field
                     v-model.number="formData.smtpPort"
-                    label="Port *"
+                    :label="t('campaigns.port')"
                     density="compact"
                     variant="outlined"
                     type="number"
@@ -223,7 +223,7 @@
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model="formData.smtpUser"
-                    label="Użytkownik SMTP *"
+                    :label="t('campaigns.smtpUser')"
                     density="compact"
                     variant="outlined"
                     placeholder="user@gmail.com"
@@ -233,7 +233,7 @@
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model="formData.smtpPass"
-                    label="Hasło SMTP *"
+                    :label="t('campaigns.smtpPass')"
                     density="compact"
                     variant="outlined"
                     type="password"
@@ -247,7 +247,7 @@
                 <v-col cols="12" md="6">
                   <v-switch
                     v-model="formData.smtpSecure"
-                    label="Użyj TLS/SSL"
+                    :label="t('campaigns.useTlsSsl')"
                     color="primary"
                     density="compact"
                     hide-details
@@ -256,7 +256,7 @@
                 <v-col cols="12" md="6">
                   <v-switch
                     v-model="formData.smtpAllowSelfSigned"
-                    label="Akceptuj self-signed certyfikaty"
+                    :label="t('campaigns.acceptSelfSigned')"
                     color="primary"
                     density="compact"
                     hide-details
@@ -272,7 +272,7 @@
                 @click="testSmtpConnection"
               >
                 <v-icon left>mdi-test-tube</v-icon>
-                Testuj połączenie SMTP
+                {{ t('campaigns.testSmtp') }}
               </v-btn>
             </div>
 
@@ -282,15 +282,15 @@
             <div class="mail-config-section">
               <h4>
                 <v-icon left color="primary">mdi-email-receive</v-icon>
-                Konto odbiorcze (IMAP)
+                {{ t('campaigns.imapAccount') }}
               </h4>
               <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-                Opcjonalne - do monitorowania odpowiedzi i odbić.
+                {{ t('campaigns.imapOptional') }}
               </v-alert>
 
               <v-switch
                 v-model="formData.replyCheckEnabled"
-                label="Śledź odpowiedzi i odbicia"
+                :label="t('campaigns.trackReplies')"
                 color="primary"
                 density="compact"
                 hide-details
@@ -302,7 +302,7 @@
                   <v-col cols="12" md="8">
                     <v-text-field
                       v-model="formData.replyMailboxHost"
-                      label="Host IMAP"
+                      :label="t('campaigns.imapHost')"
                       density="compact"
                       variant="outlined"
                       placeholder="imap.gmail.com"
@@ -311,7 +311,7 @@
                   <v-col cols="12" md="4">
                     <v-text-field
                       v-model.number="formData.replyMailboxPort"
-                      label="Port"
+                      :label="t('campaigns.port')"
                       density="compact"
                       variant="outlined"
                       type="number"
@@ -324,7 +324,7 @@
                   <v-col cols="12" md="6">
                     <v-text-field
                       v-model="formData.replyMailboxUser"
-                      label="Użytkownik IMAP"
+                      :label="t('campaigns.imapUser')"
                       density="compact"
                       variant="outlined"
                       placeholder="user@gmail.com"
@@ -333,7 +333,7 @@
                   <v-col cols="12" md="6">
                     <v-text-field
                       v-model="formData.replyMailboxPass"
-                      label="Hasło IMAP"
+                      :label="t('campaigns.imapPass')"
                       density="compact"
                       variant="outlined"
                       type="password"
@@ -346,7 +346,7 @@
                   <v-col cols="12" md="4">
                     <v-text-field
                       v-model="formData.replyMailboxFolder"
-                      label="Folder"
+                      :label="t('campaigns.imapFolder')"
                       density="compact"
                       variant="outlined"
                       placeholder="INBOX"
@@ -355,7 +355,7 @@
                   <v-col cols="12" md="4">
                     <v-switch
                       v-model="formData.replyMailboxTls"
-                      label="Użyj TLS/SSL"
+                      :label="t('campaigns.useTlsSsl')"
                       color="primary"
                       density="compact"
                       hide-details
@@ -364,7 +364,7 @@
                   <v-col cols="12" md="4">
                     <v-switch
                       v-model="formData.replyMailboxAllowSelfSigned"
-                      label="Self-signed cert"
+                      :label="t('campaigns.acceptSelfSigned')"
                       color="primary"
                       density="compact"
                       hide-details
@@ -380,7 +380,7 @@
                   @click="testImapConnection"
                 >
                   <v-icon left>mdi-test-tube</v-icon>
-                  Testuj połączenie IMAP
+                  {{ t('campaigns.testImap') }}
                 </v-btn>
               </template>
             </div>
@@ -388,18 +388,18 @@
 
           <!-- Step 5: Settings -->
           <div v-if="step === 5">
-            <h3>Planowanie kampanii</h3>
+            <h3>{{ t('campaigns.scheduleTitle') }}</h3>
 
             <v-radio-group v-model="formData.sendMode" >
-              <v-radio label="Wyślij natychmiast" value="immediate"/>
-              <v-radio label="Zaplanuj wysyłkę" value="scheduled" />
+              <v-radio :label="t('campaigns.sendImmediate')" value="immediate"/>
+              <v-radio :label="t('campaigns.sendScheduled')" value="scheduled" />
             </v-radio-group>
 
             <v-text-field
               v-if="formData.sendMode === 'scheduled'"
               density="compact"
               v-model="formData.scheduledAt"
-              label="Data i czas wysyłki"
+              :label="t('campaigns.sendDateTime')"
               type="datetime-local"
               variant="outlined"
             />
@@ -418,7 +418,7 @@
             @click="prevStep"
           >
             <v-icon left>mdi-chevron-left</v-icon>
-            Wstecz
+            {{ t('campaigns.previous') }}
           </v-btn>
           
           <v-spacer />
@@ -429,7 +429,7 @@
             :disabled="!canProceed"
             @click="nextStep"
           >
-            Dalej
+            {{ t('campaigns.next') }}
             <v-icon right>mdi-chevron-right</v-icon>
           </v-btn>
           <v-btn
@@ -439,7 +439,7 @@
             @click="save"
           >
             <v-icon left>mdi-check</v-icon>
-            {{ isEditing ? 'Zapisz zmiany' : 'Utwórz kampanię' }}
+            {{ isEditing ? t('campaigns.update') : t('campaigns.create') }}
           </v-btn>
        
   </template> 
@@ -450,11 +450,14 @@
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { Databases } from '../../services/databases.js'
 import { Campaigns } from '../../services/campaigns.js'
 import templatesIndex from '../../templates/index.json'
 import { CustomerService } from '../../services/customer.js'
 import GeneralDialog from '../GeneralDialog.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: Boolean,
@@ -584,11 +587,11 @@ const estimatedRecipients = computed(() => {
 // Methods
 function getStepLabel(stepNumber) {
   const labels = {
-    1: 'Podstawy',
-    2: 'Odbiorcy', 
-    3: 'Treść',
-    4: 'Serwery',
-    5: 'Planowanie'
+    1: t('campaigns.basicInfoTitle'),
+    2: t('campaigns.recipientsTitle'), 
+    3: t('campaigns.contentTitle'),
+    4: t('campaigns.accountsTitle'),
+    5: t('campaigns.scheduleTitle')
   }
   return labels[stepNumber] || ''
 }

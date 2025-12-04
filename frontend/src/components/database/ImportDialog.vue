@@ -2,7 +2,7 @@
   <GeneralDialog
     v-model="dialogVisible"
     max-width="700px"
-    title="Import kontaktów"
+    :title="t('import.title')"
     @close="close"
     persistent
   >
@@ -23,7 +23,7 @@
             color="primary"
           ></v-progress-circular>
           <h3 class="loading-title">
-            {{ uploading ? 'Przesyłanie pliku...' : 'Importowanie danych...' }}
+            {{ uploading ? t('import.uploading') : t('import.importing') }}
           </h3>
           <p class="loading-subtitle">
             {{ uploading ? uploadStatus : importStatus }}
@@ -48,25 +48,25 @@
                 <v-icon v-if="step > 1" color="success">mdi-check</v-icon>
                 <span v-else>1</span>
               </div>
-              <span class="step-title">Parsowanie</span>
+              <span class="step-title">{{ t('import.steps.parse') }}</span>
             </div>
             
            
             <v-divider class="step-divider" />
 
-            <div class="stepper-step" :class="{ active: step === 2, completed: step > 2 }">
+              <div class="stepper-step" :class="{ active: step === 2, completed: step > 2 }">
               <div class="step-number">
                 <v-icon v-if="step > 2" color="success">mdi-check</v-icon>
                 <span v-else>2</span>
               </div>
-              <span class="step-title">Upload</span>
+              <span class="step-title">{{ t('import.steps.upload') }}</span>
             </div>
             
             <v-divider class="step-divider" />
             
             <div class="stepper-step" :class="{ active: step === 3 }">
               <div class="step-number">3</div>
-              <span class="step-title">Import</span>
+              <span class="step-title">{{ t('import.steps.import') }}</span>
             </div>
           </div>
         </div>
@@ -76,14 +76,14 @@
             <!-- Step 1: File Selection -->
             <v-window-item value="1">
               <div class="step-content">
-                <h3>Wybierz plik do importu</h3>
-                <p>Obsługiwane formaty: CSV, Excel (.xlsx, .xls)</p>
+                <h3>{{ t('import.selectFileTitle') }}</h3>
+                <p>{{ t('import.supportedFormats') }}</p>
 
                 <div class="file-upload-area">
                   <v-file-input
                     v-model="selectedFile"
                     accept=".csv,.xlsx,.xls"
-                    label="Wybierz plik"
+                    :label="t('import.chooseFile')"
                     variant="outlined"
                     prepend-icon="mdi-paperclip"
                     show-size
@@ -93,12 +93,12 @@
                   <div class="upload-hint">
                     <v-icon color="info">mdi-information</v-icon>
                     <div>
-                      <p><strong>Wymagania pliku:</strong></p>
+                      <p><strong>{{ t('import.fileRequirementsTitle') }}</strong></p>
                       <ul>
-                        <li>Pierwsza linia powinna zawierać nagłówki kolumn</li>
-                        <li>Wymagane pole: adres email</li>
-                        <li>Maksymalny rozmiar: 10MB</li>
-                        <li>Maksymalnie 50,000 kontaktów na import</li>
+                        <li>{{ t('import.req.headers') }}</li>
+                        <li>{{ t('import.req.email') }}</li>
+                        <li>{{ t('import.req.maxSize') }}</li>
+                        <li>{{ t('import.req.maxRows') }}</li>
                       </ul>
                     </div>
                   </div>
@@ -106,7 +106,7 @@
 
                 <!-- File Preview -->
                 <div v-if="filePreview" class="file-preview">
-                  <h4>Podgląd pliku</h4>
+                  <h4>{{ t('import.previewTitle') }}</h4>
                   <v-table density="compact">
                     <thead>
                       <tr>
@@ -124,7 +124,7 @@
                     </tbody>
                   </v-table>
                   <p class="preview-info">
-                    Pokazano {{ filePreview.totalRows < 5 ? filePreview.totalRows : 5 }} z {{ filePreview.totalRows }} wierszy
+                    {{ t('import.previewInfo', { shown: filePreview.totalRows < 5 ? filePreview.totalRows : 5, total: filePreview.totalRows }) }}
                   </p>
                 </div>
               </div>
@@ -134,8 +134,8 @@
             <v-window-item value="2">
               <div class="step-content">
                 <div v-if="!uploading && !uploadedFilePath" class="upload-summary">
-                  <h3>Przesyłanie pliku na serwer</h3>
-                  <p>Plik zostanie przesłany na serwer i przygotowany do importu</p>
+                  <h3>{{ t('import.uploadSummaryTitle') }}</h3>
+                  <p>{{ t('import.uploadSummaryText') }}</p>
                   
                   <div class="summary-stats">
                     <div class="stat-item">
@@ -144,11 +144,11 @@
                     </div>
                     <div class="stat-item">
                       <v-icon color="success">mdi-check-circle</v-icon>
-                      <span>{{ mappedFieldsCount }} pól zmapowanych</span>
+                      <span>{{ mappedFieldsCount }} {{ t('import.mappedFields') }}</span>
                     </div>
                     <div class="stat-item">
                       <v-icon color="info">mdi-database</v-icon>
-                      <span>{{ filePreview?.totalRows || 0 }} wierszy</span>
+                      <span>{{ filePreview?.totalRows || 0 }} {{ t('import.rows') }}</span>
                     </div>
                   </div>
                   
@@ -159,13 +159,13 @@
                       :disabled="uploading"
                     >
                       <v-icon left>mdi-cloud-upload</v-icon>
-                      Prześlij plik na serwer
+                      {{ t('import.startUpload') }}
                     </v-btn>
                   </div>
                 </div>
 
                 <div v-if="uploading" class="upload-progress">
-                  <h3>Przesyłanie pliku...</h3>
+                  <h3>{{ t('import.uploading') }}</h3>
                   <v-progress-linear
                     :model-value="uploadProgress"
                     color="primary"
@@ -182,10 +182,10 @@
                 <div v-if="uploadedFilePath" class="upload-success">
                   <div class="result-header">
                     <v-icon size="48" color="success">mdi-cloud-upload</v-icon>
-                    <h3>Plik przesłany pomyślnie</h3>
+                    <h3>{{ t('import.uploadSuccessTitle') }}</h3>
                   </div>
-                  <p>Plik został zapisany na serwerze jako: <code>{{ uploadedFilePath }}</code></p>
-                  <p>Możesz teraz przejść do importu danych.</p>
+                  <p>{{ t('import.uploadSavedAs', { path: uploadedFilePath }) }}</p>
+                  <p>{{ t('import.proceedToImport') }}</p>
                 </div>
               </div>
             </v-window-item>
@@ -194,8 +194,8 @@
             <v-window-item value="3">
               <div class="step-content">
                 <div v-if="!importing && !importResult" class="import-summary">
-                  <h3>Import danych do bazy</h3>
-                  <p>Rozpocznij import danych z przesłanego pliku do wybranej bazy danych</p>
+                  <h3>{{ t('import.importTitle') }}</h3>
+                  <p>{{ t('import.importIntro') }}</p>
                   
                   <div class="summary-stats">
                     <div class="stat-item">
@@ -208,13 +208,13 @@
                     </div>
                     <div class="stat-item">
                       <v-icon color="info">mdi-cog</v-icon>
-                      <span>Tryb: {{ getModeLabel(importMode) }}</span>
+                      <span>{{ t('import.modeLabel') }}: {{ getModeLabel(importMode) }}</span>
                     </div>
                   </div>
                 </div>
 
                 <div v-if="importing" class="import-progress">
-                  <h3>Importowanie...</h3>
+                  <h3>{{ t('import.importing') }}</h3>
                   <v-progress-linear
                     :model-value="importProgress"
                     color="primary"
@@ -240,7 +240,7 @@
                       {{ importResult.success ? 'mdi-check-circle' : 'mdi-alert-circle' }}
                     </v-icon>
                     <h3>
-                      {{ importResult.success ? 'Import zakończony' : 'Błąd importu' }}
+                      {{ importResult.success ? t('import.importFinished') : t('import.importError') }}
                     </h3>
                   </div>
 
@@ -261,12 +261,12 @@
                       <div class="result-stat success">
                         <v-icon color="success" size="24">mdi-check-circle</v-icon>
                         <span class="stat-number">{{ importResult.added || 0 }}</span>
-                        <span class="stat-label">Zaimportowane adresy</span>
+                        <span class="stat-label">{{ t('import.addedLabel') }}</span>
                       </div>
                       <div class="result-stat error" v-if="importResult.errors > 0">
                         <v-icon color="error" size="24">mdi-alert-circle</v-icon>
                         <span class="stat-number">{{ importResult.errors || 0 }}</span>
-                        <span class="stat-label">Odrzucone rekordy</span>
+                        <span class="stat-label">{{ t('import.rejectedLabel') }}</span>
                       </div>
                     </div>
                   </div>
@@ -277,7 +277,7 @@
                       <v-expansion-panel>
                         <v-expansion-panel-title>
                           <v-icon color="error" class="mr-2">mdi-alert-circle</v-icon>
-                          Szczegóły błędów ({{ importResult.errors }})
+                          {{ t('import.errorDetailsTitle', { count: importResult.errors }) }}
                         </v-expansion-panel-title>
                         <v-expansion-panel-text>
                           <div v-if="importResult.errorDetails?.length" class="error-list">
@@ -303,12 +303,12 @@
                               </v-list-item>
                             </v-list>
                             <p v-if="importResult.errorDetails.length > 20" class="error-more">
-                              I {{ importResult.errorDetails.length - 20 }} więcej błędów...
+                              {{ t('import.moreErrors', { count: importResult.errorDetails.length - 20 }) }}
                             </p>
                           </div>
                           <div v-else class="error-general">
-                            <p>Wystąpiły błędy podczas importu {{ importResult.errors }} rekordów.</p>
-                            <p class="error-hint">Sprawdź format danych w pliku oraz mapowanie pól.</p>
+                            <p>{{ t('import.generalErrors', { count: importResult.errors }) }}</p>
+                            <p class="error-hint">{{ t('import.errorHint') }}</p>
                           </div>
                         </v-expansion-panel-text>
                       </v-expansion-panel>
@@ -337,7 +337,7 @@
             :disabled="!canProceed || importing || uploading"
             @click="nextStep"
           >
-            Dalej
+            {{ t('import.next') }}
             <v-icon right>mdi-arrow-right</v-icon>
           </v-btn>
           <v-btn
@@ -346,7 +346,7 @@
             @click="startImport"
           >
             <v-icon left>mdi-database-import</v-icon>
-            Rozpocznij import
+            {{ t('import.startImport') }}
           </v-btn>
           <v-btn
             v-else-if="importResult"
@@ -354,7 +354,7 @@
             @click="finishImport"
           >
             <v-icon left>{{ importResult.success && importResult.errors === 0 ? 'mdi-check' : 'mdi-close' }}</v-icon>
-            {{ importResult.success && importResult.errors === 0 ? 'Zakończ' : 'Zamknij dialog' }}
+            {{ importResult.success && importResult.errors === 0 ? t('import.finish') : t('import.closeDialog') }}
           </v-btn>
     </template>
   </GeneralDialog>
@@ -362,6 +362,7 @@
 
 <script setup>
 import { ref, computed, defineProps, defineEmits, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import * as XLSX from 'xlsx'
 import { Databases } from '../../services/databases'
 import GeneralDialog from '../GeneralDialog.vue'
@@ -372,6 +373,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'imported'])
+
+const { t, locale } = useI18n()
 
 // Reactive data
 const step = ref(1)
@@ -437,21 +440,21 @@ function resetDialogState() {
   }
 }
 
-// Database fields for mapping
+// Database fields for mapping (localized titles)
 const databaseFields = [
-  { title: 'Email', value: 'email' },
-  { title: 'Imię', value: 'firstName' },
-  { title: 'Nazwisko', value: 'lastName' },
-  { title: 'Telefon', value: 'phone' },
-  { title: 'Miasto', value: 'city' },
-  { title: 'Rodzaj kontaktu', value: 'type' },
-  { title: 'Data wypisania', value: 'unsubscribeDate' }
+  { title: t('import.dbFields.email'), value: 'email' },
+  { title: t('import.dbFields.firstName'), value: 'firstName' },
+  { title: t('import.dbFields.lastName'), value: 'lastName' },
+  { title: t('import.dbFields.phone'), value: 'phone' },
+  { title: t('import.dbFields.city'), value: 'city' },
+  { title: t('import.dbFields.type'), value: 'type' },
+  { title: t('import.dbFields.unsubscribeDate'), value: 'unsubscribeDate' }
 ]
 
 const statusOptions = [
-  { title: 'Aktywny', value: 'active' },
-  { title: 'Nieaktywny', value: 'inactive' },
-  { title: 'Zablokowany', value: 'blocked' }
+  { title: t('import.statusOptions.active'), value: 'active' },
+  { title: t('import.statusOptions.inactive'), value: 'inactive' },
+  { title: t('import.statusOptions.blocked'), value: 'blocked' }
 ]
 
 // Computed
@@ -492,11 +495,11 @@ async function handleFileSelect() {
 
   try {
     const file = selectedFile.value[0] || selectedFile.value
-    console.log('Parsowanie pliku:', file.name)
+      console.log('Parsowanie pliku:', file.name)
     
     // Sprawdź rozmiar pliku (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('Plik jest zbyt duży. Maksymalny rozmiar to 10MB.')
+      alert(t('import.fileTooLarge'))
       selectedFile.value = null
       return
     }
@@ -508,13 +511,13 @@ async function handleFileSelect() {
     } else if (file.name.toLowerCase().match(/\.(xlsx|xls)$/)) {
       parsedData = await parseExcelFile(file)
     } else {
-      alert('Nieobsługiwany format pliku. Wybierz plik CSV lub Excel.')
+      alert(t('import.unsupportedFormat'))
       selectedFile.value = null
       return
     }
     
     if (!parsedData || !parsedData.headers || parsedData.headers.length === 0) {
-      alert('Nie udało się odczytać pliku lub plik jest pusty.')
+      alert(t('import.fileReadError'))
       return
     }
     
@@ -524,7 +527,7 @@ async function handleFileSelect() {
     )
     
     if (!hasEmailColumn) {
-      const userConfirm = confirm('Nie znaleziono kolumny email. Czy chcesz kontynuować? Będziesz musiał ręcznie zmapować pole email.')
+      const userConfirm = confirm(t('import.missingEmailColumnConfirm'))
       if (!userConfirm) {
         selectedFile.value = null
         return
@@ -554,7 +557,7 @@ async function parseCSVFile(file) {
         const lines = text.split('\n').filter(line => line.trim())
         
         if (lines.length === 0) {
-          reject(new Error('Plik CSV jest pusty'))
+          reject(new Error(t('import.csvEmpty')))
           return
         }
         
@@ -578,7 +581,7 @@ async function parseCSVFile(file) {
         reject(error)
       }
     }
-    reader.onerror = () => reject(new Error('Błąd podczas odczytu pliku'))
+    reader.onerror = () => reject(new Error(t('import.fileReadError')))
     reader.readAsText(file)
   })
 }
@@ -599,7 +602,7 @@ async function parseExcelFile(file) {
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
         
         if (jsonData.length === 0) {
-          reject(new Error('Arkusz Excel jest pusty'))
+          reject(new Error(t('import.excelEmpty')))
           return
         }
         
@@ -615,7 +618,7 @@ async function parseExcelFile(file) {
         reject(error)
       }
     }
-    reader.onerror = () => reject(new Error('Błąd podczas odczytu pliku Excel'))
+    reader.onerror = () => reject(new Error(t('import.excelReadError')))
     reader.readAsArrayBuffer(file)
   })
 }
@@ -669,16 +672,16 @@ function getFieldExample(index) {
 }
 
 function getFileName() {
-  if (!selectedFile.value) return 'nieznany'
+  if (!selectedFile.value) return t('import.unknownFile')
   const file = selectedFile.value[0] || selectedFile.value
-  return file.name || 'nieznany'
+  return file.name || t('import.unknownFile')
 }
 
 function getModeLabel(mode) {
   const labels = {
-    add: 'Tylko nowe kontakty',
-    update: 'Tylko aktualizacja',
-    merge: 'Dodawanie i aktualizacja'
+    add: t('import.modes.add'),
+    update: t('import.modes.update'),
+    merge: t('import.modes.merge')
   }
   return labels[mode] || mode
 }
@@ -715,7 +718,7 @@ async function startUpload() {
   console.log('startUpload wywołane, selectedFile:', selectedFile.value)
   
   if (!selectedFile.value) {
-    alert('Nie wybrano pliku')
+    alert(t('import.noFileSelected'))
     return
   }
   
@@ -750,31 +753,31 @@ async function startUpload() {
       }, 800)
       
     } else {
-      throw new Error(result?.message || 'Brak ścieżki pliku w odpowiedzi')
+      throw new Error(result?.message || t('import.noFilePath'))
     }
     
   } catch (error) {
     console.error('Błąd podczas przesyłania pliku:', error)
     uploading.value = false
     uploadProgress.value = 0
-    alert('Błąd podczas przesyłania pliku: ' + error.message)
+    alert(t('import.uploadError') + ': ' + error.message)
   }
 }
 
 
 async function startImport() {
   if (!props.database?.id) {
-    alert('Nie wybrano bazy danych')
+    alert(t('import.noDatabaseSelected'))
     return
   }
-  
+
   if (!uploadedFilePath.value) {
-    alert('Nie przesłano pliku na serwer')
+    alert(t('import.fileNotUploaded'))
     return
   }
-  
+
   if (!hasEmailMapping.value) {
-    alert('Musisz zmapować pole email')
+    alert(t('import.emailMappingRequired'))
     return
   }
   

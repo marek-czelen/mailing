@@ -2,17 +2,17 @@
   <GeneralDialog
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    :title="isEditing ? 'Edytuj bazę danych' : 'Nowa baza danych'"
+    :title="isEditing ? t('databases.editDatabase') : t('databases.newDatabase')"
   >
     <template #default>
       <v-form ref="form" v-model="valid" @submit.prevent="save">
         <!-- Podstawowe informacje -->
         <div class="section">
-          <h3 class="section-title">Podstawowe informacje</h3>
+          <h3 class="section-title">{{ t('databases.basicInfo') }}</h3>
 
           <v-text-field
             v-model="formData.name"
-            label="Nazwa bazy danych"
+            :label="t('databases.name')"
             :rules="[rules.required]"
             variant="outlined"
             prepend-inner-icon="mdi-database"
@@ -21,7 +21,7 @@
 
           <v-textarea
             v-model="formData.description"
-            label="Opis (opcjonalny)"
+            :label="t('databases.description')"
             variant="outlined"
             prepend-inner-icon="mdi-text"
             rows="3"
@@ -32,16 +32,16 @@
 
         <!-- Tagi -->
         <div class="section">
-          <h3 class="section-title">Tagi</h3>
+          <h3 class="section-title">{{ t('databases.tagsTitle') }}</h3>
           <v-combobox
             v-model="formData.tags"
-            label="Dodaj tagi"
+            :label="t('databases.addTags')"
             variant="outlined"
             prepend-inner-icon="mdi-tag-multiple"
             multiple
             chips
             closable-chips
-            hint="Naciśnij Enter, aby dodać nowy tag"
+            :hint="t('databases.tagsHint')"
             persistent-hint
           >
             <template v-slot:chip="{ props, item }">
@@ -58,11 +58,11 @@
 
         <!-- Ustawienia prywatności -->
         <div class="section">
-          <h3 class="section-title">Ustawienia prywatności</h3>
+          <h3 class="section-title">{{ t('databases.privacySettings') }}</h3>
 
           <v-switch
             v-model="formData.gdprCompliant"
-            label="Zgodność z RODO"
+            :label="t('databases.gdpr')"
             color="primary"
             :rules="[rules.required]"
             inset
@@ -71,7 +71,7 @@
 
           <v-switch
             v-model="formData.allowExport"
-            label="Zezwól na eksport danych"
+            :label="t('databases.allowExport')"
             color="primary"
             inset
             hide-details
@@ -82,14 +82,14 @@
 
     <template #actions>
       <v-spacer />
-      <v-btn variant="text" @click="close">Anuluj</v-btn>
+      <v-btn variant="text" @click="close">{{ t('common.cancel') }}</v-btn>
       <v-btn
         color="primary"
         :loading="saving"
         :disabled="!valid"
         @click="save"
       >
-        {{ isEditing ? 'Zapisz zmiany' : 'Utwórz bazę' }}
+        {{ isEditing ? t('common.saveChanges') : t('databases.createDatabase') }}
       </v-btn>
     </template>
   </GeneralDialog>
@@ -98,6 +98,7 @@
 <script setup>
 import { ref, computed, watch, defineProps, defineEmits } from 'vue'
 import GeneralDialog from '../../components/GeneralDialog.vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -105,6 +106,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'save', 'close'])
+
+const { t } = useI18n()
 
 const valid = ref(false)
 const saving = ref(false)
@@ -125,11 +128,11 @@ const formData = ref({
   customFieldsTemplate: []
 })
 
-const ruleRequiredTrue = value => value === true || 'To pole musi być zaznaczone' 
+const ruleRequiredTrue = value => value === true || t('validation.mustBeChecked')
 
 const rules = {
-  required: value => !!value || 'To pole jest wymagane',
-  gdprCompliant: ruleRequiredTrue
+  required: value => !!value || t('validation.required'),
+  gdprCompliant: value => value === true || t('validation.mustBeChecked')
 }
 
 const isEditing = computed(() => !!props.database)

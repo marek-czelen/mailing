@@ -1,14 +1,14 @@
 <template>
   <div class="database-history">
     <div class="history-header">
-      <h3>Historia aktywności</h3>
-      <p>Śledzenie zmian i działań w bazie danych</p>
+      <h3>{{ t('history.title') }}</h3>
+      <p>{{ t('history.subtitle') }}</p>
     </div>
 
     <div v-if="history.length === 0" class="empty-state">
       <v-icon size="48" color="grey-lighten-2">mdi-history</v-icon>
-      <h3>Brak historii</h3>
-      <p>Historia działań pojawi się tutaj</p>
+      <h3>{{ t('history.emptyTitle') }}</h3>
+      <p>{{ t('history.emptyText') }}</p>
     </div>
 
     <div v-else class="history-timeline">
@@ -47,6 +47,9 @@
 
 <script setup>
 import { defineProps } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t, locale } = useI18n()
 
 defineProps({
   database: Object,
@@ -86,15 +89,15 @@ function getActionColor(action) {
 
 function getActionTitle(action) {
   const titles = {
-    created: 'Baza utworzona',
-    updated: 'Baza zaktualizowana',
-    imported: 'Import kontaktów',
-    exported: 'Eksport danych',
-    deleted: 'Usunięto elementy',
-    contact_added: 'Dodano kontakt',
-    contact_removed: 'Usunięto kontakt',
-    segment_created: 'Utworzono segment',
-    campaign_sent: 'Wysłano kampanię'
+    created: t('history.actions.created'),
+    updated: t('history.actions.updated'),
+    imported: t('history.actions.imported'),
+    exported: t('history.actions.exported'),
+    deleted: t('history.actions.deleted'),
+    contact_added: t('history.actions.contact_added'),
+    contact_removed: t('history.actions.contact_removed'),
+    segment_created: t('history.actions.segment_created'),
+    campaign_sent: t('history.actions.campaign_sent')
   }
   return titles[action] || action
 }
@@ -106,14 +109,15 @@ function formatDate(timestamp) {
   const diffMs = now - date
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
   
+  const localeTag = locale.value === 'pl' ? 'pl-PL' : 'en-US'
   if (diffDays === 0) {
-    return `Dziś o ${date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
+    return t('history.todayAt', { time: date.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' }) })
   } else if (diffDays === 1) {
-    return `Wczoraj o ${date.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`
+    return t('history.yesterdayAt', { time: date.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' }) })
   } else if (diffDays < 7) {
-    return `${diffDays} dni temu`
+    return t('history.daysAgo', { count: diffDays })
   } else {
-    return date.toLocaleDateString('pl-PL')
+    return date.toLocaleDateString(localeTag)
   }
 }
 </script>

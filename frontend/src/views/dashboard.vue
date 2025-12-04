@@ -3,8 +3,8 @@
     <!-- Hero Header -->
     <div class="hero-header">
       <div class="hero-content">
-        <h1 class="hero-title">Dashboard</h1>
-        <p class="hero-subtitle">Zarządzaj kampaniami email i twórz profesjonalne szablony</p>
+        <h1 class="hero-title">{{ $t('dashboard.title') }}</h1>
+        <p class="hero-subtitle">{{ $t('dashboard.subtitle') }}</p>
       </div>
       <div class="hero-decoration">
         <div class="decoration-circle"></div>
@@ -20,9 +20,9 @@
           <svg viewBox="0 0 24 24" width="24" height="24">
             <path fill="currentColor" d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z"/>
           </svg>
-          Szybki dostęp
+          {{ $t('dashboard.quickAccess') }}
         </h2>
-        <p class="section-subtitle">Wybierz narzędzie do rozpoczęcia pracy</p>
+        <p class="section-subtitle">{{ $t('dashboard.sectionSubtitle') }}</p>
       </div>
 
       <div class="quick-access-grid">
@@ -33,8 +33,8 @@
             </svg>
           </div>
           <div class="card-content">
-            <h3 class="card-title">Edytor Email (Bloki)</h3>
-            <p class="card-description">Nowoczesny edytor z systemem bloków, szablonem i podglądem mobilnym</p>
+            <h3 class="card-title">{{ $t('dashboard.blockEditorTitle') }}</h3>
+            <p class="card-description">{{ $t('dashboard.blockEditorDesc') }}</p>
           </div>
           <div class="card-arrow">
             <svg viewBox="0 0 24 24" width="20" height="20">
@@ -50,8 +50,8 @@
             </svg>
           </div>
           <div class="card-content">
-            <h3 class="card-title">Kampanie</h3>
-            <p class="card-description">Zarządzaj kampaniami email i przeglądaj szczegółowe statystyki</p>
+            <h3 class="card-title">{{ $t('dashboard.campaignsTitle') }}</h3>
+            <p class="card-description">{{ $t('dashboard.campaignsDesc') }}</p>
           </div>
           <div class="card-arrow">
             <svg viewBox="0 0 24 24" width="20" height="20">
@@ -67,8 +67,8 @@
             </svg>
           </div>
           <div class="card-content">
-            <h3 class="card-title">Edytor HTML</h3>
-            <p class="card-description">Klasyczny edytor HTML dla zaawansowanych użytkowników</p>
+            <h3 class="card-title">{{ $t('dashboard.htmlEditorTitle') }}</h3>
+            <p class="card-description">{{ $t('dashboard.htmlEditorDesc') }}</p>
           </div>
           <div class="card-arrow">
             <svg viewBox="0 0 24 24" width="20" height="20">

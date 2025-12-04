@@ -5,7 +5,7 @@
       <div class="controls-left" style="width: 450px;">
         <v-text-field
           v-model="searchQuery"
-          placeholder="Wyszukaj kontakty..."
+          :placeholder="t('contacts.searchPlaceholder')"
           prepend-inner-icon="mdi-magnify"
           variant="outlined"
           density="comfortable"
@@ -15,7 +15,7 @@
         <v-select
           v-model="statusFilter"
           :items="statusOptions"
-          placeholder="Status"
+          :placeholder="t('contactsList.statusLabel')"
           variant="outlined"
           density="comfortable"
           hide-details
@@ -25,11 +25,11 @@
       <div class="controls-right">
         <v-btn variant="outlined" :loading="loadingImport" @click="importContacts">
             <v-icon left>mdi-upload</v-icon>
-            Importuj
+          {{ t('contactsList.import') }}
             </v-btn>
         <v-btn  color="primary" @click="addContact">
           <v-icon left>mdi-plus</v-icon>
-          Dodaj kontakt
+          {{ t('contacts.addContact') }}
         </v-btn>
       </div>
     </div>
@@ -105,20 +105,20 @@
               <v-list-item @click="unsubscribeContact(item)" v-if="item.unsubscribeDate === null">
                 <v-list-item-title>
                   <v-icon left size="16">mdi-email-remove</v-icon>
-                  Wypisz z listy
+                  {{ t('contacts.unsubscribeButton') }}
                 </v-list-item-title>
               </v-list-item>
               <v-list-item disabled @click="viewHistory(item)">
                 <v-list-item-title>
                   <v-icon left size="16">mdi-history</v-icon>
-                  Historia
+                  {{ t('contacts.history') }}
                 </v-list-item-title>
               </v-list-item>
               <v-divider />
               <v-list-item @click="deleteContact(item)" class="delete-item">
                 <v-list-item-title>
                   <v-icon left size="16">mdi-delete</v-icon>
-                  Usuń
+                  {{ t('contacts.delete') }}
                 </v-list-item-title>
               </v-list-item>
             </v-list>
@@ -130,9 +130,9 @@
       <template v-slot:no-data>
         <div class="no-data">
           <v-icon size="48" color="grey-lighten-2">mdi-account-off</v-icon>
-          <p>Brak kontaktów w bazie danych</p>
+          <p>{{ t('contacts.noDataTitle') }}</p>
           <v-btn color="primary" @click="addContact">
-            Dodaj pierwszy kontakt
+            {{ t('contacts.addFirst') }}
           </v-btn>
         </div>
       </template>
@@ -160,6 +160,7 @@
 
 <script setup>
 import { ref, computed, defineProps, defineEmits, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Databases } from '../../services/databases'
 import ContactDialog from './ContactDialog.vue'
 import ImportDialog from './ImportDialog.vue'
@@ -170,6 +171,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['edit-contact', 'delete-contact', 'contact-updated'])
+
+const { t, locale } = useI18n()
 
 // Reactive data
 const searchQuery = ref('')
@@ -187,23 +190,22 @@ const totalItems = ref(0)
 const options = ref({ page: 1, itemsPerPage: 25, sortBy: [] })
 let searchDebounce = null
 
-// Table headers
-// Używamy oryginalnych kluczy z backendu aby uniknąć błędów
+// Table headers (localized)
 const headers = [
-  { title: 'Email', key: 'mailAddress', sortable: true },
-  { title: 'Data wypisania', key: 'unsubscribesDate', sortable: true },
-  { title: 'Rodzaj', key: 'rodzaj', sortable: true },
-  { title: 'Miasto', key: 'miasto', sortable: true },
-  { title: 'Aktywny', key: 'active', sortable: true },
-  { title: 'Akcje', key: 'actions', sortable: false, width: 120 }
+  { title: t('contactsList.headers.email'), key: 'mailAddress', sortable: true },
+  { title: t('contactsList.headers.unsubscribesDate'), key: 'unsubscribesDate', sortable: true },
+  { title: t('contactsList.headers.type'), key: 'rodzaj', sortable: true },
+  { title: t('contactsList.headers.city'), key: 'miasto', sortable: true },
+  { title: t('contactsList.headers.active'), key: 'active', sortable: true },
+  { title: t('contactsList.headers.actions'), key: 'actions', sortable: false, width: 120 }
 ]
 
-// Status options
+// Status options (localized)
 const statusOptions = [
-  { title: 'Wszystkie', value: '' },
-  { title: 'Aktywny', value: 'active' },
-  { title: 'Nieaktywny', value: 'inactive' },
-  { title: 'Wypisany', value: 'unsubscribed' }
+  { title: t('contactsList.status.all'), value: '' },
+  { title: t('contactsList.status.active'), value: 'active' },
+  { title: t('contactsList.status.inactive'), value: 'inactive' },
+  { title: t('contactsList.status.unsubscribed'), value: 'unsubscribed' }
 ]
 
 // Server-side loaders
@@ -295,17 +297,18 @@ function getTypeColor(type) {
 
 function getTypeLabel(type) {
   const labels = {
-    individual: 'Indywidualny',
-    business: 'Biznesowy',
-    vip: 'VIP',
-    partner: 'Partner'
+    individual: t('contactsList.typeLabels.individual'),
+    business: t('contactsList.typeLabels.business'),
+    vip: t('contactsList.typeLabels.vip'),
+    partner: t('contactsList.typeLabels.partner')
   }
-  return labels[type] || 'Nieznany'
+  return labels[type] || t('contactsList.typeLabels.unknown')
 }
 
 function formatDate(date) {
   if (!date) return '-'
-  return new Date(date).toLocaleDateString('pl-PL')
+  const localeTag = locale.value === 'pl' ? 'pl-PL' : 'en-US'
+  return new Date(date).toLocaleDateString(localeTag)
 }
 
 function viewContact(contact) {
@@ -337,7 +340,7 @@ function closeContactDialog() {
 }
 
 function unsubscribeContact(contact) {
-  if (confirm(`Czy na pewno chcesz wypisać kontakt ${contact.email} z listy mailingowej?`)) {
+  if (confirm(t('contactsList.confirmUnsubscribe', { email: contact.email }))) {
     const updatedContact = {
       ...contact,
       unsubscribeDate: new Date().toISOString().split('T')[0],
@@ -348,7 +351,7 @@ function unsubscribeContact(contact) {
 }
 
 function resubscribeContact(contact) {
-  if (confirm(`Czy na pewno chcesz ponownie zapisać kontakt ${contact.email} na listę mailingową?`)) {
+  if (confirm(t('contactsList.confirmResubscribe', { email: contact.email }))) {
     const updatedContact = {
       ...contact,
       unsubscribeDate: null,

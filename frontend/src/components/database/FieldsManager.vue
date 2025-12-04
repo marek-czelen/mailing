@@ -2,22 +2,22 @@
   <div class="fields-manager">
     <div class="fields-header">
       <div class="header-left">
-        <h3>Pola niestandardowe</h3>
-        <p>Definiuj dodatkowe pola dla kontaktów w tej bazie danych</p>
+        <h3>{{ t('fields.title') }}</h3>
+        <p>{{ t('fields.subtitle') }}</p>
       </div>
       <v-btn color="primary" @click="openAddField">
         <v-icon left>mdi-plus</v-icon>
-        Dodaj pole
+        {{ t('fields.add') }}
       </v-btn>
     </div>
 
     <div v-if="fields.length === 0" class="empty-state">
       <v-icon size="64" color="grey-lighten-2">mdi-format-list-bulleted-square</v-icon>
-      <h3>Brak pól niestandardowych</h3>
-      <p>Dodaj pola niestandardowe, aby zbierać więcej informacji o kontaktach</p>
+      <h3>{{ t('fields.emptyTitle') }}</h3>
+      <p>{{ t('fields.emptyText') }}</p>
       <v-btn color="primary" @click="openAddField">
         <v-icon left>mdi-plus</v-icon>
-        Dodaj pierwsze pole
+        {{ t('fields.addFirst') }}
       </v-btn>
     </div>
 
@@ -39,7 +39,7 @@
                 <h4 class="field-name">
                   {{ field.name }}
                   <v-chip v-if="field.required" size="small" color="error" variant="outlined">
-                    Wymagane
+                    {{ t('fields.required') }}
                   </v-chip>
                 </h4>
                 <p class="field-type">{{ getFieldTypeLabel(field.type) }}</p>
@@ -72,7 +72,7 @@
                   <v-list-item @click="duplicateField(field)">
                     <v-list-item-title>
                       <v-icon left size="16">mdi-content-copy</v-icon>
-                      Duplikuj
+                      {{ t('fields.duplicate') }}
                     </v-list-item-title>
                   </v-list-item>
                   <v-list-item @click="toggleRequired(field)">
@@ -80,14 +80,14 @@
                       <v-icon left size="16">
                         {{ field.required ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline' }}
                       </v-icon>
-                      {{ field.required ? 'Nie wymagane' : 'Wymagane' }}
+                      {{ field.required ? t('fields.notRequired') : t('fields.required') }}
                     </v-list-item-title>
                   </v-list-item>
                   <v-divider />
                   <v-list-item @click="deleteField(field)" class="delete-item">
                     <v-list-item-title>
                       <v-icon left size="16">mdi-delete</v-icon>
-                      Usuń
+                      {{ t('fields.delete') }}
                     </v-list-item-title>
                   </v-list-item>
                 </v-list>
@@ -96,7 +96,7 @@
           </div>
 
           <div v-if="field.options?.length" class="field-options">
-            <h5>Opcje:</h5>
+            <h5>{{ t('fields.options') }}</h5>
             <div class="options-list">
               <v-chip
                 v-for="option in field.options"
@@ -113,7 +113,7 @@
           <div class="field-meta">
             <span class="usage-count">
               <v-icon size="16">mdi-chart-bar</v-icon>
-              Użyte w {{ field.usageCount || 0 }} kontaktach
+              {{ t('fields.usedInContacts', { count: field.usageCount || 0 }) }}
             </span>
             <span class="created-date">
               <v-icon size="16">mdi-calendar</v-icon>
@@ -128,7 +128,7 @@
     <v-dialog v-model="showFieldDialog" max-width="600px" persistent>
       <v-card class="field-dialog">
         <v-card-title class="dialog-header">
-          <h2>{{ isEditing ? 'Edytuj pole' : 'Nowe pole niestandardowe' }}</h2>
+          <h2>{{ isEditing ? t('fields.editTitle') : t('fields.newTitle') }}</h2>
           <v-btn icon variant="text" @click="closeFieldDialog">
             <v-icon>mdi-close</v-icon>
           </v-btn>
@@ -139,7 +139,7 @@
             <div class="form-section">
               <v-text-field
                 v-model="fieldData.name"
-                label="Nazwa pola"
+                :label="t('fields.fieldName')"
                 :rules="[rules.required]"
                 variant="outlined"
                 required
@@ -147,7 +147,7 @@
 
               <v-textarea
                 v-model="fieldData.description"
-                label="Opis (opcjonalny)"
+                :label="t('fields.fieldDescription')"
                 variant="outlined"
                 rows="2"
               />
@@ -155,7 +155,7 @@
               <v-select
                 v-model="fieldData.type"
                 :items="fieldTypeOptions"
-                label="Typ pola"
+                :label="t('fields.fieldType')"
                 :rules="[rules.required]"
                 variant="outlined"
                 required
@@ -176,14 +176,14 @@
               <div class="field-settings">
                 <v-switch
                   v-model="fieldData.required"
-                  label="Pole wymagane"
+                  :label="t('fields.required')"
                   color="primary"
                   inset
                 />
 
                 <v-switch
                   v-model="fieldData.searchable"
-                  label="Pole wyszukiwalne"
+                  :label="t('fields.searchable')"
                   color="primary"
                   inset
                 />
@@ -192,7 +192,7 @@
 
             <!-- Options for select type -->
             <div v-if="fieldData.type === 'select'" class="form-section">
-              <h3>Opcje wyboru</h3>
+              <h3>{{ t('fields.selectOptionsTitle') }}</h3>
               <div class="options-editor">
                 <div
                   v-for="(option, index) in fieldData.options"
@@ -201,7 +201,7 @@
                 >
                   <v-text-field
                     v-model="fieldData.options[index]"
-                    :label="`Opcja ${index + 1}`"
+                    :label="t('fields.option', { index: index + 1 })"
                     variant="outlined"
                     density="comfortable"
                   />
@@ -221,19 +221,19 @@
                   prepend-icon="mdi-plus"
                   block
                 >
-                  Dodaj opcję
+                  {{ t('fields.addOption') }}
                 </v-btn>
               </div>
             </div>
 
             <!-- Validation for number/text fields -->
             <div v-if="['text', 'number'].includes(fieldData.type)" class="form-section">
-              <h3>Walidacja</h3>
+              <h3>{{ t('fields.validation') }}</h3>
               <div class="validation-settings">
                 <v-text-field
                   v-if="fieldData.type === 'text'"
                   v-model.number="fieldData.validation.minLength"
-                  label="Minimalna długość"
+                  :label="t('fields.minLength')"
                   type="number"
                   variant="outlined"
                   density="comfortable"
@@ -241,7 +241,7 @@
                 <v-text-field
                   v-if="fieldData.type === 'text'"
                   v-model.number="fieldData.validation.maxLength"
-                  label="Maksymalna długość"
+                  :label="t('fields.maxLength')"
                   type="number"
                   variant="outlined"
                   density="comfortable"
@@ -249,7 +249,7 @@
                 <v-text-field
                   v-if="fieldData.type === 'number'"
                   v-model.number="fieldData.validation.min"
-                  label="Minimalna wartość"
+                  :label="t('fields.minValue')"
                   type="number"
                   variant="outlined"
                   density="comfortable"
@@ -257,7 +257,7 @@
                 <v-text-field
                   v-if="fieldData.type === 'number'"
                   v-model.number="fieldData.validation.max"
-                  label="Maksymalna wartość"
+                  :label="t('fields.maxValue')"
                   type="number"
                   variant="outlined"
                   density="comfortable"
@@ -270,7 +270,7 @@
         <v-card-actions class="dialog-actions">
           <v-spacer />
           <v-btn variant="text" @click="closeFieldDialog">
-            Anuluj
+            {{ t('common.cancel') }}
           </v-btn>
           <v-btn
             color="primary"
@@ -278,7 +278,7 @@
             :disabled="!fieldFormValid"
             @click="saveField"
           >
-            {{ isEditing ? 'Zapisz zmiany' : 'Utwórz pole' }}
+            {{ isEditing ? t('common.saveChanges') : t('fields.create') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -288,6 +288,9 @@
 
 <script setup>
 import { ref, computed, defineProps, defineEmits } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t, locale } = useI18n()
 
 const props = defineProps({
   database: Object,
@@ -320,19 +323,19 @@ const fieldData = ref({
 
 // Field type options
 const fieldTypeOptions = [
-  { title: 'Tekst', value: 'text' },
-  { title: 'Numer', value: 'number' },
-  { title: 'Email', value: 'email' },
-  { title: 'Data', value: 'date' },
-  { title: 'Tak/Nie', value: 'boolean' },
-  { title: 'Lista wyboru', value: 'select' },
-  { title: 'Wieloliniowy tekst', value: 'textarea' },
-  { title: 'URL', value: 'url' },
-  { title: 'Telefon', value: 'phone' }
+  { title: t('fields.typeOptions.text'), value: 'text' },
+  { title: t('fields.typeOptions.number'), value: 'number' },
+  { title: t('fields.typeOptions.email'), value: 'email' },
+  { title: t('fields.typeOptions.date'), value: 'date' },
+  { title: t('fields.typeOptions.boolean'), value: 'boolean' },
+  { title: t('fields.typeOptions.select'), value: 'select' },
+  { title: t('fields.typeOptions.textarea'), value: 'textarea' },
+  { title: t('fields.typeOptions.url'), value: 'url' },
+  { title: t('fields.typeOptions.phone'), value: 'phone' }
 ]
 
 const rules = {
-  required: value => !!value || 'To pole jest wymagane'
+  required: value => !!value || t('validation.required')
 }
 
 // Computed
@@ -376,7 +379,12 @@ function getFieldTypeLabel(type) {
 
 function formatDate(date) {
   if (!date) return '-'
-  return new Date(date).toLocaleDateString('pl-PL')
+  const tag = locale.value === 'pl' ? 'pl-PL' : 'en-US'
+  try {
+    return new Date(date).toLocaleDateString(tag)
+  } catch (e) {
+    return new Date(date).toLocaleDateString()
+  }
 }
 
 function openAddField() {
@@ -434,7 +442,7 @@ function duplicateField(field) {
   const duplicate = {
     ...field,
     id: Date.now(),
-    name: `${field.name} (kopia)`,
+    name: `${field.name}${t('fields.copySuffix')}`,
     usageCount: 0
   }
   emit('add-field', duplicate)
@@ -445,7 +453,7 @@ function toggleRequired(field) {
 }
 
 function deleteField(field) {
-  if (confirm(`Czy na pewno chcesz usunąć pole "${field.name}"? Ta akcja usunie także wszystkie dane z tego pola z kontaktów.`)) {
+  if (confirm(t('fields.deleteConfirm', { name: field.name }))) {
     emit('delete-field', field)
   }
 }

@@ -1,16 +1,16 @@
 <template>
-  <PageContent title="Kampanie Marketingowe" subtitle="Twórz, zarządzaj i monitoruj swoje kampanie email marketingowe">
+  <PageContent title="$t('campaigns.pageTitle')" subtitle="$t('campaigns.pageSubtitle')">
     <template #left-panel>
       <v-card class="campaign-list-card">
         <v-card-title class="card-header">
           <div class="header-content">
             <div class="header-info">
-              <h3>Kampanie</h3>
-              <span class="campaign-count">{{ campaigns.length }} kampanii</span>
+              <h3>{{ $t('campaigns.title') }}</h3>
+              <span class="campaign-count">{{ campaigns.length }} {{ $t('campaigns.newCampaign') /* fallback label */ }}</span>
             </div>
-            <v-btn color="primary" class="add-btn" @click="openCreateDialog">
+              <v-btn color="primary" class="add-btn" @click="openCreateDialog">
               <v-icon left>mdi-plus</v-icon>
-              Nowa kampania
+              {{ $t('campaigns.newCampaign') }}
             </v-btn>
           </div>
         </v-card-title>
@@ -18,7 +18,7 @@
         <v-card-text class="pa-0 campaign-list-content">
           <!-- Search & Filters -->
           <div class="search-section">
-            <v-text-field v-model="searchQuery" placeholder="Wyszukaj kampanię..." prepend-inner-icon="mdi-magnify"
+            <v-text-field v-model="searchQuery" placeholder="$t('campaigns.searchPlaceholder')" prepend-inner-icon="mdi-magnify"
               variant="outlined" density="comfortable" hide-details />
             <div class="filter-chips">
               <v-chip
@@ -92,8 +92,8 @@
       <div v-if="loadingCampaignDetails" class="loading-state">
         <div class="loading-content">
           <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
-          <h3>Ładowanie szczegółów kampanii...</h3>
-          <p>Pobieranie pełnych informacji o kampanii</p>
+          <h3>{{ $t('campaigns.loadingDetails') }}</h3>
+          <p>{{ $t('campaigns.loadingDetailsSub') }}</p>
         </div>
       </div>
 
@@ -109,19 +109,19 @@
           <v-tabs v-model="activeTab" bg-color="transparent">
             <v-tab value="content">
               <v-icon left>mdi-email</v-icon>
-              Treść
+              {{ $t('campaigns.tabs.content') }}
             </v-tab>
             <v-tab value="recipients">
               <v-icon left>mdi-account-multiple</v-icon>
-              Odbiorcy
+              {{ $t('campaigns.tabs.recipients') }}
             </v-tab>
             <v-tab value="replies">
               <v-icon left>mdi-reply</v-icon>
-              Odpowiedzi
+              {{ $t('campaigns.tabs.replies') }}
             </v-tab>
             <v-tab value="bounces">
               <v-icon left>mdi-email-alert</v-icon>
-              Odbicia
+              {{ $t('campaigns.tabs.bounces') }}
             </v-tab>
             <v-tab value="scheduling" v-if="false">
               <v-icon left>mdi-calendar-clock</v-icon>
@@ -143,17 +143,17 @@
               <v-window-item value="recipients">
                 <div class="recipients-management">
                   <div class="recipients-header">
-                    <h3>Zarządzanie odbiorcami</h3>
+                    <h3>{{ $t('campaigns.manageRecipients') }}</h3>
                     <v-btn color="primary" variant="outlined" @click="editCampaignDatabase">
                       <v-icon left>mdi-database-edit</v-icon>
-                      Zmień bazę odbiorców
+                      {{ $t('campaigns.changeDatabase') }}
                     </v-btn>
                   </div>
 
                   <v-card v-if="selectedCampaign.databaseInfo?.database" class="database-info mb-4">
                     <v-card-title class="pb-2">
                       <v-icon left color="primary">mdi-database</v-icon>
-                      Aktualna baza odbiorców
+                      {{ $t('campaigns.currentDatabase') }}
                     </v-card-title>
                     <v-card-text>
                       <div class="database-details">
@@ -180,7 +180,7 @@
 
                   <v-alert v-else type="warning" variant="tonal">
                     <v-icon>mdi-alert</v-icon>
-                    Nie wybrano bazy odbiorców dla tej kampanii. Kliknij "Zmień bazę odbiorców" aby wybrać bazę.
+                    {{ $t('campaigns.noDatabaseSelected') }}
                   </v-alert>
 
                   <CampaignRecipients v-if="false" :campaign="selectedCampaign" @edit-recipients="editRecipients" />
@@ -288,11 +288,11 @@
         <div class="empty-icon">
           <v-icon size="80" color="grey-lighten-2">mdi-email-outline</v-icon>
         </div>
-        <h3>Wybierz kampanię</h3>
-        <p>Wybierz kampanię z listy po lewej stronie, aby zobaczyć szczegóły i zarządzać nią.</p>
+        <h3>{{ $t('campaigns.emptyTitle') }}</h3>
+        <p>{{ $t('campaigns.emptyDescription') }}</p>
         <v-btn color="primary" @click="openCreateDialog">
           <v-icon left>mdi-plus</v-icon>
-          Utwórz pierwszą kampanię
+          {{ $t('campaigns.createFirst') }}
         </v-btn>
       </div>
     </template>
@@ -379,8 +379,8 @@
       {{ snackbar.message }}
       <template v-slot:actions>
         <v-btn variant="text" @click="snackbar.show = false">
-          Zamknij
-        </v-btn>
+            {{ $t('campaigns.close') }}
+          </v-btn>
       </template>
     </v-snackbar>
   </div>

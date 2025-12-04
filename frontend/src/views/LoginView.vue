@@ -1,5 +1,13 @@
 <template>
 <div class="login-view">
+  <!-- Language selector fixed top-right -->
+  <div class="language-toggle-top">
+    <label style="font-size:0.9rem; color: #eadcf6; margin-right:8px">{{ $t('toolbar.language') }}</label>
+    <select v-model="currentLocale" @change="changeLocale" class="language-select">
+      <option value="pl">PL</option>
+      <option value="en">EN</option>
+    </select>
+  </div>
   <!-- Animated background elements -->
   <div class="bg-shapes">
     <div class="shape shape-1"></div>
@@ -26,11 +34,22 @@
     </div>
     
     <!-- Right side with login form -->
-    <div class="login-card">
-      <div class="card-header">
-        <h2 class="login-title">Witamy z powrotem!</h2>
-        <p class="login-subtitle">Zaloguj się do swojego konta</p>
-      </div>
+      <div class="login-card">
+        <div class="card-header">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+            <div>
+              <h2 class="login-title">{{ $t('login.welcomeTitle') }}</h2>
+              <p class="login-subtitle">{{ $t('login.loginSubtitle') }}</p>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px">
+              <label style="font-size:0.9rem">{{ $t('toolbar.language') }}</label>
+              <select v-model="currentLocale" @change="changeLocale" style="padding:6px; border-radius:6px">
+                <option value="pl">PL</option>
+                <option value="en">EN</option>
+              </select>
+            </div>
+          </div>
+        </div>
       
       <form class="login-form" @submit="handleLogin">
         <div class="input-group">
@@ -38,7 +57,7 @@
             <svg class="input-icon" viewBox="0 0 24 24" width="20" height="20">
               <path fill="currentColor" d="M12,15C12.81,15 13.5,14.7 14.11,14.11C14.7,13.5 15,12.81 15,12C15,11.19 14.7,10.5 14.11,9.89C13.5,9.3 12.81,9 12,9C11.19,9 10.5,9.3 9.89,9.89C9.3,10.5 9,11.19 9,12C9,12.81 9.3,13.5 9.89,14.11C10.5,14.7 11.19,15 12,15M12,2C14.75,2 17.1,3 19.05,4.95C21,6.9 22,9.25 22,12V13.45C22,14.45 21.65,15.3 21,16C20.3,16.67 19.5,17 18.5,17C17.3,17 16.31,16.5 15.56,15.5C14.56,16.5 13.38,17 12,17C10.63,17 9.45,16.5 8.46,15.54C7.5,14.55 7,13.38 7,12C7,10.63 7.5,9.45 8.46,8.46C9.45,7.5 10.63,7 12,7C13.38,7 14.55,7.5 15.54,8.46C16.5,9.45 17,10.63 17,12V13.45C17,13.86 17.16,14.22 17.46,14.53C17.76,14.83 18.11,15 18.5,15C18.92,15 19.27,14.84 19.57,14.53C19.87,14.22 20,13.86 20,13.45V12C20,9.81 19.23,7.93 17.65,6.35C16.07,4.77 14.19,4 12,4C9.81,4 7.93,4.77 6.35,6.35C4.77,7.93 4,9.81 4,12C4,14.19 4.77,16.07 6.35,17.65C7.93,19.23 9.81,20 12,20H16V22H12C9.25,22 6.9,21 4.95,19.05C3,17.1 2,14.75 2,12C2,9.25 3,6.9 4.95,4.95C6.9,3 9.25,2 12,2Z"/>
             </svg>
-            <input type="email" v-model="email" placeholder="Email" class="login-input" required />
+            <input type="email" v-model="email" :placeholder="$t('login.emailPlaceholder')" class="login-input" required />
           </div>
         </div>
         
@@ -47,12 +66,12 @@
             <svg class="input-icon" viewBox="0 0 24 24" width="20" height="20">
               <path fill="currentColor" d="M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"/>
             </svg>
-            <input type="password" v-model="password" placeholder="Hasło" class="login-input" required />
+            <input type="password" v-model="password" :placeholder="$t('login.passwordPlaceholder')" class="login-input" required />
           </div>
         </div>
         
         <button type="submit" class="login-btn">
-          <span>Zaloguj się</span>
+          <span>{{ $t('login.loginButton') }}</span>
           <svg class="btn-arrow" viewBox="0 0 24 24" width="20" height="20">
             <path fill="currentColor" d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/>
           </svg>
@@ -74,11 +93,23 @@
 import { ref } from 'vue';
 import { Account } from '../services/account';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter();
 const email = ref('');
 const password = ref('');
 const error = ref('');
+const { locale, t } = useI18n()
+const currentLocale = ref(locale.value)
+
+function changeLocale() {
+  locale.value = currentLocale.value
+  try {
+    localStorage.setItem('app_locale', currentLocale.value)
+  } catch (e) {
+    console.warn('Could not persist locale', e)
+  }
+}
 
 async function handleLogin(event) {
   event.preventDefault();
@@ -87,7 +118,7 @@ async function handleLogin(event) {
   if (result) {
     router.push('/campaigns');
   } else {
-    error.value = 'Błąd autoryzacji';
+    error.value = t('login.authError');
     email.value = '';
     password.value = '';
   }
@@ -105,6 +136,28 @@ async function handleLogin(event) {
   overflow: hidden;
   background: linear-gradient(135deg, #140f07 0%, #202950 50%, #515bad 100%);
   padding: 20px;
+}
+
+.language-toggle-top {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 13, 30, 0.6);
+  padding: 6px 10px;
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+}
+
+.language-select {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: none;
+  background: white;
+  color: #111827;
 }
 
 /* Animated background shapes */

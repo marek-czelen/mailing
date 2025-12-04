@@ -1,16 +1,16 @@
 <template>
-  <PageContent title="Bazy Danych" subtitle="Zarządzaj bazami kontaktów dla kampanii marketingowych">
+  <PageContent :title="$t('databases.pageTitle')" :subtitle="$t('databases.pageSubtitle')">
     <template #left-panel>
       <v-card class="database-list-card">
         <v-card-title class="card-header">
           <div class="header-content">
             <div class="header-info">
-              <h3>Bazy Danych</h3>
-              <span class="db-count">{{ databases.length }} baz</span>
+              <h3>{{ $t('databases.title') }}</h3>
+              <span class="db-count">{{ databases.length }} {{ $t('databases.bases') }}</span>
             </div>
             <v-btn color="primary" class="add-btn" @click="openCreateDialog">
               <v-icon left>mdi-plus</v-icon>
-              Nowa baza
+              {{ $t('databases.newDatabase') }}
             </v-btn>
           </div>
         </v-card-title>
@@ -18,7 +18,7 @@
         <v-card-text class="pa-0 database-list-content">
           <!-- Search -->
           <div class="search-section">
-            <v-text-field v-model="searchQuery" placeholder="Wyszukaj bazę..." prepend-inner-icon="mdi-magnify"
+            <v-text-field v-model="searchQuery" :placeholder="$t('databases.searchPlaceholder')" prepend-inner-icon="mdi-magnify"
               variant="outlined" density="comfortable" hide-details />
           </div>
 
@@ -31,7 +31,7 @@
                 color="primary"
                 size="40"
               ></v-progress-circular>
-              <p class="loading-text">Ładowanie baz danych...</p>
+              <p class="loading-text">{{ $t('databases.loadingDatabases') }}</p>
             </div>
             
             <!-- Database Items -->
@@ -45,7 +45,7 @@
                 <div class="db-meta">
                   <span class="contact-count">
                     <v-icon size="16">mdi-account-group</v-icon>
-                    {{ database.contactsCount }} kontaktów
+                    {{ database.contactsCount }} {{ $t('databases.contactsLabel') }}
                   </span>
                   <span class="db-date">{{ formatDate(database.createdAt) }}</span>
                 </div>
@@ -70,20 +70,20 @@
                     <v-list-item @click="editDatabase(database)">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-pencil</v-icon>
-                        Edytuj
+                        {{ $t('databases.edit') }}
                       </v-list-item-title>
                     </v-list-item>
                     <v-list-item @click="exportDatabase(database)">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-download</v-icon>
-                        Eksportuj
+                        {{ $t('databases.export') }}
                       </v-list-item-title>
                     </v-list-item>
                     <v-divider />
                     <v-list-item @click="deleteDatabase(database)" class="delete-item">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-delete</v-icon>
-                        Usuń
+                        {{ $t('databases.delete') }}
                       </v-list-item-title>
                     </v-list-item>
                   </v-list>
@@ -128,7 +128,7 @@
                     color="primary"
                     size="40"
                   ></v-progress-circular>
-                  <p class="loading-text">Ładowanie kontaktów...</p>
+                  <p class="loading-text">{{ $t('databases.loadingContacts') }}</p>
                 </div>
                 
                 <ContactsTable v-else :database="selectedDatabase" :contacts="selectedDatabase.contacts || []"
@@ -163,11 +163,11 @@
         <div class="empty-icon">
           <v-icon size="80" color="grey-lighten-2">mdi-database-outline</v-icon>
         </div>
-        <h3>Wybierz bazę danych</h3>
-        <p>Wybierz bazę danych z listy po lewej stronie, aby zobaczyć szczegóły i zarządzać kontaktami.</p>
+        <h3>{{ $t('databases.emptyTitle') }}</h3>
+        <p>{{ $t('databases.emptyDescription') }}</p>
         <v-btn color="primary" @click="openCreateDialog">
           <v-icon left>mdi-plus</v-icon>
-          Utwórz pierwszą bazę
+          {{ $t('databases.createFirst') }}
         </v-btn>
       </div>
     </template>
@@ -194,7 +194,7 @@
         variant="text"
         @click="snackbar.show = false"
       >
-        Zamknij
+        {{ $t('databases.snackbarClose') }}
       </v-btn>
     </template>
   </v-snackbar>
@@ -202,6 +202,7 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ContactsTable from '../components/database/ContactsTable.vue'
 import SegmentsManager from '../components/database/SegmentsManager.vue'
 import FieldsManager from '../components/database/FieldsManager.vue'
@@ -230,6 +231,8 @@ const snackbar = ref({
   message: '',
   color: 'info'
 })
+
+const { t } = useI18n()
 
 // Computed
 const filteredDatabases = computed(() => {
@@ -274,7 +277,7 @@ async function loadDatabaseContacts(databaseId) {
     if (selectedDatabase.value && selectedDatabase.value.id === databaseId) {
       selectedDatabase.value.contacts = []
     }
-    showSnackbar('Nie udało się załadować kontaktów', 'error')
+    showSnackbar(t('databases.loadError'), 'error')
   } finally {
     loadingContacts.value = false
   }
@@ -320,7 +323,7 @@ async function saveDatabase(databaseData) {
       }
       console.log('Baza danych zaktualizowana:', updatedDatabase)
       
-      showSnackbar('Baza danych została zaktualizowana', 'success')
+      showSnackbar(t('databases.updated'), 'success')
       closeDatabaseDialog()
     } else {
       // Create new database
@@ -332,14 +335,14 @@ async function saveDatabase(databaseData) {
         selectedDatabase.value = newDatabase
         console.log('Nowa baza danych dodana do listy:', newDatabase.name)
         
-        showSnackbar('Nowa baza danych została utworzona', 'success')
+        showSnackbar(t('databases.created'), 'success')
         closeDatabaseDialog()
       }
     }
   } catch (error) {
     console.error('Błąd podczas zapisywania bazy danych:', error)
     console.error('Response error:', error.response?.data)
-    showSnackbar('Nie udało się zapisać bazy danych: ' + (error.response?.data?.message || error.message), 'error')
+    showSnackbar(t('databases.saveFailed') + ': ' + (error.response?.data?.message || error.message), 'error')
   } finally {
     loadingOperation.value = false
   }
@@ -352,7 +355,7 @@ function closeDatabaseDialog() {
 
 
 async function deleteDatabase(database) {
-  if (confirm(`Czy na pewno chcesz usunąć bazę "${database.name}"? Ta operacja jest nieodwracalna.`)) {
+  if (window.confirm(t('databases.deleteConfirm', { name: database.name }))) {
     loadingOperation.value = true
     try {
       await Databases.delete(database.id)
@@ -361,10 +364,10 @@ async function deleteDatabase(database) {
         selectedDatabase.value = null
       }
       console.log('Baza danych usunięta:', database.name)
-      showSnackbar('Baza danych została usunięta', 'success')
+      showSnackbar(t('databases.deleted'), 'success')
     } catch (error) {
       console.error('Błąd podczas usuwania bazy danych:', error)
-      showSnackbar('Nie udało się usunąć bazy danych. Spróbuj ponownie.', 'error')
+      showSnackbar(t('databases.deleteFailed'), 'error')
     } finally {
       loadingOperation.value = false
     }
@@ -393,10 +396,10 @@ async function exportDatabase(database) {
     window.URL.revokeObjectURL(url)
     
     console.log('Baza danych wyeksportowana:', database.name)
-    showSnackbar('Baza danych została wyeksportowana', 'success')
+    showSnackbar(t('databases.exported'), 'success')
   } catch (error) {
     console.error('Błąd podczas eksportowania bazy danych:', error)
-    showSnackbar('Nie udało się wyeksportować bazy danych.', 'error')
+    showSnackbar(t('databases.deleteFailed'), 'error')
   } finally {
     loadingOperation.value = false
   }
@@ -430,7 +433,7 @@ async function deleteContact(contact) {
       }
     } catch (error) {
       console.error('Błąd podczas usuwania kontaktu:', error)
-      alert('Nie udało się usunąć kontaktu.')
+        alert(t('databases.deleteFailed'))
     }
   }
 }
@@ -644,7 +647,7 @@ async function loadDatabases() {
     }
   } catch (error) {
     console.error('Błąd podczas ładowania baz danych:', error)
-    showSnackbar('Nie udało się załadować baz danych', 'error')
+    showSnackbar(t('databases.loadError'), 'error')
     // Fallback to sample data in case of error
     databases.value = []
   } finally {

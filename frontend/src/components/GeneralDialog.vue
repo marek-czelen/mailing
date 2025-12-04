@@ -22,10 +22,10 @@
       <v-card-actions class="dialog-actions">
         <slot name="actions">
           <v-spacer />
-          <v-btn variant="text" v-if="cancelButton" @click="close">Anuluj</v-btn>
+          <v-btn variant="text" v-if="cancelButton" @click="close">{{ t('common.cancel') }}</v-btn>
           <v-btn color="primary" variant="elevated" v-if="saveButton" @click="save">
             <v-icon left>mdi-content-save</v-icon>
-            Zapisz
+            {{ t('common.save') }}
           </v-btn>
         </slot>
       </v-card-actions>
@@ -35,6 +35,7 @@
 
 <script setup>
 import { defineProps, defineEmits } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -46,6 +47,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'close'])
+
+const { t } = useI18n()
 
 function close() {
   emit('close')

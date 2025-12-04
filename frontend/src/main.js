@@ -33,6 +33,7 @@ import './style.css'
 import App from './App.vue'
 import vuetify from './plugins/vuetify'
 import WebFont from 'webfontloader';
+import i18n from './i18n/index.js'
 
 import '@mdi/font/css/materialdesignicons.css';
 
@@ -47,6 +48,7 @@ WebFont.load({
 const app = createApp(App)
   .use(router)
   .use(vuetify)
+  .use(i18n)
 
 router.isReady().then(() => {
   app.mount('#app')

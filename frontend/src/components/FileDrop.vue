@@ -2,28 +2,31 @@
   <div class="file-drop" @dragover.prevent @drop.prevent="onDrop">
     <v-file-input
       v-model="file"
-      label="Upuść plik lub wybierz z dysku"
+      :label="t('fileDrop.label')"
       accept=".csv,.txt"
       @change="onFileChange"
       hide-details
     />
     <div v-if="uploading">
-      Wysyłanie pliku...
+      {{ t('fileDrop.uploading') }}
       <v-progress-linear :value="progress" height="6" color="primary" :indeterminate="false" />
     </div>
-    <div v-if="filePath">Załadowano: {{ filePath }}</div>
+    <div v-if="filePath">{{ t('fileDrop.loaded') }}: {{ filePath }}</div>
   </div>
 </template>
 
 <script setup>
 import { ref, defineEmits, defineExpose } from 'vue';
 import axios from 'axios';
+import { useI18n } from 'vue-i18n';
 
 const file = ref(null);
 const filePath = ref('');
 const uploading = ref(false);
 const progress = ref(0);
 const emit = defineEmits(['file-uploaded']);
+
+const { t } = useI18n();
 
 defineExpose({
   reset
@@ -60,7 +63,7 @@ async function onFileChange() {
     filePath.value = res.data.path;
     emit('file-uploaded', filePath.value);
   } catch (err) {
-    alert('Błąd wysyłania pliku: ' + (err?.response?.data?.message || err.message));
+    alert(t('fileDrop.uploadError') + ': ' + (err?.response?.data?.message || err.message));
     filePath.value = '';
   } finally {
     uploading.value = false;

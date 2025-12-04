@@ -1,13 +1,13 @@
 <template>
   <div class="unsubscribe-page">
     <!-- Loading State -->
-    <div v-if="loading" class="loading-container">
+      <div v-if="loading" class="loading-container">
       <v-progress-circular
         indeterminate
         color="primary"
         size="64"
       ></v-progress-circular>
-      <p class="mt-4">Przetwarzanie żądania...</p>
+      <p class="mt-4">{{ $t('unsubscribe.processing') }}</p>
     </div>
 
     <!-- Success State -->
@@ -15,28 +15,28 @@
       <v-card class="mx-auto" max-width="600" elevation="3">
         <v-card-title class="success-header">
           <v-icon large color="success" class="mr-3">mdi-check-circle</v-icon>
-          Wypisanie z list mailingowych
+          {{ $t('unsubscribe.header') }}
         </v-card-title>
         
         <v-card-text class="py-6">
           <div class="text-center">
             <v-icon size="80" color="success" class="mb-4">mdi-email-remove-outline</v-icon>
             
-            <h2 class="mb-4">Zostałeś pomyślnie wypisany!</h2>
+            <h2 class="mb-4">{{ $t('unsubscribe.successTitle') }}</h2>
             
             <p class="text-h6 mb-4">
-              Adres email <strong>{{ contactEmail }}</strong> został usunięty ze wszystkich naszych baz mailingowych.
+              {{ $t('unsubscribe.successMessage', { email: contactEmail }) }}
             </p>
             
             <v-divider class="my-4"></v-divider>
             
             <div class="info-section">
-              <h3 class="mb-3">Co to oznacza?</h3>
+              <h3 class="mb-3">{{ $t('unsubscribe.infoTitle') }}</h3>
               <ul class="text-left unsubscribe-info">
-                <li>Nie będziesz już otrzymywać emaili marketingowych od nas</li>
-                <li>Zostałeś usunięty ze wszystkich naszych list mailingowych</li>
-                <li>Twoje dane osobowe zostały oznaczone jako nieaktywne</li>
-                <li>Możesz w każdej chwili ponownie się zapisać na naszą listę</li>
+                <li>{{ $t('unsubscribe.info.item1') }}</li>
+                <li>{{ $t('unsubscribe.info.item2') }}</li>
+                <li>{{ $t('unsubscribe.info.item3') }}</li>
+                <li>{{ $t('unsubscribe.info.item4') }}</li>
               </ul>
             </div>
             
@@ -44,9 +44,7 @@
             
             <div class="contact-info">
               <p class="text-body-2 text-grey-darken-1">
-                W przypadku pytań dotyczących przetwarzania danych osobowych<br>
-                skontaktuj się z nami pod adresem: 
-                <strong>{{ companyEmail || 'kontakt@verx.pl' }}</strong>
+                {{ $t('unsubscribe.contactInfo', { email: companyEmail || 'kontakt@verx.pl' }) }}
               </p>
             </div>
           </div>
@@ -59,7 +57,7 @@
             @click="goHome"
             prepend-icon="mdi-home"
           >
-            Strona główna
+            {{ $t('common.home') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -68,16 +66,16 @@
     <!-- Error State -->
     <div v-else-if="error" class="error-container">
       <v-card class="mx-auto" max-width="600" elevation="3">
-        <v-card-title class="error-header">
+          <v-card-title class="error-header">
           <v-icon large color="error" class="mr-3">mdi-alert-circle</v-icon>
-          Błąd wypisywania
+          {{ $t('unsubscribe.errorHeader') }}
         </v-card-title>
         
         <v-card-text class="py-6">
           <div class="text-center">
             <v-icon size="80" color="error" class="mb-4">mdi-email-alert-outline</v-icon>
             
-            <h2 class="mb-4">Wystąpił problem</h2>
+            <h2 class="mb-4">{{ $t('unsubscribe.errorTitle') }}</h2>
             
             <p class="text-h6 mb-4 error-message">
               {{ errorMessage }}
@@ -86,15 +84,15 @@
             <v-divider class="my-4"></v-divider>
             
             <div class="help-section">
-              <h3 class="mb-3">Możliwe przyczyny:</h3>
+              <h3 class="mb-3">{{ $t('unsubscribe.causesTitle') }}</h3>
               <ul class="text-left error-causes">
-                <li>Link do wypisania wygasł lub jest nieprawidłowy</li>
-                <li>Zostałeś już wcześniej wypisany z naszych list</li>
-                <li>Wystąpił tymczasowy problem techniczny</li>
+                <li>{{ $t('unsubscribe.cause1') }}</li>
+                <li>{{ $t('unsubscribe.cause2') }}</li>
+                <li>{{ $t('unsubscribe.cause3') }}</li>
               </ul>
               
               <p class="mt-4 text-body-2">
-                Jeśli problem się powtarza, skontaktuj się z nami bezpośrednio.
+                {{ $t('unsubscribe.ifProblemRepeat') }}
               </p>
             </div>
           </div>
@@ -108,7 +106,7 @@
             prepend-icon="mdi-refresh"
             class="mr-2"
           >
-            Spróbuj ponownie
+            {{ $t('unsubscribe.retry') }}
           </v-btn>
           <v-btn v-if="false"
             color="grey" 
@@ -116,7 +114,7 @@
             @click="goHome"
             prepend-icon="mdi-home"
           >
-            Strona główna
+            {{ $t('common.home') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -144,6 +142,9 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MailingService } from '../services/mailing'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 // Router setup
 const route = useRoute()
@@ -170,7 +171,7 @@ async function performUnsubscribe() {
     
     if (result.response.success) {
       unsubscribed.value = true
-      contactEmail.value = result.data?.contact?.mailAddress || 'Twój adres email'
+      contactEmail.value = result.data?.contact?.mailAddress || t('unsubscribe.successMessage', { email: 'Twój adres email' })
       
       // Get company email if available
       if (result.data?.customer?.companyEmail) {
@@ -179,9 +180,9 @@ async function performUnsubscribe() {
     } else {
       throw new Error(result.message || 'Nieznany błąd podczas wypisywania')
     }
-  } catch (err) {
+    } catch (err) {
     error.value = true
-    errorMessage.value = err.message || 'Wystąpił nieoczekiwany błąd'
+    errorMessage.value = err.message || t('unsubscribe.unexpectedError')
     console.error('Błąd podczas wypisywania z mailing:', err)
   } finally {
     loading.value = false
@@ -203,7 +204,7 @@ function goHome() {
 onMounted(() => {
   if (!contactHash) {
     error.value = true
-    errorMessage.value = 'Brakuje identyfikatora kontaktu w linku'
+    errorMessage.value = t('unsubscribe.missingHash')
     loading.value = false
     return
   }
@@ -214,7 +215,7 @@ onMounted(() => {
 // Validate hash format (basic check)
 if (contactHash && !/^[A-Za-z0-9_-]+$/.test(contactHash)) {
   error.value = true
-  errorMessage.value = 'Nieprawidłowy format identyfikatora kontaktu'
+  errorMessage.value = t('unsubscribe.invalidHash')
   loading.value = false
 }
 </script>

@@ -21,7 +21,7 @@
               variant="text"
               @click="snackbar.show = false"
             >
-              Zamknij
+              {{ $t('emailEditorDemo.close') }}
             </v-btn>
           </template>
         </v-snackbar>
@@ -50,7 +50,7 @@ export default {
   methods: {
     handleSendTestEmail(emailData) {
       console.log('Wysyłanie testowego e-maila:', emailData);
-      this.showNotification('Testowy e-mail zostałby wysłany (funkcjonalność demo)', 'info');
+      this.showNotification(this.$t('emailEditorDemo.demoNote'), 'info');
     },
     
     handleError(message) {

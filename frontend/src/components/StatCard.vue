@@ -1,42 +1,47 @@
 <template>
-    <v-card class="stat-card">
-        <div class="stat-content">
-            <div :class="className">
-                <v-icon>{{ icon }}</v-icon>
-            </div>
-            <div class="stat-info">
-                <h3>{{ value }}</h3>
-                <p>{{ title }}</p>
-            </div>
-        </div>
-    </v-card>
+  <v-card class="stat-card">
+    <div class="stat-content">
+      <div :class="className">
+        <v-icon>{{ icon }}</v-icon>
+      </div>
+      <div class="stat-info">
+        <h3>{{ value }}</h3>
+        <p>{{ titleComputed }}</p>
+      </div>
+    </div>
+  </v-card>
 </template>
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 
 const props = defineProps({
-    selectedCampaign: Object,
-    icon: {
-        type: String,
-        default: 'mdi-email-send'
-    },
-    title: {
-        type: String,
-        default: 'Wysłanych'
-    },
-    class: {
-        type: String,
-        default: 'sent'
-    },
-    value: {
-        type: Number,
-        default: 0
-    }
+  selectedCampaign: Object,
+  icon: {
+    type: String,
+    default: 'mdi-email-send'
+  },
+  title: {
+    type: String,
+    default: ''
+  },
+  class: {
+    type: String,
+    default: 'sent'
+  },
+  value: {
+    type: Number,
+    default: 0
+  }
 });
 
+const { t } = useI18n();
+
+const titleComputed = computed(() => props.title || t('stats.sent'));
+
 const className = computed(() => {
-    return `stat-icon ${props.class}`;
+  return `stat-icon ${props.class}`;
 });
 </script>
 <style scoped>

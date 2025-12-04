@@ -225,7 +225,7 @@ a {
                     </linearGradient>
                   </defs>
                 </svg>
-                <span class="drawer-brand-text">MailingApp</span>
+                <span class="drawer-brand-text">{{ $t('drawer.brand') }}</span>
               </div>
             </div>
             
@@ -236,13 +236,13 @@ a {
                 <svg viewBox="0 0 24 24" width="20" height="20">
                   <path fill="currentColor" d="M13,3V9H21V3M13,21H21V11H13M3,21H11V15H3M3,13H11V3H3V13Z"/>
                 </svg>
-                Dashboard
+                {{ $t('nav.dashboard') }}
               </router-link>
               <router-link to="/campaigns" class="drawer-nav-item" @click="drawer = false">
                 <svg viewBox="0 0 24 24" width="20" height="20">
                   <path fill="currentColor" d="M22,6C22,4.89 21.1,4 20,4H4A2,2 0 0,0 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6M20,6L12,11L4,6H20M20,18H4V8L12,13L20,8V18Z"/>
                 </svg>
-                Kampanie
+                {{ $t('nav.campaigns') }}
               </router-link>
               <router-link
                   style="opacity: 0.6; pointer-events: none; user-select: none;"
@@ -250,7 +250,7 @@ a {
                 <svg viewBox="0 0 24 24" width="20" height="20">
                   <path fill="currentColor" d="M8,12H16V14H8V12M10,20H6V4H13V9H18V12.1L20,10.1V8L14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H10V20M20.2,13C20.3,13 20.5,13.1 20.6,13.2L21.9,14.5C22.1,14.7 22.1,15.1 21.9,15.3L20.9,16.3L18.8,14.2L19.8,13.2C19.9,13.1 20,13 20.2,13M20.2,16.9L14.1,23H12V20.9L18.1,14.8L20.2,16.9Z"/>
                 </svg>
-                Edytor
+                {{ $t('nav.editor') }}
               </router-link>
             </nav>
           </div>

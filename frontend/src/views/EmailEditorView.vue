@@ -51,7 +51,7 @@ export default {
   methods: {
     async handleSendTestEmail(emailData) {
       try {
-        console.log('Przygotowanie do wysłania testowego e-maila:', emailData);
+          console.log('Przygotowanie do wysłania testowego e-maila:', emailData);
         
         // Tutaj można dodać wywołanie API do wysyłania e-maili
         // const response = await this.$http.post('/api/emails/send-test', emailData);
@@ -59,10 +59,10 @@ export default {
         // Symulacja wysyłania
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        this.showSuccessMessage('Testowy e-mail został wysłany pomyślnie!');
+        this.showSuccessMessage(this.$t('emailEditor.testSent'));
       } catch (error) {
         console.error('Błąd wysyłania e-maila:', error);
-        this.showErrorMessage('Nie udało się wysłać testowego e-maila');
+        this.showErrorMessage(this.$t('emailEditor.testFailed'));
       }
     },
     

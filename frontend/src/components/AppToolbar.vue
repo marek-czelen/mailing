@@ -8,7 +8,7 @@
           <path fill="white" d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z"/>
         </svg>
       </div>
-      <span class="brand-text">MailingApp</span>
+      <span class="brand-text">{{ $t('drawer.brand') }}</span>
     </div>
 
     <!-- Center - Navigation -->
@@ -17,19 +17,19 @@
         <svg viewBox="0 0 24 24" width="20" height="20">
           <path fill="currentColor" d="M13,3V9H21V3M13,21H21V11H13M3,21H11V15H3M3,13H11V3H3V13Z"/>
         </svg>
-        Dashboard
+        {{ $t('nav.dashboard') }}
       </router-link>
       <router-link to="/campaigns" class="nav-item">
         <svg viewBox="0 0 24 24" width="20" height="20">
           <path fill="currentColor" d="M22,6C22,4.89 21.1,4 20,4H4A2,2 0 0,0 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6M20,6L12,11L4,6H20M20,18H4V8L12,13L20,8V18Z"/>
         </svg>
-        Kampanie
+        {{ $t('nav.campaigns') }}
       </router-link>
       <router-link to="/databases" class="nav-item">
         <svg viewBox="0 0 24 24" width="20" height="20">
           <path fill="currentColor" d="M12,3C7.58,3 4,4.79 4,7C4,9.21 7.58,11 12,11C16.42,11 20,9.21 20,7C20,4.79 16.42,3 12,3M4,9V12C4,14.21 7.58,16 12,16C16.42,16 20,14.21 20,12V9C20,11.21 16.42,13 12,13C7.58,13 4,11.21 4,9M4,14V17C4,19.21 7.58,21 12,21C16.42,21 20,19.21 20,17V14C20,16.21 16.42,18 12,18C7.58,18 4,16.21 4,14Z"/>
         </svg>
-        Bazy danych
+        {{ $t('nav.databases') }}
       </router-link>
       <router-link 
         style="opacity: 0.6; pointer-events: none; user-select: none;"
@@ -37,7 +37,7 @@
         <svg viewBox="0 0 24 24" width="20" height="20">
           <path fill="currentColor" d="M8,12H16V14H8V12M10,20H6V4H13V9H18V12.1L20,10.1V8L14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H10V20M20.2,13C20.3,13 20.5,13.1 20.6,13.2L21.9,14.5C22.1,14.7 22.1,15.1 21.9,15.3L20.9,16.3L18.8,14.2L19.8,13.2C19.9,13.1 20,13 20.2,13M20.2,16.9L14.1,23H12V20.9L18.1,14.8L20.2,16.9Z"/>
         </svg>
-        Edytor
+        {{ $t('nav.editor') }}
       </router-link>
     </nav>
 
@@ -54,6 +54,13 @@
 
     <!-- Right side - User menu -->
     <div class="toolbar-actions">
+      <div style="margin-right:12px; display:flex; align-items:center; gap:8px; color:white">
+        <label style="font-size:0.9rem">{{$t('toolbar.language')}}</label>
+        <select v-model="currentLocale" @change="changeLocale" style="padding:6px; border-radius:6px">
+          <option value="pl">PL</option>
+          <option value="en">EN</option>
+        </select>
+      </div>
       <v-menu>
         <template #activator="{ props }">
           <button class="user-menu-btn" v-bind="props">
@@ -68,13 +75,13 @@
           </button>
         </template>
         <v-list class="user-dropdown">
-          <v-list-item @click="logout" class="logout-item">
+            <v-list-item @click="logout" class="logout-item">
             <template v-slot:prepend>
               <svg viewBox="0 0 24 24" width="20" height="20">
                 <path fill="currentColor" d="M16,17V14H9V10H16V7L21,12L16,17M14,2A2,2 0 0,1 16,4V6H14V4H5V20H14V18H16V20A2,2 0 0,1 14,22H5A2,2 0 0,1 3,20V4A2,2 0 0,1 5,2H14Z"/>
               </svg>
             </template>
-            <v-list-item-title>Wyloguj</v-list-item-title>
+            <v-list-item-title>{{ $t('toolbar.logout') }}</v-list-item-title>
           </v-list-item>
           <v-list-item @click="settings" class="menu-item">
             <template v-slot:prepend>
@@ -82,7 +89,7 @@
                 <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.63l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.36 7.36 0 0 0-1.66-.96l-.36-2.57A.5.5 0 0 0 13.6 2h-3.2a.5.5 0 0 0-.49.42L9.55 5a7.36 7.36 0 0 0-1.66.96l-2.39-.96a.5.5 0 0 0-.6.22L2.98 9.5a.5.5 0 0 0 .12.63l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L3.1 15.2a.5.5 0 0 0-.12.63l1.92 3.32c.14.24.43.34.68.25l2.39-.96c.5.29 1.02.52 1.66.7l.36 2.57c.05.27.28.42.49.42h3.2c.25 0 .45-.15.49-.42l.36-2.57c.64-.18 1.16-.41 1.66-.7l2.39.96c.25.09.54-.01.68-.25l1.92-3.32a.5.5 0 0 0-.12-.63l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/>
               </svg>
             </template>
-            <v-list-item-title>Ustawienia</v-list-item-title>
+            <v-list-item-title>{{ $t('toolbar.settings') }}</v-list-item-title>
           </v-list-item>          
         </v-list>
         
@@ -101,6 +108,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router';
 import { Account } from '../services/account';
 import { CustomerService } from '../services/customer';
@@ -108,10 +116,12 @@ import UserSettingsDialog from './UserSettingsDialog.vue';
 
 const router = useRouter();
 const isMobile = ref(false);
+const { locale } = useI18n()
 
 // Dialog state
 const showSettingsDialog = ref(false);
 const currentUser = ref({});
+const currentLocale = ref(locale.value)
 
 // Define emits
 const emit = defineEmits(['toggle-drawer']);
@@ -141,6 +151,15 @@ onUnmounted(() => {
 function logout() {
   Account.logout();
   router.push('/login');
+}
+
+function changeLocale() {
+  locale.value = currentLocale.value
+  try {
+    localStorage.setItem('app_locale', currentLocale.value)
+  } catch (e) {
+    console.warn('Could not persist locale', e)
+  }
 }
 
 function settings() {

@@ -20,16 +20,16 @@
             color="primary"
           ></v-progress-circular>
           <h3 class="loading-title">
-            {{ saving ? 'Zapisywanie kontaktu...' : unsubscribing ? 'Wypisywanie z listy...' : 'Zapisywanie na listę...' }}
+            {{ saving ? t('contacts.saving') : unsubscribing ? t('contacts.unsubscribing') : t('contacts.resubscribing') }}
           </h3>
           <p class="loading-subtitle">
-            Proszę czekać
+            {{ t('common.pleaseWait') }}
           </p>
         </div>
       </v-overlay>
 
       <v-card-title class="dialog-header">
-        <h2>{{ isEditing ? 'Edytuj kontakt' : 'Nowy kontakt' }}</h2>
+        <h2>{{ isEditing ? t('contacts.editContact') : t('contacts.newContact') }}</h2>
         <v-btn icon variant="text" @click="close" class="close-btn" :disabled="unsubscribing || resubscribing || saving">
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -39,13 +39,13 @@
         <v-form ref="form" v-model="valid" @submit.prevent="save">
           <!-- Basic Information -->
           <div class="section">
-            <h3 class="section-title">Podstawowe informacje</h3>
+            <h3 class="section-title">{{ t('contacts.basicInfo') }}</h3>
             
 
             <v-text-field
               v-model="formData.mailAddress"
               density="compact"
-              label="Adres email"
+              :label="t('contacts.email')"
               :rules="[rules.required, rules.email]"
               variant="outlined"
               prepend-inner-icon="mdi-email"
@@ -55,7 +55,7 @@
             <v-text-field
               v-model="formData.phone"
               density="compact"
-              label="Numer telefonu"
+              :label="t('contacts.phone')"
               variant="outlined"
               prepend-inner-icon="mdi-phone"
             />
@@ -63,19 +63,19 @@
 
           <!-- Contact Details -->
           <div class="section">
-            <h3 class="section-title">Szczegóły kontaktu</h3>
+            <h3 class="section-title">{{ t('contacts.details') }}</h3>
             
             <div class="contact-row">
               <v-text-field
                 v-model="formData.miasto"
                 density="compact"
-                label="Miasto"
+                :label="t('contacts.city')"
                 variant="outlined"
               />
               <v-text-field
                 v-model="formData.rodzaj"
                 density="compact"
-                label="Rodzaj kontaktu"
+                :label="t('contacts.type')"
                 variant="outlined"
               />
             </div>
@@ -83,13 +83,13 @@
 
           <!-- Unsubscribe Section -->
           <div class="section" v-if="isEditing">
-            <h3 class="section-title">Zarządzanie subskrypcją</h3>
+            <h3 class="section-title">{{ t('contacts.manageSubscription') }}</h3>
             
             <div class="unsubscribe-section">
               <div v-if="formData.unsubscribeDate" class="unsubscribe-info">
                 <v-alert type="warning" variant="tonal">
                   <v-icon>mdi-email-remove</v-icon>
-                  Kontakt wypisał się z listy mailingowej w dniu: 
+                  {{ t('contacts.unsubscribedOn') }}: 
                   <strong>{{ formatDate(formData.unsubscribeDate) }}</strong>
                 </v-alert>
                 
@@ -102,7 +102,7 @@
                     @click="resubscribeContact"
                   >
                     <v-icon left>mdi-email-plus</v-icon>
-                    Zapisz ponownie na listę
+                    {{ t('contacts.resubscribeButton') }}
                   </v-btn>
                 </div>
               </div>
@@ -110,7 +110,7 @@
               <div v-else class="subscribe-info">
                 <v-alert type="success" variant="tonal">
                   <v-icon>mdi-email-check</v-icon>
-                  Kontakt jest zapisany na liście mailingowej
+                  {{ t('contacts.subscribed') }}
                 </v-alert>
                 
                 <div class="unsubscribe-actions">
@@ -122,7 +122,7 @@
                     @click="unsubscribeContact"
                   >
                     <v-icon left>mdi-email-remove</v-icon>
-                    Wypisz z listy
+                    {{ t('contacts.unsubscribeButton') }}
                   </v-btn>
                 </div>
               </div>
@@ -134,7 +134,7 @@
       <v-card-actions class="dialog-actions">
         <v-spacer />
         <v-btn variant="text" @click="close">
-          Anuluj
+          {{ t('common.cancel') }}
         </v-btn>
         <v-btn 
           color="primary"
@@ -142,7 +142,7 @@
           :disabled="!valid"
           @click="save"
         >
-          {{ isEditing ? 'Zapisz zmiany' : 'Dodaj kontakt' }}
+          {{ isEditing ? t('contacts.saveChanges') : t('contacts.addContact') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -157,26 +157,26 @@
       <v-card>
         <v-card-title class="confirmation-header">
           <v-icon color="warning" class="mr-2">mdi-alert</v-icon>
-          Wypisanie z listy
+          {{ t('contacts.unsubscribeTitle') }}
         </v-card-title>
         <v-card-text class="confirmation-content">
-          <p>Czy na pewno chcesz wypisać ten kontakt ze <strong>WSZYSTKICH</strong> list mailingowych tego klienta?</p>
+          <p>{{ t('contacts.unsubscribeConfirm') }}</p>
           <v-alert type="warning" variant="tonal" class="mt-3">
             <v-icon>mdi-information</v-icon>
-            Ta operacja wypisze kontakt ze wszystkich baz danych i jest nieodwracalna.
+            {{ t('contacts.unsubscribeWarning') }}
           </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="showUnsubscribeDialog = false">
-            Anuluj
+            {{ t('common.cancel') }}
           </v-btn>
           <v-btn 
             color="warning" 
             :loading="unsubscribing"
             @click="confirmUnsubscribe"
           >
-            Wypisz z listy
+            {{ t('contacts.unsubscribeButton') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -191,33 +191,33 @@
       <v-card>
         <v-card-title class="confirmation-header">
           <v-icon color="success" class="mr-2">mdi-check-circle</v-icon>
-          Zapisanie na listę
+          {{ t('contacts.resubscribeTitle') }}
         </v-card-title>
         <v-card-text class="confirmation-content">
-          <p>Czy na pewno chcesz ponownie zapisać ten kontakt na listy mailingowe?</p>
+          <p>{{ t('contacts.resubscribeConfirm') }}</p>
           <v-alert type="info" variant="tonal" class="mt-3">
             <v-icon>mdi-information</v-icon>
-            Kontakt będzie mógł ponownie otrzymywać wiadomości e-mail.
+            {{ t('contacts.resubscribeInfo') }}
           </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="showResubscribeDialog = false">
-            Anuluj
+            {{ t('common.cancel') }}
           </v-btn>
           <v-btn 
             color="success" 
             :loading="resubscribing"
             @click="confirmResubscribe"
           >
-            Zapisz na listę
+            {{ t('contacts.resubscribeButton') }}
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
     <!-- Success/Error Snackbar -->
-    <v-snackbar
+      <v-snackbar
       v-model="snackbar.show"
       :color="snackbar.color"
       timeout="5000"
@@ -228,7 +228,7 @@
           variant="text"
           @click="snackbar.show = false"
         >
-          Zamknij
+          {{ t('common.cancel') }}
         </v-btn>
       </template>
     </v-snackbar>
@@ -238,6 +238,7 @@
 <script setup>
 import { ref, computed, watch, defineProps, defineEmits } from 'vue'
 import { Databases } from '../../services/databases'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -246,6 +247,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'save', 'close', 'contact-updated'])
+
+const { t, locale } = useI18n()
 
 // Reactive data
 const valid = ref(false)
@@ -272,22 +275,22 @@ const formData = ref({
   unsubscribeDate: null
 })
 
-// Type options
-const typeOptions = [
-  { title: 'Szkoła Podstawowa', value: 'podstawowa' },
-  { title: 'Szkoła Średnia', value: 'srednia' },
-  { title: 'Szkoła Wyższa', value: 'wyzsza' },
-  { title: 'Przedszkole', value: 'przedszkole' },
-  { title: 'Prywatna placówka edukacyjna', value: 'prywatna' },
-  { title: 'Inny', value: 'inny' },
+// Type options (localized)
+const typeOptions = () => [
+  { title: t('contacts.typeOptions.primarySchool'), value: 'podstawowa' },
+  { title: t('contacts.typeOptions.highSchool'), value: 'srednia' },
+  { title: t('contacts.typeOptions.university'), value: 'wyzsza' },
+  { title: t('contacts.typeOptions.kindergarten'), value: 'przedszkole' },
+  { title: t('contacts.typeOptions.privateSchool'), value: 'prywatna' },
+  { title: t('contacts.typeOptions.other'), value: 'inny' }
 ]
 
 // Validation rules
 const rules = {
-  required: value => !!value || 'To pole jest wymagane',
+  required: value => !!value || t('validation.required'),
   email: value => {
     const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return pattern.test(value) || 'Nieprawidłowy adres email'
+    return pattern.test(value) || t('validation.email')
   }
 }
 
@@ -331,12 +334,13 @@ function showSnackbar(message, color = 'info') {
 
 function formatDate(date) {
   if (!date) return '-'
-  return new Date(date).toLocaleDateString('pl-PL')
+  const localeTag = locale.value === 'pl' ? 'pl-PL' : 'en-US'
+  return new Date(date).toLocaleDateString(localeTag)
 }
 
 function unsubscribeContact() {
   if (!props.contact?.id) {
-    showSnackbar('Brak ID kontaktu', 'error')
+    showSnackbar(t('contacts.noDatabaseId'), 'error')
     return
   }
   
@@ -360,13 +364,13 @@ async function confirmUnsubscribe() {
         ...result.data.contact
       })
 
-      showSnackbar('Kontakt został pomyślnie wypisany ze wszystkich list mailingowych.', 'success')
+        showSnackbar(t('contacts.unsubscribedSuccess'), 'success')
     } else {
-      throw new Error(result.message || 'Nieznany błąd')
+      throw new Error(result.message || t('contacts.unknownError'))
     }
   } catch (error) {
     console.error('Błąd podczas wypisywania kontaktu:', error)
-    showSnackbar('Błąd podczas wypisywania kontaktu: ' + error.message, 'error')
+    showSnackbar(t('contacts.unsubscribedError') + ': ' + error.message, 'error')
   } finally {
     unsubscribing.value = false
   }
@@ -374,7 +378,7 @@ async function confirmUnsubscribe() {
 
 function resubscribeContact() {
   if (!props.contact?.id) {
-    showSnackbar('Brak ID kontaktu', 'error')
+    showSnackbar(t('contacts.noDatabaseId'), 'error')
     return
   }
   
@@ -398,13 +402,13 @@ async function confirmResubscribe() {
         ...result.data.contact
       })
       
-      showSnackbar('Kontakt został pomyślnie zapisany ponownie na listy mailingowe.', 'success')
+      showSnackbar(t('contacts.resubscribedSuccess'), 'success')
     } else {
-      throw new Error(result.message || 'Nieznany błąd')
+      throw new Error(result.message || t('contacts.unknownError'))
     }
   } catch (error) {
     console.error('Błąd podczas ponownego zapisywania kontaktu:', error)
-    showSnackbar('Błąd podczas ponownego zapisywania kontaktu: ' + error.message, 'error')
+    showSnackbar(t('contacts.resubscribeError') + ': ' + error.message, 'error')
   } finally {
     resubscribing.value = false
   }
@@ -434,25 +438,25 @@ async function save() {
       const result = await Databases.updateContact(updateData)
       
       if (result.success || result.response?.success) {
-        showSnackbar('Kontakt został pomyślnie zaktualizowany', 'success')
+        showSnackbar(t('contacts.updatedSuccess'), 'success')
         
         // Powiadom rodzica o zmianie - przekaż zaktualizowane dane
         emit('contact-updated', {
           ...props.contact,
           ...formData.value,
           lastActivity: new Date(),
-          lastActivityType: 'Zaktualizowano'
+          lastActivityType: t('contacts.activity.updated')
         })
         
         // Zamknij dialog
         close()
       } else {
-        throw new Error(result.message || 'Nieznany błąd')
+        throw new Error(result.message || t('contacts.unknownError'))
       }
     } else {
       // Create new contact via backend
       if (!props.database?.id) {
-        throw new Error('Brak ID bazy danych')
+        throw new Error(t('contacts.noDatabaseId'))
       }
       
       const newContactData = {
@@ -469,7 +473,7 @@ async function save() {
       console.log('Wynik dodawania kontaktu:', result)
       
       if (result.success || result.response?.success || result.data) {
-        showSnackbar('Kontakt został pomyślnie dodany', 'success')
+        showSnackbar(t('contacts.addedSuccess'), 'success')
         
         // Powiadom rodzica o nowym kontakcie - używaj danych z odpowiedzi API
         const apiContact = result.data || result.contact
@@ -483,7 +487,7 @@ async function save() {
           active: newContactData.active,
           unsubscribesDate: null, // Nowy kontakt nie jest wypisany
           lastActivity: new Date(),
-          lastActivityType: 'Utworzono'
+          lastActivityType: t('contacts.activity.created')
         }
         
         console.log('Emitowanie contact-updated:', newContact)
@@ -493,12 +497,12 @@ async function save() {
         close()
       } else {
         console.error('Błąd walidacji sukcesu:', result)
-        throw new Error(result.message || 'Nieznany błąd podczas dodawania kontaktu')
+        throw new Error(result.message || t('contacts.unknownAddError'))
       }
     }
   } catch (error) {
     console.error('Błąd podczas zapisywania:', error)
-    showSnackbar('Błąd podczas zapisywania kontaktu: ' + error.message, 'error')
+    showSnackbar(t('contacts.saveError') + ': ' + error.message, 'error')
   } finally {
     saving.value = false
   }
