@@ -2,21 +2,21 @@
   <v-table>
     <thead>
       <tr>
-        <th>Nazwa</th>
-        <th>Wartość</th>
+        <th>{{ t('dashboard.name') }}</th>
+        <th>{{ t('dashboard.value') }}</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td>Pozycja 1</td>
+        <td>{{ t('dashboard.position1') }}</td>
         <td>123</td>
       </tr>
       <tr>
-        <td>Pozycja 2</td>
+        <td>{{ t('dashboard.position2') }}</td>
         <td>456</td>
       </tr>
       <tr>
-        <td>Pozycja 3</td>
+        <td>{{ t('dashboard.position3') }}</td>
         <td>789</td>
       </tr>
     </tbody>
@@ -24,5 +24,6 @@
 </template>
 
 <script setup>
-// Brak logiki, przykładowa tabelka
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 </script>

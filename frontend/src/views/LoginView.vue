@@ -29,8 +29,8 @@
           </defs>
         </svg>
       </div>
-      <h1 class="brand-title">MailingApp</h1>
-      <p class="brand-subtitle">Nowoczesna platforma do zarządzania kampaniami email</p>
+      <h1 class="brand-title">{{ $t('login.brandTitle') }}</h1>
+      <p class="brand-subtitle">{{ $t('login.brandSubtitle') }}</p>
     </div>
     
     <!-- Right side with login form -->
@@ -40,13 +40,6 @@
             <div>
               <h2 class="login-title">{{ $t('login.welcomeTitle') }}</h2>
               <p class="login-subtitle">{{ $t('login.loginSubtitle') }}</p>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px">
-              <label style="font-size:0.9rem">{{ $t('toolbar.language') }}</label>
-              <select v-model="currentLocale" @change="changeLocale" style="padding:6px; border-radius:6px">
-                <option value="pl">PL</option>
-                <option value="en">EN</option>
-              </select>
             </div>
           </div>
         </div>

@@ -2,17 +2,17 @@
   <div class="campaign-analytics">
     <div class="analytics-header">
       <div class="header-info">
-        <h3>Analityka kampanii</h3>
-        <p>Szczegółowe statystyki wydajności i zaangażowania</p>
+        <h3>{{ t('campaigns.analytics') }}</h3>
+        <p>{{ t('campaigns.analyticsDesc') }}</p>
       </div>
       <div class="header-actions">
         <v-btn color="info" variant="outlined" @click="exportReport">
           <v-icon left>mdi-download</v-icon>
-          Eksportuj raport
+          {{ t('campaigns.exportReport') }}
         </v-btn>
         <v-btn color="primary" @click="refreshData">
           <v-icon left>mdi-refresh</v-icon>
-          Odśwież dane
+          {{ t('campaigns.refreshData') }}
         </v-btn>
       </div>
     </div>
@@ -22,7 +22,7 @@
       <v-card class="performance-card">
         <v-card-title class="card-title">
           <v-icon color="success">mdi-chart-line</v-icon>
-          Przegląd wydajności
+          {{ t('campaigns.performanceOverview') }}
         </v-card-title>
         <v-card-text>
           <div class="performance-stats">
@@ -32,7 +32,7 @@
               </div>
               <div class="perf-details">
                 <div class="perf-value">{{ analytics.sent.toLocaleString() }}</div>
-                <div class="perf-label">Wysłane</div>
+                <div class="perf-label">{{ t('campaigns.sent') }}</div>
                 <div class="perf-change positive">
                   <v-icon size="14">mdi-trending-up</v-icon>
                   +{{ analytics.sentGrowth }}%
@@ -46,7 +46,7 @@
               </div>
               <div class="perf-details">
                 <div class="perf-value">{{ analytics.opens.toLocaleString() }}</div>
-                <div class="perf-label">Otwarcia</div>
+                <div class="perf-label">{{ t('campaigns.opens') }}</div>
                 <div class="perf-rate">{{ analytics.openRate }}%</div>
               </div>
             </div>
@@ -57,7 +57,7 @@
               </div>
               <div class="perf-details">
                 <div class="perf-value">{{ analytics.clicks.toLocaleString() }}</div>
-                <div class="perf-label">Kliknięcia</div>
+                <div class="perf-label">{{ t('campaigns.clicks') }}</div>
                 <div class="perf-rate">{{ analytics.clickRate }}%</div>
               </div>
             </div>
@@ -68,7 +68,7 @@
               </div>
               <div class="perf-details">
                 <div class="perf-value">{{ analytics.bounces.toLocaleString() }}</div>
-                <div class="perf-label">Odrzucenia</div>
+                <div class="perf-label">{{ t('campaigns.rejections') }}</div>
                 <div class="perf-rate">{{ analytics.bounceRate }}%</div>
               </div>
             </div>
@@ -79,7 +79,7 @@
               </div>
               <div class="perf-details">
                 <div class="perf-value">{{ analytics.unsubscribes.toLocaleString() }}</div>
-                <div class="perf-label">Wypisania</div>
+                <div class="perf-label">{{ t('campaigns.unsubscribes') }}</div>
                 <div class="perf-rate">{{ analytics.unsubscribeRate }}%</div>
               </div>
             </div>
@@ -345,6 +345,9 @@
 
 <script setup>
 import { ref, computed, defineProps, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 defineProps({
   campaign: {

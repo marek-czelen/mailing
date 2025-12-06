@@ -8,7 +8,7 @@
             <v-icon size="40" color="primary" class="mr-3">mdi-email-multiple</v-icon>
             <div>
               <div class="text-h6">{{ stats.totalReplies || 0 }}</div>
-              <div class="text-caption text-medium-emphasis">Wszystkie odpowiedzi</div>
+              <div class="text-caption text-medium-emphasis">{{ t('campaigns.allReplies') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -19,7 +19,7 @@
             <v-icon size="40" color="success" class="mr-3">mdi-account-check</v-icon>
             <div>
               <div class="text-h6">{{ stats.identifiedReplies || 0 }}</div>
-              <div class="text-caption text-medium-emphasis">Zidentyfikowane</div>
+              <div class="text-caption text-medium-emphasis">{{ t('campaigns.identified') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -30,7 +30,7 @@
             <v-icon size="40" color="warning" class="mr-3">mdi-account-question</v-icon>
             <div>
               <div class="text-h6">{{ stats.unidentifiedReplies || 0 }}</div>
-              <div class="text-caption text-medium-emphasis">Niezidentyfikowane</div>
+              <div class="text-caption text-medium-emphasis">{{ t('campaigns.unidentified') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -41,7 +41,7 @@
             <v-icon size="40" color="info" class="mr-3">mdi-percent</v-icon>
             <div>
               <div class="text-h6">{{ replyRate }}%</div>
-              <div class="text-caption text-medium-emphasis">Wskaźnik odpowiedzi</div>
+              <div class="text-caption text-medium-emphasis">{{ t('campaigns.replyRate') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -52,7 +52,7 @@
     <div class="filters-section mb-4">
       <v-text-field
         v-model="searchQuery"
-        placeholder="Wyszukaj w odpowiedziach..."
+        :placeholder="t('campaigns.searchInReplies')"
         prepend-inner-icon="mdi-magnify"
         variant="outlined"
         density="comfortable"
@@ -63,7 +63,7 @@
       <v-select
         v-model="statusFilter"
         :items="statusOptions"
-        placeholder="Status"
+        :placeholder="t('campaigns.status')"
         variant="outlined"
         density="comfortable"
         hide-details
@@ -88,7 +88,7 @@
           <div class="contact-info" v-if="item.hasContact && item.mailAddress">
             <v-chip size="x-small" color="success" variant="tonal" class="mt-1">
               <v-icon size="12" class="mr-1">mdi-account-check</v-icon>
-              Zidentyfikowany
+              {{ t('campaigns.identified') }}
             </v-chip>
           </div>
         </div>
@@ -98,7 +98,7 @@
       <template v-slot:item.subject="{ item }">
         <div class="subject-cell">
           <v-icon color="primary" size="16" class="mr-1">mdi-email</v-icon>
-          {{ item.subject || '(Brak tematu)' }}
+          {{ item.subject || t('campaigns.noSubject') }}
         </div>
       </template>
 
@@ -111,13 +111,13 @@
 
       <!-- Miasto Column -->
       <template v-slot:item.miasto="{ item }">
-        <span v-if="item.mailAddress">{{ item.mailAddress.miasto || '-' }}</span>
+        <span v-if="item.mailAddress">{{ item.mailAddress.miasto || t('campaigns.reply.identifiedContact') }}</span>
         <span v-else class="text-grey">-</span>
       </template>
 
       <!-- Rodzaj Column -->
       <template v-slot:item.rodzaj="{ item }">
-        <span v-if="item.mailAddress">{{ item.mailAddress.rodzaj || '-' }}</span>
+        <span v-if="item.mailAddress">{{ item.mailAddress.rodzaj || t('campaigns.reply.identifiedContact') }}</span>
         <span v-else class="text-grey">-</span>
       </template>
 
@@ -139,7 +139,7 @@
       <template v-slot:no-data>
         <div class="no-data">
           <v-icon size="48" color="grey-lighten-2">mdi-email-off</v-icon>
-          <p>Brak odpowiedzi do tej kampanii</p>
+          <p>{{ t('campaigns.reply.noData') }}</p>
         </div>
       </template>
     </v-data-table-server>
@@ -148,7 +148,7 @@
      <GeneralDialog
       v-model="showReplyDialog"
       :persistent="false"
-      title="Szczegóły odpowiedzi"
+      :title="t('campaigns.reply.detailsTitle')"
     >
     <template #default>
       <v-card v-if="selectedReply">
@@ -156,43 +156,43 @@
          
           <div class="reply-details">
             <div class="detail-item" v-if="selectedReply.mailAddress">
-              <span class="label">Kontakt:</span>
+              <span class="label">{{ t('campaigns.reply.contact') }}:</span>
               <div class="contact-details">
-                <div><strong>Email:</strong> {{ selectedReply.mailAddress.email }}</div>
+                <div><strong>{{ t('campaigns.reply.email') }}:</strong> {{ selectedReply.mailAddress.email }}</div>
                 <div v-if="selectedReply.mailAddress.miasto">
-                  <strong>Miasto:</strong> {{ selectedReply.mailAddress.miasto }}
+                  <strong>{{ t('campaigns.reply.city') }}:</strong> {{ selectedReply.mailAddress.miasto }}
                 </div>
                 <div v-if="selectedReply.mailAddress.rodzaj">
-                  <strong>Rodzaj:</strong> {{ selectedReply.mailAddress.rodzaj }}
+                  <strong>{{ t('campaigns.reply.type') }}:</strong> {{ selectedReply.mailAddress.rodzaj }}
                 </div>
               </div>
             </div>
             <div class="detail-item">
-              <span class="label">Data otrzymania:</span>
+              <span class="label">{{ t('campaigns.reply.receivedAt') }}:</span>
               <span class="value">{{ formatDateTime(selectedReply.receivedAt) }}</span>
             </div>
             <div class="detail-item">
-              <span class="label">Temat:</span>
-              <span class="value">{{ selectedReply.subject || '(Brak tematu)' }}</span>
+              <span class="label">{{ t('campaigns.reply.subject') }}:</span>
+              <span class="value">{{ selectedReply.subject || t('campaigns.noSubject') }}</span>
             </div>
 
             <div class="detail-item">
-              <span class="label">Status:</span>
+              <span class="label">{{ t('campaigns.reply.status') }}:</span>
               <v-chip 
                 :color="selectedReply.wasUnread ? 'warning' : 'success'" 
                 size="small"
               >
-                {{ selectedReply.wasUnread ? 'Nowa' : 'Przeczytana' }}
+                {{ selectedReply.wasUnread ? t('campaigns.reply.unread') : t('campaigns.reply.read') }}
               </v-chip>
               <span v-if="selectedReply.readAt" class="ml-2 text-caption">
-                (przeczytana: {{ formatDateTime(selectedReply.readAt) }})
+                ({{ t('campaigns.reply.readAt') }}: {{ formatDateTime(selectedReply.readAt) }})
               </span>
             </div>
             <v-divider class="my-4" />
             <div class="reply-body">
-              <h4 class="mb-2">Treść wiadomości:</h4>
+              <h4 class="mb-2">{{ t('campaigns.reply.bodyTitle') }}</h4>
               <div class="body-content" v-if="selectedReply.bodyFullParsedHtml" v-html="selectedReply.bodyFullParsedHtml"></div>
-              <div v-else class="no-content">Brak treści wiadomości</div>
+              <div v-else class="no-content">{{ t('campaigns.reply.noBody') }}</div>
             </div>
           </div>
        
@@ -202,7 +202,7 @@
     <template #actions>
       <v-spacer />
       <v-btn variant="text" @click="showReplyDialog = false">
-        Zamknij
+        {{ t('campaigns.close') }}
       </v-btn>
       </template>
     </GeneralDialog>    
@@ -211,8 +211,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Campaigns } from '../../services/campaigns'
 import GeneralDialog from '../GeneralDialog.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   campaign: {
@@ -240,21 +243,21 @@ let searchDebounce = null
 let fetchInProgress = false
 
 // Table headers
-const headers = [
-  { title: 'Od', key: 'fromEmail', sortable: true },
-  { title: 'Temat', key: 'subject', sortable: true },
-  { title: 'Data otrzymania', key: 'receivedAt', sortable: true },
-  { title: 'Miasto', key: 'miasto', sortable: false },
-  { title: 'Rodzaj', key: 'rodzaj', sortable: false },
-  { title: 'Akcje', key: 'actions', sortable: false, width: 120 }
-]
+const headers = computed(() => ([
+  { title: t('campaigns.reply.headers.from'), key: 'fromEmail', sortable: true },
+  { title: t('campaigns.reply.headers.subject'), key: 'subject', sortable: true },
+  { title: t('campaigns.reply.headers.receivedAt'), key: 'receivedAt', sortable: true },
+  { title: t('campaigns.reply.headers.city'), key: 'miasto', sortable: false },
+  { title: t('campaigns.reply.headers.type'), key: 'rodzaj', sortable: false },
+  { title: t('campaigns.reply.headers.actions'), key: 'actions', sortable: false, width: 120 }
+]))
 
 // Status options
-const statusOptions = [
-  { title: 'Wszystkie', value: null },
-  { title: 'Zidentyfikowane', value: true },
-  { title: 'Niezidentyfikowane', value: false }
-]
+const statusOptions = computed(() => ([
+  { title: t('campaigns.reply.statusAll'), value: null },
+  { title: t('campaigns.reply.statusIdentified'), value: true },
+  { title: t('campaigns.reply.statusUnidentified'), value: false }
+]))
 
 // Computed
 const replyRate = computed(() => {

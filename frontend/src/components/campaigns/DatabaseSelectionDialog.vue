@@ -1,7 +1,7 @@
 <template>
   <GeneralDialog
     v-model="dialog"
-    title="Zmiana bazy odbiorców"
+    :title="t('campaigns.changeDatabase')"
     :width="'700px'"
     :persistent="true"
     >
@@ -10,7 +10,7 @@
           <div v-if="campaign?.databaseInfo?.database" class="current-database">
             <div class="section-header">
               <v-icon color="info">mdi-information</v-icon>
-              <h3>Aktualna baza odbiorców</h3>
+              <h3>{{ t('campaigns.currentDatabase') }}</h3>
             </div>
             <v-card variant="outlined" class="current-db-card">
               <v-card-text class="pa-4">
@@ -22,7 +22,7 @@
                   <div class="db-stats">
                     <span class="stat-item">
                       <v-icon size="16">mdi-account-group</v-icon>
-                      {{ campaign.recipientsCount || 0 }} odbiorców
+                      {{ campaign.recipientsCount || 0 }} {{ t('campaigns.recipients_') }}
                     </span>
                   </div>
                 </div>
@@ -33,13 +33,13 @@
           <div class="database-selection">
             <div class="section-header">
               <v-icon color="primary">mdi-database-search</v-icon>
-              <h3>Wybierz nową bazę odbiorców</h3>
+              <h3>{{ t('campaigns.selectDatabase') }}</h3>
             </div>
 
             <!-- Search -->
             <v-text-field
               v-model="searchQuery"
-              placeholder="Wyszukaj bazę..."
+              :placeholder="t('campaigns.searchDatabases')"
               prepend-inner-icon="mdi-magnify"
               variant="outlined"
               density="comfortable"
@@ -50,7 +50,7 @@
             <!-- Loading State -->
             <div v-if="loading" class="loading-state">
               <v-progress-circular indeterminate color="primary"></v-progress-circular>
-              <span>Ładowanie baz danych...</span>
+              <span>{{ t('campaigns.loadingDatabases') }}</span>
             </div>
 
             <!-- Database List -->
@@ -84,7 +84,7 @@
                         color="info" 
                         variant="outlined"
                       >
-                        Aktualna
+                        {{ t('campaigns.currentDatabase') }}
                       </v-chip>
                     </div>
                   </div>
@@ -94,11 +94,11 @@
                   <div class="database-meta">
                     <span class="created-date">
                       <v-icon size="14">mdi-calendar</v-icon>
-                      Utworzono: {{ formatDate(database.createdAt) }}
+                      {{ t('campaigns.createdAt') }}: {{ formatDate(database.createdAt) }}
                     </span>
                     <span class="updated-date">
                       <v-icon size="14">mdi-clock</v-icon>
-                      Zaktualizowano: {{ formatDate(database.updatedAt) }}
+                      {{ t('campaigns.updatedAt') }}: {{ formatDate(database.updatedAt) }}
                     </span>
                   </div>
                 </div>
@@ -107,9 +107,9 @@
               <!-- Empty State -->
               <div v-if="filteredDatabases.length === 0" class="empty-state">
                 <v-icon size="48" color="grey-lighten-2">mdi-database-off</v-icon>
-                <h4>Brak baz danych</h4>
-                <p v-if="searchQuery">Nie znaleziono baz pasujących do wyszukiwania "{{ searchQuery }}"</p>
-                <p v-else>Nie masz jeszcze żadnych baz danych.</p>
+                <h4>{{ t('campaigns.noDatabasesAvailable') }}</h4>
+                <p v-if="searchQuery">{{ t('campaigns.noDatabasesMatching', { query: searchQuery }) }}</p>
+                <p v-else>{{ t('campaigns.noDatabasesAvailable') }}</p>
               </div>
             </div>
           </div>
@@ -120,16 +120,16 @@
             <div class="summary-content">
               <v-icon color="success">mdi-check-circle</v-icon>
               <div class="summary-text">
-                <span class="summary-label">Wybrana baza:</span>
+                <span class="summary-label">{{ t('campaigns.selectedDatabase') }}</span>
                 <span class="summary-value">{{ selectedDatabase.name }}</span>
-                <span class="summary-details">({{ formatNumber(selectedDatabase.contactsCount) }} odbiorców)</span>
+                <span class="summary-details">({{ formatNumber(selectedDatabase.contactsCount) }} {{ t('campaigns.recipients_') }})</span>
               </div>
             </div>
           </div>
     </template>
     <template #actions>
 <v-btn variant="text" @click="close">
-          Anuluj
+          {{ t('campaigns.cancel') }}
         </v-btn>
         <v-spacer></v-spacer>
         <v-btn 
@@ -140,7 +140,7 @@
           :loading="saving"
         >
           <v-icon left>mdi-content-save</v-icon>
-          {{ saving ? 'Zapisywanie...' : 'Zapisz zmiany' }}
+          {{ saving ? t('campaigns.saving') : t('campaigns.saveChanges') }}
         </v-btn>
     </template>
   </GeneralDialog>
@@ -152,6 +152,8 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { Databases } from '../../services/databases.js'
 import { Campaigns } from '../../services/campaigns.js'
 import GeneralDialog from '../GeneralDialog.vue'
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: Boolean,

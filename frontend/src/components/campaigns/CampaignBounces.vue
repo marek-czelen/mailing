@@ -7,7 +7,7 @@
           <v-card-text>
             <div class="d-flex align-center justify-space-between">
               <div>
-                <div class="text-caption text-medium-emphasis">Wszystkie odbicia</div>
+                <div class="text-caption text-medium-emphasis">{{ t('campaigns.allBounces') }}</div>
                 <div class="text-h5 font-weight-bold">{{ stats.totalBounces }}</div>
               </div>
               <v-icon size="40" color="error">mdi-email-alert</v-icon>
@@ -20,7 +20,7 @@
           <v-card-text>
             <div class="d-flex align-center justify-space-between">
               <div>
-                <div class="text-caption text-medium-emphasis">Twarde odbicia</div>
+                <div class="text-caption text-medium-emphasis">{{ t('campaigns.hardBounces') }}</div>
                 <div class="text-h5 font-weight-bold">{{ stats.hardBounces }}</div>
               </div>
               <v-icon size="40" color="error">mdi-close-circle</v-icon>
@@ -33,7 +33,7 @@
           <v-card-text>
             <div class="d-flex align-center justify-space-between">
               <div>
-                <div class="text-caption text-medium-emphasis">Miękkie odbicia</div>
+                <div class="text-caption text-medium-emphasis">{{ t('campaigns.softBounces') }}</div>
                 <div class="text-h5 font-weight-bold">{{ stats.softBounces }}</div>
               </div>
               <v-icon size="40" color="warning">mdi-alert-circle</v-icon>
@@ -46,7 +46,7 @@
           <v-card-text>
             <div class="d-flex align-center justify-space-between">
               <div>
-                <div class="text-caption text-medium-emphasis">Wskaźnik odbić</div>
+                <div class="text-caption text-medium-emphasis">{{ t('campaigns.bounceRate') }}</div>
                 <div class="text-h5 font-weight-bold">{{ bounceRate }}%</div>
               </div>
               <v-icon size="40" color="info">mdi-chart-line</v-icon>
@@ -62,7 +62,7 @@
         <div class="filters-section">
           <v-text-field
             v-model="searchQuery"
-            placeholder="Szukaj po adresie email..."
+            :placeholder="t('campaigns.searchByEmail')"
             prepend-inner-icon="mdi-magnify"
             variant="outlined"
             density="comfortable"
@@ -105,7 +105,7 @@
           size="small"
           variant="flat"
         >
-          {{ item.bounceType === 'hard' ? 'Twarde' : 'Miękkie' }}
+          {{ item.bounceType === 'hard' ? t('campaigns.hard') : t('campaigns.soft') }}
         </v-chip>
       </template>
 
@@ -128,13 +128,13 @@
         <div v-if="item.hasContact && item.mailAddress">
           <v-chip size="small" color="success" variant="tonal">
             <v-icon left size="16">mdi-account-check</v-icon>
-            {{ item.mailAddress.miasto || 'Zidentyfikowany' }}
+            {{ item.mailAddress.miasto || t('campaigns.bounce.identifiedContact') }}
           </v-chip>
         </div>
         <div v-else>
           <v-chip size="small" color="default" variant="tonal">
             <v-icon left size="16">mdi-account-question</v-icon>
-            Nieznany
+            {{ t('campaigns.bounce.unknownContact') }}
           </v-chip>
         </div>
       </template>
@@ -143,7 +143,7 @@
       <template v-slot:no-data>
         <div class="no-data">
           <v-icon size="48" color="grey-lighten-2">mdi-email-check</v-icon>
-          <p>Brak odbić dla tej kampanii</p>
+          <p>{{ t('campaigns.bounce.noData') }}</p>
         </div>
       </template>
     </v-data-table-server>
@@ -152,7 +152,10 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Campaigns } from '../../services/campaigns'
+
+const { t } = useI18n()
 
 const props = defineProps({
   campaign: {
@@ -178,20 +181,20 @@ let searchDebounce = null
 let fetchInProgress = false
 
 // Table headers
-const headers = [
-  { title: 'Adres email', key: 'toEmail', sortable: true },
-  { title: 'Typ odbicia', key: 'bounceType', sortable: true },
-  { title: 'Data odbicia', key: 'bounceDate', sortable: true },
-  { title: 'Powód', key: 'reason', sortable: false },
-  { title: 'Kontakt', key: 'contact', sortable: false }
-]
+const headers = computed(() => ([
+  { title: t('campaigns.bounce.headers.email'), key: 'toEmail', sortable: true },
+  { title: t('campaigns.bounce.headers.type'), key: 'bounceType', sortable: true },
+  { title: t('campaigns.bounce.headers.date'), key: 'bounceDate', sortable: true },
+  { title: t('campaigns.bounce.headers.reason'), key: 'reason', sortable: false },
+  { title: t('campaigns.bounce.headers.contact'), key: 'contact', sortable: false }
+]))
 
 // Bounce type options
-const bounceTypeOptions = [
-  { title: 'Wszystkie', value: null },
-  { title: 'Twarde', value: 'hard' },
-  { title: 'Miękkie', value: 'soft' }
-]
+const bounceTypeOptions = computed(() => ([
+  { title: t('campaigns.bounce.all'), value: null },
+  { title: t('campaigns.bounce.hard'), value: 'hard' },
+  { title: t('campaigns.bounce.soft'), value: 'soft' }
+]))
 
 // Computed
 const bounceRate = computed(() => {

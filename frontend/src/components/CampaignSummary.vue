@@ -4,24 +4,24 @@
       <div class="details-header">
   <v-btn color="success" class="mr-2" @click="activateCampaign">
           <v-icon left>mdi-play-circle</v-icon>
-          Aktywuj teraz
+          {{ t('campaigns.activateNow') }}
         </v-btn>
   <v-btn color="warning" class="mr-2" @click="stopCampaign">
           <v-icon left>mdi-pause-circle</v-icon>
-          Zatrzymaj
+          {{ t('campaigns.stop') }}
         </v-btn>
   <v-btn color="primary" class="mr-2" @click="editCampaign">
           <v-icon left>mdi-pencil</v-icon>
-          Modyfikuj
+          {{ t('common.edit') }}
         </v-btn>
   <v-btn color="error" @click="deleteCampaign">
           <v-icon left>mdi-delete</v-icon>
-          Usuń
+          {{ t('common.delete') }}
         </v-btn>
       </div>
       <div class="info-row">
         <v-text-field
-          label="Nazwa kampanii"
+          :label="t('campaigns.name')"
           :model-value="campaign.name"
           readonly
           solo
@@ -29,7 +29,7 @@
           class="mr-2 info-field"
         />
         <v-text-field
-          label="Status"
+          :label="t('campaigns.status')"
           :model-value="campaign.status"
           readonly
           solo
@@ -37,7 +37,7 @@
           class="mr-2 info-field"
         />
         <v-text-field
-          label="Data rozpoczęcia"
+          :label="t('campaigns.dateStart')"
           :model-value="campaign.startDate"
           readonly
           solo
@@ -45,7 +45,7 @@
           class="mr-2 info-field"
         />
         <v-text-field
-          label="Ilość maili na liście"
+          :label="t('campaigns.mailCount')"
           :model-value="campaign.mailCount"
           readonly
           solo
@@ -54,7 +54,7 @@
         />
       </div>
       <div class="inbox-preview">
-        <h3>Podgląd wiadomości</h3>
+        <h3>{{ t('campaigns.emailPreview') }}</h3>
         <div class="inbox-header">
           <span class="subject"><strong>Temat:</strong> {{ campaign.subject }}</span><br>
           <span class="address"><strong>Adres:</strong> {{ campaign.address }}</span>
@@ -74,6 +74,8 @@
 
 <script setup>
 import { defineProps, defineEmits } from 'vue';
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 const props = defineProps({
   campaign: Object,
   campaigns: Array

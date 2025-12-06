@@ -27,12 +27,12 @@
           @click="$emit('edit', campaign)"
         >
           <v-icon left>mdi-pencil</v-icon>
-          Edytuj
+          {{ t('common.edit') }}
         </v-btn>
           <v-btn variant="outlined" size="small"
             @click="$emit('schedule', campaign)">
             <v-icon left>mdi-calendar-clock</v-icon>
-            Zaplanuj wysyłkę
+            {{ t('campaigns.sendScheduled') }}
           </v-btn>        
       </div>
     </div>
@@ -43,7 +43,7 @@
       <v-card class="detail-card">
         <v-card-title class="card-title">
           <v-icon color="primary">mdi-information</v-icon>
-          Podstawowe informacje
+          {{ t('campaigns.basicInfoTitle') }}
         </v-card-title>
         <v-card-text>
           <div class="detail-row">
@@ -75,7 +75,7 @@
       <v-card class="detail-card">
         <v-card-title class="card-title">
           <v-icon color="info">mdi-account-circle</v-icon>
-          Nadawca
+          {{ t('campaigns.senderInfo') }}
         </v-card-title>
         <v-card-text>
           <div class="detail-row">
@@ -97,7 +97,8 @@
       <v-card class="detail-card">
         <v-card-title class="card-title">
           <v-icon color="success">mdi-account-group</v-icon>
-          Odbiorcy
+          {{ t('campaigns.recipients') }}
+        </v-card-title>
         </v-card-title>
         <v-card-text>
           <div class="detail-row">

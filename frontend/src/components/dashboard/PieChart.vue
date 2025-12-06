@@ -8,6 +8,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n'
 import {
   Chart,
   PieController,
@@ -16,6 +17,9 @@ import {
   Legend,
   Title
 } from 'chart.js';
+
+const { t } = useI18n()
+
 Chart.register(PieController, ArcElement, Tooltip, Legend, Title);
 let pieChart = ref(null);
 onMounted(() => {
@@ -23,7 +27,7 @@ onMounted(() => {
   new Chart(ctx, {
     type: 'pie',
     data: {
-      labels: ['A', 'B', 'C'],
+      labels: [t('dashboard.categoryA'), t('dashboard.categoryB'), t('dashboard.categoryC')],
       datasets: [{
         data: [30, 50, 20],
         backgroundColor: ['#1976D2', '#E53935', '#43A047'],

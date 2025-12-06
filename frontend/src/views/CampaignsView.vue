@@ -1,16 +1,16 @@
 <template>
-  <PageContent title="$t('campaigns.pageTitle')" subtitle="$t('campaigns.pageSubtitle')">
+  <PageContent :title="t('campaigns.pageTitle')" :subtitle="t('campaigns.pageSubtitle')">
     <template #left-panel>
       <v-card class="campaign-list-card">
         <v-card-title class="card-header">
           <div class="header-content">
             <div class="header-info">
-              <h3>{{ $t('campaigns.title') }}</h3>
-              <span class="campaign-count">{{ campaigns.length }} {{ $t('campaigns.newCampaign') /* fallback label */ }}</span>
+              <h3>{{ t('campaigns.title') }}</h3>
+              <span class="campaign-count">{{ campaigns.length }} {{ t('campaigns.newCampaign') /* fallback label */ }}</span>
             </div>
               <v-btn color="primary" class="add-btn" @click="openCreateDialog">
               <v-icon left>mdi-plus</v-icon>
-              {{ $t('campaigns.newCampaign') }}
+              {{ t('campaigns.newCampaign') }}
             </v-btn>
           </div>
         </v-card-title>
@@ -18,7 +18,7 @@
         <v-card-text class="pa-0 campaign-list-content">
           <!-- Search & Filters -->
           <div class="search-section">
-            <v-text-field v-model="searchQuery" placeholder="$t('campaigns.searchPlaceholder')" prepend-inner-icon="mdi-magnify"
+            <v-text-field v-model="searchQuery" :placeholder="t('campaigns.searchPlaceholder')" prepend-inner-icon="mdi-magnify"
               variant="outlined" density="comfortable" hide-details />
             <div class="filter-chips">
               <v-chip
@@ -61,21 +61,21 @@
                     <v-list-item @click="editCampaign(campaign)">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-pencil</v-icon>
-                        Edytuj
+                        {{ t('campaigns.editCampaign') }}
                       </v-list-item-title>
                     </v-list-item>
                     <v-list-item disabled
                       @click="duplicateCampaign(campaign)">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-content-copy</v-icon>
-                        Duplikuj
+                        {{ t('campaigns.duplicateCampaign') }}
                       </v-list-item-title>
                     </v-list-item>
                     <v-divider />
                     <v-list-item @click="confirmDelete(campaign)" class="delete-item" v-if="campaign.status !== 'sent'">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-delete</v-icon>
-                        Usuń
+                        {{ t('campaigns.deleteCampaign') }}
                       </v-list-item-title>
                     </v-list-item>
                   </v-list>
@@ -92,16 +92,16 @@
       <div v-if="loadingCampaignDetails" class="loading-state">
         <div class="loading-content">
           <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
-          <h3>{{ $t('campaigns.loadingDetails') }}</h3>
-          <p>{{ $t('campaigns.loadingDetailsSub') }}</p>
+          <h3>{{ t('campaigns.loadingDetails') }}</h3>
+          <p>{{ t('campaigns.loadingDetailsSub') }}</p>
         </div>
       </div>
 
       <div v-else-if="selectedCampaign" class="campaign-details">
         <!-- Campaign Stats Cards -->
         <StatGrid :statElements="[
-          { icon: 'mdi-account-group', title: 'Odbiorców', value: selectedCampaign.databaseInfo?.emailCount || 0, class: 'recipients' },
-          { icon: 'mdi-email-send', title: 'Wypisanych', value: selectedCampaign.databaseInfo?.unsubscribedEmailCount || 0, class: 'sent' },
+          { icon: 'mdi-account-group', title: t('campaigns.recipientsCount'), value: selectedCampaign.databaseInfo?.emailCount || 0, class: 'recipients' },
+          { icon: 'mdi-email-send', title: t('campaigns.unsubscribedCount'), value: selectedCampaign.databaseInfo?.unsubscribedEmailCount || 0, class: 'sent' },
         ]" />
 
         <!-- Tabs Section -->
@@ -109,23 +109,23 @@
           <v-tabs v-model="activeTab" bg-color="transparent">
             <v-tab value="content">
               <v-icon left>mdi-email</v-icon>
-              {{ $t('campaigns.tabs.content') }}
+              {{ t('campaigns.tabs.content') }}
             </v-tab>
             <v-tab value="recipients">
               <v-icon left>mdi-account-multiple</v-icon>
-              {{ $t('campaigns.tabs.recipients') }}
+              {{ t('campaigns.tabs.recipients') }}
             </v-tab>
             <v-tab value="replies">
               <v-icon left>mdi-reply</v-icon>
-              {{ $t('campaigns.tabs.replies') }}
+              {{ t('campaigns.tabs.replies') }}
             </v-tab>
             <v-tab value="bounces">
               <v-icon left>mdi-email-alert</v-icon>
-              {{ $t('campaigns.tabs.bounces') }}
+              {{ t('campaigns.tabs.bounces') }}
             </v-tab>
             <v-tab value="scheduling" v-if="false">
               <v-icon left>mdi-calendar-clock</v-icon>
-              Planowanie
+              {{ t('campaigns.tabs.scheduling') }}
             </v-tab>
           </v-tabs>
 
@@ -143,30 +143,30 @@
               <v-window-item value="recipients">
                 <div class="recipients-management">
                   <div class="recipients-header">
-                    <h3>{{ $t('campaigns.manageRecipients') }}</h3>
+                    <h3>{{ t('campaigns.manageRecipients') }}</h3>
                     <v-btn color="primary" variant="outlined" @click="editCampaignDatabase">
                       <v-icon left>mdi-database-edit</v-icon>
-                      {{ $t('campaigns.changeDatabase') }}
+                      {{ t('campaigns.changeDatabase') }}
                     </v-btn>
                   </div>
 
                   <v-card v-if="selectedCampaign.databaseInfo?.database" class="database-info mb-4">
                     <v-card-title class="pb-2">
                       <v-icon left color="primary">mdi-database</v-icon>
-                      {{ $t('campaigns.currentDatabase') }}
+                      {{ t('campaigns.currentDatabase') }}
                     </v-card-title>
                     <v-card-text>
                       <div class="database-details">
                         <div class="detail-item">
-                          <span class="label">Nazwa bazy:</span>
+                          <span class="label">{{ t('campaigns.currentDatabase') }}:</span>
                           <span class="value">{{ selectedCampaign?.databaseInfo?.database?.name }}</span>
                         </div>
                         <div class="detail-item">
-                          <span class="label">Liczba kontaktów:</span>
+                          <span class="label">{{ t('campaigns.recipientsCount') }}:</span>
                           <span class="value">{{ selectedCampaign.databaseInfo?.emailCount || 0 }}</span>
                         </div>
                         <div class="detail-item" v-if="selectedCampaign.segments && selectedCampaign.segments.length">
-                          <span class="label">Segmenty:</span>
+                          <span class="label">{{ t('campaigns.segments') }}:</span>
                           <div class="segments">
                             <v-chip v-for="segment in selectedCampaign.segments" :key="segment.id || segment"
                               size="small" color="primary" variant="outlined" class="mr-1 mb-1">
@@ -180,7 +180,7 @@
 
                   <v-alert v-else type="warning" variant="tonal">
                     <v-icon>mdi-alert</v-icon>
-                    {{ $t('campaigns.noDatabaseSelected') }}
+                    {{ t('campaigns.noDatabaseSelected') }}
                   </v-alert>
 
                   <CampaignRecipients v-if="false" :campaign="selectedCampaign" @edit-recipients="editRecipients" />
@@ -201,8 +201,8 @@
               <v-window-item value="scheduling">
                 <div class="scheduling-management">
                   <div class="scheduling-header">
-                    <h3>Planowanie wysyłki kampanii</h3>
-                    <p class="text-medium-emphasis">Ustaw kiedy kampania ma zostać wysłana</p>
+                    <h3>{{ t('campaigns.sendScheduling') }}</h3>
+                    <p class="text-medium-emphasis">{{ t('campaigns.scheduleDesc') }}</p>
                   </div>
 
                   <v-row>
@@ -210,20 +210,20 @@
                       <v-card class="scheduling-options">
                         <v-card-title>
                           <v-icon left color="primary">mdi-send-clock</v-icon>
-                          Opcje wysyłki
+                          {{ t('campaigns.sendOptions') }}
                         </v-card-title>
                         <v-card-text>
                           <v-radio-group v-model="selectedCampaign.sendMode" @update:model-value="updateSendMode">
-                            <v-radio disabled label="Wyślij natychmiast" value="immediate"
+                            <v-radio disabled :label="t('campaigns.sendImmediate')" value="immediate"
                               :disabled="selectedCampaign.status === 'sent'" />
-                            <v-radio disabled label="Zapisz jako szkic" value="draft"
+                            <v-radio disabled :label="t('campaigns.saveDraft')" value="draft"
                               :disabled="selectedCampaign.status === 'sent'" />
-                            <v-radio label="Zaplanuj" value="scheduled"
+                            <v-radio :label="t('campaigns.sendScheduled')" value="scheduled"
                               :disabled="selectedCampaign.status === 'sent'" />
                           </v-radio-group>
 
                           <div v-if="selectedCampaign.sendMode === 'scheduled'" class="mt-4">
-                            <v-text-field v-model="scheduledDateTime" label="Data i godzina wysyłki"
+                            <v-text-field v-model="scheduledDateTime" :label="t('campaigns.sendDateTime')"
                               type="datetime-local" variant="outlined" density="comfortable" :min="minDateTime"
                               @update:model-value="updateScheduledDate" />
                           </div>
@@ -237,7 +237,7 @@
                           <v-icon left :color="getStatusColor(selectedCampaign.status)">
                             {{ getStatusIcon(selectedCampaign.status) }}
                           </v-icon>
-                          Status kampanii
+                          {{ t('campaigns.campaignStatus') }}
                         </v-card-title>
                         <v-card-text>
                           <v-chip :color="getStatusColor(selectedCampaign.status)" size="large" variant="elevated"
@@ -247,14 +247,14 @@
 
                           <div v-if="selectedCampaign.dateStart" class="scheduled-info">
                             <div class="detail-item">
-                              <span class="label">Zaplanowana wysyłka:</span>
+                              <span class="label">{{ t('campaigns.scheduledSend') }}</span>
                               <span class="value">{{ formatDateTime(selectedCampaign.dateStart) }}</span>
                             </div>
                           </div>
 
                           <div v-if="selectedCampaign.sentAt" class="sent-info">
                             <div class="detail-item">
-                              <span class="label">Data wysłania:</span>
+                              <span class="label">{{ t('campaigns.sentAt') }}</span>
                               <span class="value">{{ formatDateTime(selectedCampaign.sentAt) }}</span>
                             </div>
                           </div>
@@ -263,13 +263,13 @@
                             <v-btn v-if="selectedCampaign.status === 'draft'" color="success" variant="elevated"
                               @click="sendCampaignNow" :disabled="!selectedCampaign.database">
                               <v-icon left>mdi-send</v-icon>
-                              Wyślij teraz
+                              {{ t('campaigns.sendNow') }}
                             </v-btn>
 
                             <v-btn v-if="selectedCampaign.status === 'scheduled'" color="warning" variant="outlined"
                               @click="cancelScheduled">
                               <v-icon left>mdi-calendar-remove</v-icon>
-                              Anuluj planowanie
+                              {{ t('campaigns.cancelScheduling') }}
                             </v-btn>
                           </div>
                         </v-card-text>
@@ -288,11 +288,11 @@
         <div class="empty-icon">
           <v-icon size="80" color="grey-lighten-2">mdi-email-outline</v-icon>
         </div>
-        <h3>{{ $t('campaigns.emptyTitle') }}</h3>
-        <p>{{ $t('campaigns.emptyDescription') }}</p>
+        <h3>{{ t('campaigns.emptyTitle') }}</h3>
+        <p>{{ t('campaigns.emptyDescription') }}</p>
         <v-btn color="primary" @click="openCreateDialog">
           <v-icon left>mdi-plus</v-icon>
-          {{ $t('campaigns.createFirst') }}
+          {{ t('campaigns.createFirst') }}
         </v-btn>
       </div>
     </template>
@@ -313,19 +313,19 @@
     <v-dialog v-model="deleteDialog" max-width="500px">
       <v-card class="delete-dialog">
         <v-card-title class="dialog-header delete-header">
-          <h2>Potwierdź usunięcie</h2>
+          <h2>{{ t('campaigns.confirmDelete') }}</h2>
         </v-card-title>
         <v-card-text class="pa-6">
-          <p>Czy na pewno chcesz usunąć kampanię <strong>"{{ campaignToDelete?.name }}"</strong>?</p>
-          <p class="text-caption text-error">Ta akcja jest nieodwracalna.</p>
+          <p>{{ t('campaigns.deleteConfirmQuestion', {name: campaignToDelete?.name}) }}</p>
+          <p class="text-caption text-error">{{ t('campaigns.deleteIrreversible') }}</p>
         </v-card-text>
         <v-card-actions class="pa-6">
           <v-spacer />
           <v-btn variant="text" @click="deleteDialog = false">
-            Anuluj
+            {{ t('campaigns.cancel') }}
           </v-btn>
           <v-btn color="error" variant="elevated" @click="deleteCampaign">
-            Usuń kampanię
+            {{ t('campaigns.deleteCampaign') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -339,7 +339,7 @@
       style="z-index: 0;"
       v-model="showHtmlEditor" 
       @update:model-value="val => showHtmlEditor = val"
-      title="Edycja treści HTML"
+      :title="t('campaigns.editHtmlContent')"
       :max-width="'1200px'"
       persistent 
       >
@@ -379,7 +379,7 @@
       {{ snackbar.message }}
       <template v-slot:actions>
         <v-btn variant="text" @click="snackbar.show = false">
-            {{ $t('campaigns.close') }}
+            {{ t('campaigns.close') }}
           </v-btn>
       </template>
     </v-snackbar>
@@ -391,6 +391,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import CampaignContent from '../components/campaigns/CampaignContent.vue'
 import CampaignRecipients from '../components/campaigns/CampaignRecipients.vue'
 import CampaignReplies from '../components/campaigns/CampaignReplies.vue'
@@ -406,8 +407,18 @@ import StatGrid from '../components/StatGrid.vue'
 import Editor  from '@tinymce/tinymce-vue'
 import GeneralDialog from '../components/GeneralDialog.vue'
 
+const { t, locale } = useI18n()
 const router = useRouter()
 const route = useRoute()
+
+// Get TinyMCE language code from current locale
+const getTinyMCELanguage = () => {
+  const languageMap = {
+    'pl': 'pl',
+    'en': 'en'
+  }
+  return languageMap[locale.value] || 'en'
+}
 
 // Reactive data
 const campaigns = ref([])
@@ -436,6 +447,8 @@ const editorConfig = {
   height: 600,
   menubar: true, // Włączamy menubar dla większej funkcjonalności
   readonly: false,
+  language: getTinyMCELanguage(),
+  language_url: `/tinymce/langs/${getTinyMCELanguage()}.js`,
   
   // Rozszerzona lista pluginów
   plugins: [
@@ -453,13 +466,13 @@ const editorConfig = {
   
   // Konfiguracja menu
   menu: {
-    file: { title: 'Plik', items: 'newdocument restoredraft | preview | export print | deleteallconversations' },
-    edit: { title: 'Edycja', items: 'undo redo | cut copy paste pastetext | selectall | searchreplace' },
-    view: { title: 'Widok', items: 'code | visualaid visualchars visualblocks | spellchecker | preview fullscreen | showcomments' },
-    insert: { title: 'Wstaw', items: 'image link media addcomment pageembed template codesample inserttable | charmap emoticons hr | pagebreak nonbreaking anchor tableofcontents | insertdatetime' },
-    format: { title: 'Format', items: 'bold italic underline strikethrough superscript subscript codeformat | styles blocks fontfamily fontsize align lineheight | forecolor backcolor | language | removeformat' },
-    tools: { title: 'Narzędzia', items: 'spellchecker spellcheckerlanguage | a11ycheck code wordcount' },
-    table: { title: 'Tabela', items: 'inserttable | cell row column | advtablesort | tableprops deletetable' }
+    file: { title: t('campaigns.menu.file'), items: 'newdocument restoredraft | preview | export print | deleteallconversations' },
+    edit: { title: t('campaigns.menu.edit'), items: 'undo redo | cut copy paste pastetext | selectall | searchreplace' },
+    view: { title: t('campaigns.menu.view'), items: 'code | visualaid visualchars visualblocks | spellchecker | preview fullscreen | showcomments' },
+    insert: { title: t('campaigns.menu.insert'), items: 'image link media addcomment pageembed template codesample inserttable | charmap emoticons hr | pagebreak nonbreaking anchor tableofcontents | insertdatetime' },
+    format: { title: t('campaigns.menu.format'), items: 'bold italic underline strikethrough superscript subscript codeformat | styles blocks fontfamily fontsize align lineheight | forecolor backcolor | language | removeformat' },
+    tools: { title: t('campaigns.menu.tools'), items: 'spellchecker spellcheckerlanguage | a11ycheck code wordcount' },
+    table: { title: t('campaigns.menu.table'), items: 'inserttable | cell row column | advtablesort | tableprops deletetable' }
   },
   
   // Konfiguracja obrazków
@@ -1084,6 +1097,18 @@ watch(() => selectedCampaign.value?.dateStart, (newScheduledAt) => {
     scheduledDateTime.value = ''
   }
 }, { immediate: true })
+
+// Watch for language changes and update editor configuration
+watch(() => locale.value, (newLocale) => {
+  // Update editor language configuration when app language changes
+  editorConfig.language = getTinyMCELanguage()
+  editorConfig.language_url = `/tinymce/langs/${getTinyMCELanguage()}.js`
+  
+  // Force editor re-render if editor is open
+  if (showHtmlEditor.value) {
+    editorKey.value++
+  }
+})
 
 // Sample data
 onMounted(async () => {

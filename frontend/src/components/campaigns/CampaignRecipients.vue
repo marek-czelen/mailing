@@ -2,17 +2,17 @@
   <div class="campaign-recipients">
     <div class="recipients-header">
       <div class="header-info">
-        <h3>Odbiorcy kampanii</h3>
-        <p>Zarządzaj listą odbiorców i segmentacją</p>
+        <h3>{{ t('campaigns.recipientsTitle') }}</h3>
+        <p>{{ t('campaigns.recipientsDesc') }}</p>
       </div>
       <div class="header-actions">
         <v-btn color="success" variant="outlined" @click="addSegment">
           <v-icon left>mdi-plus</v-icon>
-          Dodaj segment
+          {{ t('segments.newSegment') }}
         </v-btn>
         <v-btn color="primary" @click="manageRecipients">
           <v-icon left>mdi-account-group</v-icon>
-          Zarządzaj odbiorcami
+          {{ t('campaigns.manageRecipients') }}
         </v-btn>
       </div>
     </div>
@@ -22,7 +22,7 @@
       <v-card class="segments-card">
         <v-card-title class="card-title">
           <v-icon color="primary">mdi-target</v-icon>
-          Wybrane segmenty
+          {{ t('segments.headerTitle') }}
         </v-card-title>
         <v-card-text>
           <!-- Segments List -->
@@ -40,7 +40,7 @@
                   <span>{{ segment.name }}</span>
                 </div>
                 <div class="segment-details">
-                  <span class="segment-count">{{ segment.contactCount }} kontaktów</span>
+                  <span class="segment-count">{{ t('campaigns.recipients.contactCount', { count: segment.contactCount }) }}</span>
                   <v-chip size="small" :color="getSegmentColor(segment.type)" variant="outlined">
                     {{ getSegmentTypeLabel(segment.type) }}
                   </v-chip>
@@ -70,11 +70,11 @@
 
           <div v-else class="no-segments">
             <v-icon size="48" color="grey-lighten-2">mdi-target-variant</v-icon>
-            <h4>Brak wybranych segmentów</h4>
-            <p>Dodaj segmenty aby określić odbiorców kampanii</p>
+            <h4>{{ t('campaigns.recipients.noSegmentsTitle') }}</h4>
+            <p>{{ t('campaigns.recipients.noSegmentsDesc') }}</p>
             <v-btn color="primary" variant="outlined" @click="addSegment">
               <v-icon left>mdi-plus</v-icon>
-              Wybierz segmenty
+              {{ t('campaigns.recipients.selectSegments') }}
             </v-btn>
           </div>
 
@@ -82,14 +82,14 @@
           <div v-if="selectedSegments.length > 0" class="recipients-summary">
             <v-divider class="my-4"></v-divider>
             <div class="summary-row">
-              <span class="summary-label">Łączna liczba odbiorców:</span>
+              <span class="summary-label">{{ t('campaigns.recipients.totalRecipients') }}:</span>
               <div class="summary-value">
                 <v-icon color="success" size="20">mdi-account-group</v-icon>
                 <strong>{{ totalRecipients }}</strong>
               </div>
             </div>
             <div class="summary-row">
-              <span class="summary-label">Szacowany zasięg:</span>
+              <span class="summary-label">{{ t('campaigns.recipients.estimatedReach') }}:</span>
               <div class="summary-value">
                 <v-icon color="info" size="20">mdi-chart-line</v-icon>
                 <strong>{{ estimatedReach }}%</strong>
@@ -103,7 +103,7 @@
       <v-card class="stats-card">
         <v-card-title class="card-title">
           <v-icon color="info">mdi-chart-pie</v-icon>
-          Statystyki odbiorców
+          {{ t('campaigns.recipients.statsTitle') }}
         </v-card-title>
         <v-card-text>
           <div class="stats-grid">
@@ -113,7 +113,7 @@
               </div>
               <div class="stat-info">
                 <div class="stat-value">{{ recipientStats.active }}</div>
-                <div class="stat-label">Aktywni</div>
+                <div class="stat-label">{{ t('campaigns.recipients.active') }}</div>
               </div>
             </div>
             
@@ -123,7 +123,7 @@
               </div>
               <div class="stat-info">
                 <div class="stat-value">{{ recipientStats.inactive }}</div>
-                <div class="stat-label">Nieaktywni</div>
+                <div class="stat-label">{{ t('campaigns.recipients.inactive') }}</div>
               </div>
             </div>
             
@@ -133,7 +133,7 @@
               </div>
               <div class="stat-info">
                 <div class="stat-value">{{ recipientStats.bounced }}</div>
-                <div class="stat-label">Odrzucone</div>
+                <div class="stat-label">{{ t('campaigns.recipients.bounced') }}</div>
               </div>
             </div>
             
@@ -143,14 +143,14 @@
               </div>
               <div class="stat-info">
                 <div class="stat-value">{{ recipientStats.unsubscribed }}</div>
-                <div class="stat-label">Wypisane</div>
+                <div class="stat-label">{{ t('campaigns.recipients.unsubscribed') }}</div>
               </div>
             </div>
           </div>
 
           <!-- Engagement Chart -->
           <div class="engagement-chart">
-            <h4>Zaangażowanie odbiorców</h4>
+            <h4>{{ t('campaigns.recipients.engagementTitle') }}</h4>
             <div class="chart-container">
               <div class="engagement-bar">
                 <div class="engagement-segment open" :style="{ width: engagementData.openRate + '%' }">
@@ -163,11 +163,11 @@
               <div class="chart-legend">
                 <div class="legend-item">
                   <div class="legend-color open"></div>
-                  <span>Otwierają ({{ engagementData.openRate }}%)</span>
+                  <span>{{ t('campaigns.recipients.openRate', { value: engagementData.openRate }) }}</span>
                 </div>
                 <div class="legend-item">
                   <div class="legend-color click"></div>
-                  <span>Klikają ({{ engagementData.clickRate }}%)</span>
+                  <span>{{ t('campaigns.recipients.clickRate', { value: engagementData.clickRate }) }}</span>
                 </div>
               </div>
             </div>
@@ -179,31 +179,31 @@
       <v-card class="exclusions-card">
         <v-card-title class="card-title">
           <v-icon color="warning">mdi-account-cancel</v-icon>
-          Wykluczenia
+          {{ t('campaigns.recipients.exclusionsTitle') }}
         </v-card-title>
         <v-card-text>
           <div class="exclusions-options">
             <v-checkbox
               v-model="exclusions.bounced"
-              label="Wyklucz adresy odrzucone"
+              :label="t('campaigns.recipients.excludeBounced')"
               color="primary"
             ></v-checkbox>
             
             <v-checkbox
               v-model="exclusions.unsubscribed"
-              label="Wyklucz wypisanych"
+              :label="t('campaigns.recipients.excludeUnsubscribed')"
               color="primary"
             ></v-checkbox>
             
             <v-checkbox
               v-model="exclusions.inactive"
-              label="Wyklucz nieaktywnych (brak otwarć w ciągu 90 dni)"
+              :label="t('campaigns.recipients.excludeInactive')"
               color="primary"
             ></v-checkbox>
             
             <v-checkbox
               v-model="exclusions.duplicates"
-              label="Usuń duplikaty"
+              :label="t('campaigns.recipients.excludeDuplicates')"
               color="primary"
             ></v-checkbox>
           </div>
@@ -214,8 +214,7 @@
             <div class="summary-info">
               <v-icon color="warning">mdi-information</v-icon>
               <span>
-                Po zastosowaniu wykluczeń pozostanie 
-                <strong>{{ finalRecipientCount }}</strong> odbiorców
+                {{ t('campaigns.recipients.exclusionSummary', { count: finalRecipientCount }) }}
               </span>
             </div>
           </div>
@@ -230,7 +229,7 @@
       <v-card>
         <v-card-title class="card-title">
           <v-icon color="primary">mdi-target</v-icon>
-          Wybierz segmenty
+          {{ t('campaigns.recipients.selectSegments') }}
         </v-card-title>
         <v-card-text>
           <div class="segment-selection">
@@ -256,7 +255,7 @@
                   </v-chip>
                 </div>
                 <div class="segment-meta">
-                  <span>{{ segment.contactCount }} kontaktów</span>
+                  <span>{{ t('campaigns.recipients.contactCount', { count: segment.contactCount }) }}</span>
                   <span>•</span>
                   <span>{{ segment.database }}</span>
                 </div>
@@ -269,8 +268,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="segmentDialog = false">Anuluj</v-btn>
-          <v-btn color="primary" @click="saveSegmentSelection">Zapisz</v-btn>
+          <v-btn variant="text" @click="segmentDialog = false">{{ t('campaigns.cancel') }}</v-btn>
+          <v-btn color="primary" @click="saveSegmentSelection">{{ t('campaigns.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -279,6 +278,9 @@
 
 <script setup>
 import { ref, computed, defineProps, defineEmits, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 defineProps({
   campaign: {
@@ -359,8 +361,8 @@ const availableSegments = ref([
 
 // Email validation rules
 const emailRules = [
-  v => !!v || 'Email jest wymagany',
-  v => /.+@.+\..+/.test(v) || 'Email musi być poprawny'
+  v => !!v || t('validation.required'),
+  v => /.+@.+\..+/.test(v) || t('validation.email')
 ]
 
 // Computed properties

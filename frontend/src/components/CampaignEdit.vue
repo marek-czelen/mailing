@@ -3,16 +3,16 @@
     <v-row>
       <div class="edit-header">
         <div class ="title">
-        <h2>{{ props.campaign ? "Edycja kampanii" : "Nowa kampania" }}</h2>
+        <h2>{{ props.campaign ? t('campaigns.editTitle') : t('campaigns.newCampaign') }}</h2>
         </div>
         <div class="actions">
           <v-btn color="primary" class="mr-2" @click="saveCampaign">
             <v-icon left>mdi-content-save</v-icon>
-            Zapisz
+            {{ t('common.save') }}
           </v-btn>
           <v-btn color="error" @click="cancelEdit">
             <v-icon left>mdi-close</v-icon>
-            Anuluj
+            {{ t('campaigns.cancel') }}
           </v-btn>
         </div>
       </div>
@@ -20,29 +20,29 @@
     <v-row>
   <v-col cols="12" md="3">
         <div class="campaign-edit">
-          <h3>Informacje o kampanii</h3>
+          <h3>{{ t('campaigns.basicInfoTitle') }}</h3>
           <v-text-field
             v-model="editedCampaign.name"
-            label="Nazwa kampanii"
-            :rules="[(v) => !!v || 'Nazwa jest wymagana']"
+            :label="t('campaigns.name')"
+            :rules="[(v) => !!v || t('validation.required')]"
             required
             small
             hide-details
           />
           <v-text-field
             v-model="editedCampaign.dateStart"
-            label="Data rozpoczęcia"
+            :label="t('campaigns.dateStart')"
             type="date"
-            :rules="[(v) => !!v || 'Data jest wymagana']"
+            :rules="[(v) => !!v || t('validation.required')]"
             required
             dense
             hide-details
           />
           <v-text-field
             v-model="editedCampaign.dateEnd"
-            label="Data zakończenia"
+            :label="t('campaigns.dateEnd')"
             type="date"
-            :rules="[(v) => !!v || 'Data jest wymagana']"
+            :rules="[(v) => !!v || t('validation.required')]"
             required
             dense
             hide-details
@@ -200,6 +200,8 @@
 <script setup>
 import { ref, computed, defineProps, defineEmits, watch } from "vue";
 import { onMounted, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 const emailBuilderRef = ref(null);
 import FileDrop from "./FileDrop.vue";
 import axios from "axios";

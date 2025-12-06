@@ -126,11 +126,10 @@
         <v-card-text class="text-center">
           <p class="text-body-2 text-grey-darken-2 mb-2">
             <v-icon size="16" class="mr-1">mdi-shield-check</v-icon>
-            Przetwarzanie danych osobowych zgodnie z RODO
+            {{ $t('unsubscribe.rodoTitle') }}
           </p>
           <p class="text-caption text-grey-darken-1">
-            Twoje dane są przetwarzane zgodnie z Rozporządzeniem Parlamentu Europejskiego i Rady (UE) 2016/679 (RODO).
-            Masz prawo do dostępu, sprostowania, usunięcia oraz przenoszenia swoich danych osobowych.
+            {{ $t('unsubscribe.rodoText') }}
           </p>
         </v-card-text>
       </v-card>

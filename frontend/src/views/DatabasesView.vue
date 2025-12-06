@@ -1,16 +1,16 @@
 <template>
-  <PageContent :title="$t('databases.pageTitle')" :subtitle="$t('databases.pageSubtitle')">
+  <PageContent :title="t('databases.pageTitle')" :subtitle="t('databases.pageSubtitle')">
     <template #left-panel>
       <v-card class="database-list-card">
         <v-card-title class="card-header">
           <div class="header-content">
             <div class="header-info">
-              <h3>{{ $t('databases.title') }}</h3>
-              <span class="db-count">{{ databases.length }} {{ $t('databases.bases') }}</span>
+              <h3>{{ t('databases.title') }}</h3>
+              <span class="db-count">{{ databases.length }} {{ t('databases.bases') }}</span>
             </div>
             <v-btn color="primary" class="add-btn" @click="openCreateDialog">
               <v-icon left>mdi-plus</v-icon>
-              {{ $t('databases.newDatabase') }}
+              {{ t('databases.newDatabase') }}
             </v-btn>
           </div>
         </v-card-title>
@@ -18,7 +18,7 @@
         <v-card-text class="pa-0 database-list-content">
           <!-- Search -->
           <div class="search-section">
-            <v-text-field v-model="searchQuery" :placeholder="$t('databases.searchPlaceholder')" prepend-inner-icon="mdi-magnify"
+            <v-text-field v-model="searchQuery" :placeholder="t('databases.searchPlaceholder')" prepend-inner-icon="mdi-magnify"
               variant="outlined" density="comfortable" hide-details />
           </div>
 
@@ -31,7 +31,7 @@
                 color="primary"
                 size="40"
               ></v-progress-circular>
-              <p class="loading-text">{{ $t('databases.loadingDatabases') }}</p>
+              <p class="loading-text">{{ t('databases.loadingDatabases') }}</p>
             </div>
             
             <!-- Database Items -->
@@ -45,7 +45,7 @@
                 <div class="db-meta">
                   <span class="contact-count">
                     <v-icon size="16">mdi-account-group</v-icon>
-                    {{ database.contactsCount }} {{ $t('databases.contactsLabel') }}
+                    {{ database.contactsCount }} {{ t('databases.contactsLabel') }}
                   </span>
                   <span class="db-date">{{ formatDate(database.createdAt) }}</span>
                 </div>
@@ -70,20 +70,20 @@
                     <v-list-item @click="editDatabase(database)">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-pencil</v-icon>
-                        {{ $t('databases.edit') }}
+                        {{ t('databases.edit') }}
                       </v-list-item-title>
                     </v-list-item>
                     <v-list-item @click="exportDatabase(database)">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-download</v-icon>
-                        {{ $t('databases.export') }}
+                        {{ t('databases.export') }}
                       </v-list-item-title>
                     </v-list-item>
                     <v-divider />
                     <v-list-item @click="deleteDatabase(database)" class="delete-item">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-delete</v-icon>
-                        {{ $t('databases.delete') }}
+                        {{ t('databases.delete') }}
                       </v-list-item-title>
                     </v-list-item>
                   </v-list>
@@ -98,9 +98,9 @@
       <div v-if="selectedDatabase" class="database-details">
         <!-- Database Stats Cards -->
           <StatGrid :statElements="[
-            { icon: 'mdi-account-group', title: 'Kontaktów', value: selectedDatabase.contactsCount || 0, class: 'contacts' },
-            { icon: 'mdi-check-circle', title: 'Aktywnych', value: selectedDatabase.contacts?.filter(contact => contact.active == 1).length || 0, class: 'active' },
-            { icon: 'mdi-email-multiple', title: 'Wypisanych', value: selectedDatabase.contacts?.filter(contact => contact.unsubscribesDate).length || 0, class: 'campaigns' },
+            { icon: 'mdi-account-group', title: t('databases.contactsLabel'), value: selectedDatabase.contactsCount || 0, class: 'contacts' },
+            { icon: 'mdi-check-circle', title: t('databases.activeContactsLabel'), value: selectedDatabase.contacts?.filter(contact => contact.active == 1).length || 0, class: 'active' },
+            { icon: 'mdi-email-multiple', title: t('databases.unsubscribedContactsLabel'), value: selectedDatabase.contacts?.filter(contact => contact.unsubscribesDate).length || 0, class: 'campaigns' },
           ]" />
 
 
@@ -109,11 +109,11 @@
           <v-tabs v-model="activeTab" bg-color="transparent">
             <v-tab value="contacts">
               <v-icon left>mdi-account-group</v-icon>
-              Kontakty
+              {{ t('databases.contactsTab') }}
             </v-tab>
             <v-tab value="history" v-if="false">
               <v-icon left>mdi-history</v-icon>
-              Historia
+              {{ t('databases.historyTab') }}
             </v-tab>
           </v-tabs>
 
@@ -128,7 +128,7 @@
                     color="primary"
                     size="40"
                   ></v-progress-circular>
-                  <p class="loading-text">{{ $t('databases.loadingContacts') }}</p>
+                  <p class="loading-text">{{ t('databases.loadingContacts') }}</p>
                 </div>
                 
                 <ContactsTable v-else :database="selectedDatabase" :contacts="selectedDatabase.contacts || []"
@@ -163,11 +163,11 @@
         <div class="empty-icon">
           <v-icon size="80" color="grey-lighten-2">mdi-database-outline</v-icon>
         </div>
-        <h3>{{ $t('databases.emptyTitle') }}</h3>
-        <p>{{ $t('databases.emptyDescription') }}</p>
+        <h3>{{ t('databases.emptyTitle') }}</h3>
+        <p>{{ t('databases.emptyDescription') }}</p>
         <v-btn color="primary" @click="openCreateDialog">
           <v-icon left>mdi-plus</v-icon>
-          {{ $t('databases.createFirst') }}
+          {{ t('databases.createFirst') }}
         </v-btn>
       </div>
     </template>
@@ -194,7 +194,7 @@
         variant="text"
         @click="snackbar.show = false"
       >
-        {{ $t('databases.snackbarClose') }}
+        {{ t('databases.snackbarClose') }}
       </v-btn>
     </template>
   </v-snackbar>

@@ -2,8 +2,8 @@
   <div class="campaign-content">
     <div class="content-header">
       <div class="header-info">
-        <h3>Treść kampanii</h3>
-        <p>Podgląd i edycja zawartości email</p>
+        <h3>{{ t('campaigns.contentTitle') }}</h3>
+        <p>{{ t('campaigns.contentDesc') }}</p>
       </div>
       <div class="header-buttons">
         <v-btn 
@@ -14,7 +14,7 @@
           @click="emit('edit-template')"
         >
           <v-icon left>mdi-pencil</v-icon>
-          Zmień szablon
+          {{ t('campaigns.useTemplate') }}
         </v-btn>
         <v-btn 
           color="secondary" 
@@ -23,7 +23,7 @@
           @click="emit('edit-content')"
         >
           <v-icon left>mdi-code-tags</v-icon>
-          Edytuj treść
+          {{ t('campaigns.useHtml') }}
         </v-btn>
       </div>
     </div>
@@ -33,20 +33,20 @@
       <v-card class="preview-card">
         <v-card-title class="card-title">
           <v-icon color="primary">mdi-email-variant</v-icon>
-          Podgląd email
+          {{ t('campaigns.emailPreview') }}
         </v-card-title>
         <v-card-text>
           <!-- Email Header -->
           <div class="email-header">
             <div class="email-from">
-              <strong>Od:</strong> {{ campaign.senderName || 'Nazwa nadawcy' }} 
+              <strong>{{ t('campaigns.from') }}:</strong> {{ campaign.senderName || 'Nazwa nadawcy' }} 
               &lt;{{ campaign.senderEmail || 'email@example.com' }}&gt;
             </div>
             <div class="email-subject">
-              <strong>Temat:</strong> {{ campaign.subject || 'Brak tematu' }}
+              <strong>{{ t('campaigns.subject') }}:</strong> {{ campaign.subject || 'Brak tematu' }}
             </div>
             <div class="email-date">
-              <strong>Data:</strong> {{ formatDate(new Date()) }}
+              <strong>{{ t('campaigns.date') }}:</strong> {{ formatDate(new Date()) }}
             </div>
           </div>
 
@@ -66,11 +66,11 @@
 
               <div v-else class="no-template">
                 <v-icon size="64" color="grey-lighten-2">mdi-email-outline</v-icon>
-                <h3>Brak treści</h3>
-                <p>Wybierz szablon lub utwórz niestandardową treść</p>
+                <h3>{{ t('campaigns.noContent') }}</h3>
+                <p>{{ t('campaigns.selectTemplateOrCreateContent') }}</p>
                 <v-btn color="primary" @click="emit('edit-content')">
                   <v-icon left>mdi-plus</v-icon>
-                  Dodaj treść
+                  {{ t('campaigns.addContent') }}
                 </v-btn>
               </div>
             </div>
@@ -84,16 +84,16 @@
       <v-card class="details-card">
         <v-card-title class="card-title">
           <v-icon color="info">mdi-information</v-icon>
-          Szczegóły treści
+          {{ t('campaigns.contentDetails') }}
         </v-card-title>
         <v-card-text>
           <div class="detail-section">
-            <h4>Ogólne</h4>
+            <h4>{{ t('campaigns.general') }}</h4>
             <div class="sending-info">
               <div class="info-row">
-                <span class="info-label">Status kampanii:</span>
+                <span class="info-label">{{ t('campaigns.campaignStatus') }}:</span>
                 <span class="info-label">
-                 {{ campaignIsSent ? 'Wysłano' : sendingInProgress ? 'Wysyłanie' : 'Szkic' }} 
+                 {{ campaignIsSent ? t('campaigns.sent') : sendingInProgress ? t('campaigns.sending') : t('campaigns.draft') }} 
                 </span>
               </div>
               <div class="info-row" v-if="sendingInProgress && !campaignIsSent">
@@ -112,7 +112,7 @@
                     hide-details
                     :disabled="sendingInProgress || campaignIsSent"
                     v-model="campaign.active"
-                    label="Kampania gotowa do wysyłki"
+                    :label="t('campaigns.campaignReadyToSend')"
                     color="primary"
                     @click="activateCampaign"
                   ></v-switch>
@@ -127,7 +127,7 @@
                      size="small"
                      @click="onRodoSwitchChange()"
                    >
-                     Dodaj stopkę RODO
+                     {{ t('campaigns.addRodoFooter') }}
                    </v-btn>
                  </span>
                </div>
@@ -135,10 +135,10 @@
           </div>
 
           <div class="detail-section">
-            <h4>SPAM rating <v-divider/><div :style="`color: ${spamInfo.color};`">{{ spamInfo.text }} </div></h4>
+            <h4>{{ t('campaigns.spamRating') }} <v-divider/><div :style="`color: ${spamInfo.color};`">{{ spamInfo.text }} </div></h4>
             <div class="sending-info">
               <div class="info-row">
-                <span class="info-label">Spam rating:</span>
+                <span class="info-label">{{ t('campaigns.spamRating') }}:</span>
                 <span class="info-label">{{ campaign.scoring || 0 }}/100</span>
               </div>
 
@@ -169,12 +169,12 @@
                 color="primary"
                 class="mr-2"
               ></v-progress-circular>
-              Test email
+              {{ t('campaigns.sendTestEmail') }}
             </v-btn>
           </div>
           <div class="content-actions">
             <v-text-field 
-              label="Email testowy"
+              :label="t('campaigns.enterTestEmail')"
               v-model="testEmail"
               type="email"
               variant="outlined"
@@ -198,7 +198,7 @@
     {{ snackbarText }}
     <template v-slot:actions>
       <v-btn color="white" variant="text" @click="snackbar = false">
-        Zamknij
+        {{ t('campaigns.close') }}
       </v-btn>
     </template>
   </v-snackbar>
@@ -206,9 +206,12 @@
 
 <script setup>
 import { ref, computed, onMounted, defineProps, defineEmits } from 'vue'
+import { useI18n } from 'vue-i18n'
 import MailingService from '../../services/mailing.js'
 import { CustomerService } from '../../services/customer.js'
 import { ca } from 'vuetify/locale'
+
+const { t } = useI18n()
 
 const props = defineProps({
   campaign: {

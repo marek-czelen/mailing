@@ -3,14 +3,14 @@
     <v-card class="schedule-dialog">
       <v-card-title class="card-title">
         <v-icon color="primary">mdi-calendar-clock</v-icon>
-        Zaplanuj kampanię
+        {{ t('campaigns.scheduleTitle') }}
       </v-card-title>
       
       <v-card-text>
         <div class="schedule-content">
           <!-- Send Mode Selection -->
           <div class="mode-selection">
-            <h4>Tryb wysyłki</h4>
+            <h4>{{ t('campaigns.sendModeTitle') }}</h4>
             <v-radio-group v-model="scheduleData.sendMode" mandatory>
               <v-radio 
                 label="Wyślij natychmiast" 
@@ -21,8 +21,8 @@
                   <div class="radio-label">
                     <v-icon color="success">mdi-send</v-icon>
                     <div>
-                      <div class="label-title">Wyślij natychmiast</div>
-                      <div class="label-subtitle">Kampania zostanie wysłana od razu</div>
+                      <div class="label-title">{{ t('campaigns.sendImmediate') }}</div>
+                      <div class="label-subtitle">{{ t('campaigns.sendImmediateDesc') }}</div>
                     </div>
                   </div>
                 </template>
@@ -37,8 +37,8 @@
                   <div class="radio-label">
                     <v-icon color="warning">mdi-calendar-clock</v-icon>
                     <div>
-                      <div class="label-title">Zaplanuj na później</div>
-                      <div class="label-subtitle">Wybierz datę i godzinę wysyłki</div>
+                      <div class="label-title">{{ t('campaigns.sendScheduled') }}</div>
+                      <div class="label-subtitle">{{ t('campaigns.sendScheduledDesc') }}</div>
                     </div>
                   </div>
                 </template>
@@ -53,8 +53,8 @@
                   <div class="radio-label">
                     <v-icon color="grey">mdi-content-save-outline</v-icon>
                     <div>
-                      <div class="label-title">Zapisz jako szkic</div>
-                      <div class="label-subtitle">Zapisz bez wysyłania</div>
+                      <div class="label-title">{{ t('campaigns.saveDraft') }}</div>
+                      <div class="label-subtitle">{{ t('campaigns.saveDraftDesc') }}</div>
                     </div>
                   </div>
                 </template>
@@ -66,14 +66,14 @@
           <div v-if="scheduleData.sendMode === 'scheduled'" class="schedule-settings">
             <v-divider class="my-6"></v-divider>
             
-            <h4>Ustawienia harmonogramu</h4>
+            <h4>{{ t('campaigns.scheduleSettings') }}</h4>
             
             <!-- Date and Time -->
             <div class="datetime-section">
               <div class="date-time-grid">
                 <v-text-field
                   v-model="scheduleData.date"
-                  label="Data wysyłki"
+                  :label="t('campaigns.sendDate')"
                   type="date"
                   variant="outlined"
                   density="comfortable"
@@ -83,7 +83,7 @@
                 
                 <v-text-field
                   v-model="scheduleData.time"
-                  label="Godzina"
+                  :label="t('campaigns.sendTime')"
                   type="time"
                   variant="outlined"
                   density="comfortable"
@@ -95,7 +95,7 @@
               <v-select
                 v-model="scheduleData.timezone"
                 :items="timezones"
-                label="Strefa czasowa"
+                :label="t('campaigns.timezone')"
                 variant="outlined"
                 density="comfortable"
               ></v-select>
@@ -117,7 +117,7 @@
             
             <h4>Szybkość wysyłki</h4>
             <p class="section-description">
-              Kontroluj tempo wysyłania emaili aby uniknąć problemów z dostarczalnością
+              {{ t('campaigns.sendRateDesc') }}
             </p>
             
             <div class="rate-selection">
@@ -169,7 +169,7 @@
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <v-icon>mdi-cog</v-icon>
-                  Opcje zaawansowane
+                  {{ t('campaigns.advancedOptions') }}
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <div class="advanced-content">
@@ -271,7 +271,7 @@
       
       <v-card-actions class="card-actions">
         <v-btn variant="text" @click="closeDialog">
-          Anuluj
+          {{ t('campaigns.cancel') }}
         </v-btn>
         <v-spacer></v-spacer>
         <v-btn 
@@ -289,6 +289,9 @@
 
 <script setup>
 import { ref, computed, defineProps, defineEmits, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {
