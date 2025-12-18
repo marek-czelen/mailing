@@ -257,7 +257,8 @@
     "edit": "Edytuj",
     "home": "Strona główna",
     "pleaseWait": "Proszę czekać",
-    "save": "Zapisz"
+    "save": "Zapisz",
+    "saveChanges": "Zapisz zmiany"
   },
   "contacts": {
     "activity": {
@@ -380,37 +381,48 @@
   },
   "databases": {
     "bases": "baz",
+    "addTags":"Dodaj tagi",
     "activeContactsLabel": "Aktywnych kontaktów",
+    "allowExport": "Zezwól na eksport danych",
+    "basicInfo": "Podstawowe informacje",
     "contactsLabel": "Kontaktów",
     "contactsTab": "Kontakty",
     "created": "Nowa baza danych została utworzona",
+    "createDatabase": "Utwórz bazę danych",
     "createFirst": "Utwórz pierwszą bazę",
     "delete": "Usuń",
     "deleteConfirm": "Czy na pewno chcesz usunąć bazę \"{name}\"? Ta operacja jest nieodwracalna.",
     "deleted": "Baza danych została usunięta",
     "deleteFailed": "Nie udało się usunąć bazy danych. Spróbuj ponownie.",
+    "description": "Opis (opcjonalny)",
     "edit": "Edytuj",
+    "editDatabase": "Edytuj bazę danych",
     "emptyDescription": "Wybierz bazę danych z listy po lewej stronie, aby zobaczyć szczegóły i zarządzać kontaktami.",
     "emptyTitle": "Wybierz bazę danych",
     "export": "Eksportuj",
     "exported": "Baza danych została wyeksportowana",
+    "gdpr": "Zgodność z RODO",
     "historyTab": "Historia",
     "importSuccess": "Import zakończony! Zaimportowano: {imported}, zaktualizowano: {updated}, odrzucono: {errors}",
     "loadError": "Nie udało się załadować baz danych",
     "loadingContacts": "Ładowanie kontaktów...",
     "loadingDatabases": "Ładowanie baz danych...",
+    "name": "Nazwa bazy danych",
     "newDatabase": "Nowa baza",
+    "privacySettings": "Ustawienia prywatności",
     "pageSubtitle": "Zarządzaj bazami kontaktów dla kampanii marketingowych",
     "pageTitle": "Bazy Danych",
     "saveFailed": "Nie udało się zapisać bazy danych",
     "searchPlaceholder": "Wyszukaj bazę...",
     "snackbarClose": "Zamknij",
+    "tagsTitle": "Tagi",
+    "tagsHint": "Naciśnij Enter, aby dodać nowy tag",
     "title": "Bazy Danych",
     "unsubscribedContactsLabel": "Wypisanych kontaktów",
     "updated": "Baza danych została zaktualizowana"
   },
   "drawer": {
-    "brand": "MailingApp"
+    "brand": "Aculeo Campaigner"
   },
   "emailEditor": {
     "close": "Zamknij",
@@ -598,13 +610,22 @@
     "loginButton": "Zaloguj się",
     "loginSubtitle": "Zaloguj się do swojego konta",
     "passwordPlaceholder": "Hasło",
-    "welcomeTitle": "Witamy z powrotem!"
+    "welcomeTitle": "Witamy z powrotem!",
+    "orContinueWith": "lub kontynuuj z",
+    "continueWithGoogle": "Kontynuuj z Google",
+    "continueWithGitHub": "Kontynuuj z GitHub"
+  },
+  "auth": {
+    "processing": "Przetwarzanie logowania...",
+    "success": "Logowanie zakończone sukcesem",
+    "failed": "Logowanie nie powiodło się"
   },
   "nav": {
     "campaigns": "Kampanie",
     "dashboard": "Dashboard",
     "databases": "Bazy danych",
-    "editor": "Edytor"
+    "editor": "Edytor",
+    "admin": "Administracja"
   },
   "page": {
     "subtitle": "Podtytuł strony",
@@ -689,6 +710,86 @@
     "successMessage": "Adres email {email} został usunięty ze wszystkich naszych baz mailingowych.",
     "successTitle": "Zostałeś pomyślnie wypisany!",
     "unexpectedError": "Wystąpił nieoczekiwany błąd"
+  },
+  "admin": {
+    "pageTitle": "Panel administracyjny",
+    "pageSubtitle": "Zarządzaj użytkownikami, uprawnieniami i ustawieniami systemu",
+    "title": "Panel administracyjny",
+    "description": "Zarządzaj użytkownikami i uprawnieniami systemu",
+    "menu": {
+      "title": "Menu administracyjne",
+      "settings": "Ustawienia systemowe",
+      "logs": "Logi systemowe"
+    },
+    "users": {
+      "title": "Zarządzanie użytkownikami",
+      "list": "Lista użytkowników",
+      "create": "Utwórz użytkownika",
+      "edit": "Edytuj użytkownika",
+      "delete": "Usuń użytkownika",
+      "deleteConfirm": "Czy na pewno chcesz usunąć użytkownika {name}?",
+      "deleteSuccess": "Użytkownik został usunięty",
+      "createSuccess": "Użytkownik został utworzony",
+      "updateSuccess": "Dane użytkownika zostały zaktualizowane",
+      "noUsers": "Brak użytkowników",
+      "fields": {
+        "name": "Imię i nazwisko",
+        "email": "Adres email",
+        "password": "Hasło",
+        "confirmPassword": "Potwierdź hasło",
+        "roles": "Role użytkownika",
+        "active": "Konto aktywne",
+        "createdAt": "Data utworzenia",
+        "lastLogin": "Ostatnie logowanie"
+      },
+      "table": {
+        "name": "Nazwa",
+        "email": "Email",
+        "roles": "Role",
+        "status": "Status",
+        "actions": "Akcje",
+        "active": "Aktywny",
+        "inactive": "Nieaktywny"
+      },
+      "dialog": {
+        "title": "Dane użytkownika",
+        "createTitle": "Nowy użytkownik",
+        "editTitle": "Edycja użytkownika",
+        "save": "Zapisz",
+        "cancel": "Anuluj"
+      },
+      "actions": {
+        "activate": "Aktywuj",
+        "deactivate": "Dezaktywuj",
+        "edit": "Edytuj",
+        "delete": "Usuń",
+        "changePassword": "Zmień hasło",
+        "resetPassword": "Resetuj hasło"
+      },
+      "errors": {
+        "loadFailed": "Nie udało się pobrać listy użytkowników",
+        "createFailed": "Nie udało się utworzyć użytkownika",
+        "updateFailed": "Nie udało się zaktualizować użytkownika",
+        "deleteFailed": "Nie udało się usunąć użytkownika",
+        "passwordMismatch": "Hasła nie są identyczne",
+        "selectAtLeastOneRole": "Wybierz przynajmniej jedną rolę"
+      }
+    },
+    "roles": {
+      "administrator": "Administrator",
+      "marketer": "Marketer",
+      "data_administrator": "Administrator danych",
+      "descriptions": {
+        "administrator": "Zarządzanie systemem - pełny dostęp do wszystkich funkcji",
+        "marketer": "Tworzenie i wysyłanie kampanii mailowych",
+        "data_administrator": "Zarządzanie bazami danych i kontaktami"
+      }
+    },
+    "permissions": {
+      "title": "Uprawnienia",
+      "noAccess": "Brak dostępu",
+      "requiresAdmin": "Tylko administratorzy mają dostęp do tej sekcji"
+    }
   },
   "validation": {
     "email": "Nieprawidłowy adres email",

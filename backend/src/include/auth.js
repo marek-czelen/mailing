@@ -27,7 +27,15 @@ export class Auth {
         let returnValue = false;
         const user = await User.findOne({ where: { email: email } });
         if (!user) return false
+        
+        // Sprawdź czy konto jest aktywne
+        if (!user.active) return false
+        
         if (await bcrypt.compare(password, user.hash)) {
+            // Aktualizuj datę ostatniego logowania
+            user.lastLogin = new Date();
+            await user.save();
+            
             returnValue = Auth.generateToken({ userEmail: user.email })
         }
         return returnValue

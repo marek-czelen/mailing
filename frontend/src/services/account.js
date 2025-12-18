@@ -18,6 +18,12 @@ export class Account {
       if (response.data && response.data.data.token) {
         const token = response.data.data.token;
         localStorage.setItem('auth_token', token);
+        
+        // Pobierz i zapisz dane użytkownika (w tym role)
+        if (response.data.data.user) {
+          localStorage.setItem('user_data', JSON.stringify(response.data.data.user));
+        }
+        
         // axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         return true;
       } else {

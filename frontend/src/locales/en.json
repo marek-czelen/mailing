@@ -410,7 +410,7 @@
     "updated": "Database updated"
   },
   "drawer": {
-    "brand": "MailingApp"
+    "brand": "Aculeo Campaigner"
   },
   "emailEditor": {
     "close": "Close",
@@ -591,20 +591,29 @@
     "uploadSummaryTitle": "Upload File to Server"
   },
   "login": {
-    "authError": "Authorization Error",
-    "brandSubtitle": "Modern platform for managing email campaigns",
+    "authError": "Authorization error",
+    "brandSubtitle": "Modern platform for email campaign management",
     "brandTitle": "Aculeo Campaigner",
     "emailPlaceholder": "Email",
-    "loginButton": "Login",
+    "loginButton": "Log In",
     "loginSubtitle": "Log in to your account",
     "passwordPlaceholder": "Password",
-    "welcomeTitle": "Welcome Back!"
+    "welcomeTitle": "Welcome back!",
+    "orContinueWith": "or continue with",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithGitHub": "Continue with GitHub"
+  },
+  "auth": {
+    "processing": "Processing authentication...",
+    "success": "Authentication successful",
+    "failed": "Authentication failed"
   },
   "nav": {
     "campaigns": "Campaigns",
     "dashboard": "Dashboard",
     "databases": "Databases",
-    "editor": "Editor"
+    "editor": "Editor",
+    "admin": "Administration"
   },
   "page": {
     "subtitle": "Page Subtitle",
@@ -689,6 +698,86 @@
     "successMessage": "Email address {email} has been removed from all our databases.",
     "successTitle": "You have been successfully unsubscribed!",
     "unexpectedError": "An unexpected error occurred"
+  },
+  "admin": {
+    "pageTitle": "Administration Panel",
+    "pageSubtitle": "Manage users, permissions and system settings",
+    "title": "Administration Panel",
+    "description": "Manage users and system permissions",
+    "menu": {
+      "title": "Admin Menu",
+      "settings": "System Settings",
+      "logs": "System Logs"
+    },
+    "users": {
+      "title": "User Management",
+      "list": "User List",
+      "create": "Create User",
+      "edit": "Edit User",
+      "delete": "Delete User",
+      "deleteConfirm": "Are you sure you want to delete user {name}?",
+      "deleteSuccess": "User has been deleted",
+      "createSuccess": "User has been created",
+      "updateSuccess": "User data has been updated",
+      "noUsers": "No users found",
+      "fields": {
+        "name": "Full Name",
+        "email": "Email Address",
+        "password": "Password",
+        "confirmPassword": "Confirm Password",
+        "roles": "User Roles",
+        "active": "Account Active",
+        "createdAt": "Created At",
+        "lastLogin": "Last Login"
+      },
+      "table": {
+        "name": "Name",
+        "email": "Email",
+        "roles": "Roles",
+        "status": "Status",
+        "actions": "Actions",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "dialog": {
+        "title": "User Data",
+        "createTitle": "New User",
+        "editTitle": "Edit User",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "actions": {
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "edit": "Edit",
+        "delete": "Delete",
+        "changePassword": "Change Password",
+        "resetPassword": "Reset Password"
+      },
+      "errors": {
+        "loadFailed": "Failed to load user list",
+        "createFailed": "Failed to create user",
+        "updateFailed": "Failed to update user",
+        "deleteFailed": "Failed to delete user",
+        "passwordMismatch": "Passwords do not match",
+        "selectAtLeastOneRole": "Select at least one role"
+      }
+    },
+    "roles": {
+      "administrator": "Administrator",
+      "marketer": "Marketer",
+      "data_administrator": "Data Administrator",
+      "descriptions": {
+        "administrator": "System management - full access to all features",
+        "marketer": "Creating and sending email campaigns",
+        "data_administrator": "Managing databases and contacts"
+      }
+    },
+    "permissions": {
+      "title": "Permissions",
+      "noAccess": "No Access",
+      "requiresAdmin": "Only administrators have access to this section"
+    }
   },
   "validation": {
     "email": "Invalid email address",

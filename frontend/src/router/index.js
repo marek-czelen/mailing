@@ -42,12 +42,29 @@ const routes = [
     component: () => import('../views/DatabasesView.vue')
   },
   {
+    path: '/admin',
+    name: 'Admin',
+    component: () => import('../views/AdminView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true // Wymaga uprawnień administratora
+    }
+  },
+  {
     path: '/unsubscribe/:hash',
     name: 'Unsubscribe',
     component: () => import('../views/UnsubscribeView.vue'),
     meta: { 
       requiresAuth: false, // Publiczny endpoint - nie wymaga logowania
       layout: 'public' // Specjalny layout bez menu/toolbar
+    }
+  },
+  {
+    path: '/auth/callback/:provider',
+    name: 'OAuthCallback',
+    component: () => import('../views/OAuthCallbackView.vue'),
+    meta: {
+      requiresAuth: false // Publiczny endpoint dla OAuth callback
     }
   },
   {
@@ -63,10 +80,17 @@ const router = createRouter({
 
 
 import { Account } from '../services/account';
+import { UsersService } from '../services/users';
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   // Dla strony unsubscribe - zawsze pozwól
   if (to.path.startsWith('/unsubscribe/')) {
+    next();
+    return;
+  }
+  
+  // Dla callback OAuth - zawsze pozwól
+  if (to.path.startsWith('/auth/callback/')) {
     next();
     return;
   }
@@ -82,9 +106,26 @@ router.beforeEach((to, from, next) => {
   
   if (requiresAuth && !Account.IsLoggedIn()) {
     next('/login');
-  } else {
-    next();
+    return;
   }
+  
+  // Sprawdź czy strona wymaga uprawnień administratora
+  if (to.meta?.requiresAdmin) {
+    try {
+      const isAdmin = await UsersService.isCurrentUserAdmin();
+      if (!isAdmin) {
+        // Użytkownik nie jest administratorem - przekieruj na dashboard
+        next('/dashboard');
+        return;
+      }
+    } catch (error) {
+      console.error('Błąd podczas sprawdzania uprawnień administratora:', error);
+      next('/dashboard');
+      return;
+    }
+  }
+  
+  next();
 });
 
 export default router;

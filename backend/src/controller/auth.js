@@ -33,42 +33,30 @@ export async function login(req,res){
 
 export async function me(req, res) {
     try {
-        // Pobierz token z nagłówka Authorization
         const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return unauthorized(req, res);
-        }
-
-        const token = authHeader.substring(7); // Usuń "Bearer " z początku
+        const userData = await Admin.getCurrentUserData(authHeader);
         
-        // Zdekoduj token
-        let decodedToken;
-        try {
-            decodedToken = Auth.decodeToken(token);
-        } catch (err) {
+        if (!userData) {
             return unauthorized(req, res);
         }
 
-        if (!decodedToken || !decodedToken.data || !decodedToken.data.userEmail) {
-            return unauthorized(req, res);
-        }
-
-        const userEmail = decodedToken.data.userEmail;
-
-        // Pobierz dane użytkownika z bazy
-        const user = await Admin.getUserByEmail(userEmail);
-        if (!user) {
+        // Sprawdź czy konto jest aktywne
+        const user = await Admin.getUserByEmail(userData.email);
+        if (!user.active) {
             return unauthorized(req, res);
         }
 
         // Zwróć dane użytkownika (bez hasła)
-        const userData = {
-            email: user.email,
-            customerId: user.customerId,
-            Customer: user.Customer
+        const responseData = {
+            email: userData.email,
+            name: userData.name,
+            customerId: userData.customerId,
+            active: userData.active,
+            roles: userData.roles,
+            Customer: userData.Customer
         };
 
-        res.send(new Response(userData, true, "User data retrieved successfully."));
+        res.send(new Response(responseData, true, "User data retrieved successfully."));
     } catch (err) {
         return unavailable(req, res, err);
     }

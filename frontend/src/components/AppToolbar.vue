@@ -75,6 +75,24 @@
           </button>
         </template>
         <v-list class="user-dropdown">
+            <v-list-item v-if="isAdmin" @click="goToAdmin" class="menu-item">
+            <template v-slot:prepend>
+              <svg viewBox="0 0 24 24" width="20" height="20">
+                <path fill="currentColor" d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,5A3,3 0 0,1 15,8A3,3 0 0,1 12,11A3,3 0 0,1 9,8A3,3 0 0,1 12,5M17.13,17C15.92,18.85 14.11,20.24 12,20.92C9.89,20.24 8.08,18.85 6.87,17C6.53,16.5 6.24,16 6,15.47C6,13.82 8.71,12.47 12,12.47C15.29,12.47 18,13.79 18,15.47C17.76,16 17.47,16.5 17.13,17Z"/>
+              </svg>
+            </template>
+            <v-list-item-title>{{ $t('nav.admin') }}</v-list-item-title>
+          </v-list-item>
+          <v-divider v-if="isAdmin" style="opacity: 0.2; margin: 4px 0;"></v-divider>
+            <v-list-item @click="settings" class="menu-item">
+            <template v-slot:prepend>
+              <svg viewBox="0 0 24 24" width="20" height="20">
+                <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.63l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.36 7.36 0 0 0-1.66-.96l-.36-2.57A.5.5 0 0 0 13.6 2h-3.2a.5.5 0 0 0-.49.42L9.55 5a7.36 7.36 0 0 0-1.66.96l-2.39-.96a.5.5 0 0 0-.6.22L2.98 9.5a.5.5 0 0 0 .12.63l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L3.1 15.2a.5.5 0 0 0-.12.63l1.92 3.32c.14.24.43.34.68.25l2.39-.96c.5.29 1.02.52 1.66.7l.36 2.57c.05.27.28.42.49.42h3.2c.25 0 .45-.15.49-.42l.36-2.57c.64-.18 1.16-.41 1.66-.7l2.39.96c.25.09.54-.01.68-.25l1.92-3.32a.5.5 0 0 0-.12-.63l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/>
+              </svg>
+            </template>
+            <v-list-item-title>{{ $t('toolbar.settings') }}</v-list-item-title>
+          </v-list-item>
+          <v-divider style="opacity: 0.2; margin: 4px 0;"></v-divider>
             <v-list-item @click="logout" class="logout-item">
             <template v-slot:prepend>
               <svg viewBox="0 0 24 24" width="20" height="20">
@@ -82,14 +100,6 @@
               </svg>
             </template>
             <v-list-item-title>{{ $t('toolbar.logout') }}</v-list-item-title>
-          </v-list-item>
-          <v-list-item @click="settings" class="menu-item">
-            <template v-slot:prepend>
-              <svg viewBox="0 0 24 24" width="20" height="20">
-                <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.63l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.36 7.36 0 0 0-1.66-.96l-.36-2.57A.5.5 0 0 0 13.6 2h-3.2a.5.5 0 0 0-.49.42L9.55 5a7.36 7.36 0 0 0-1.66.96l-2.39-.96a.5.5 0 0 0-.6.22L2.98 9.5a.5.5 0 0 0 .12.63l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L3.1 15.2a.5.5 0 0 0-.12.63l1.92 3.32c.14.24.43.34.68.25l2.39-.96c.5.29 1.02.52 1.66.7l.36 2.57c.05.27.28.42.49.42h3.2c.25 0 .45-.15.49-.42l.36-2.57c.64-.18 1.16-.41 1.66-.7l2.39.96c.25.09.54-.01.68-.25l1.92-3.32a.5.5 0 0 0-.12-.63l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/>
-              </svg>
-            </template>
-            <v-list-item-title>{{ $t('toolbar.settings') }}</v-list-item-title>
           </v-list-item>          
         </v-list>
         
@@ -112,6 +122,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router';
 import { Account } from '../services/account';
 import { CustomerService } from '../services/customer';
+import { UsersService } from '../services/users';
 import UserSettingsDialog from './UserSettingsDialog.vue';
 
 const router = useRouter();
@@ -122,6 +133,7 @@ const { locale } = useI18n()
 const showSettingsDialog = ref(false);
 const currentUser = ref({});
 const currentLocale = ref(locale.value)
+const isAdmin = ref(false)
 
 // Define emits
 const emit = defineEmits(['toggle-drawer']);
@@ -139,6 +151,9 @@ onMounted(async () => {
       //customerSettings.value = await CustomerService.getCurrentCustomerSettings();
       currentUser.value = await Account.getCurrentUser();
       console.log('Pobrano dane bieżącego klienta:', currentUser.value);
+      
+      // Sprawdź czy użytkownik jest administratorem
+      isAdmin.value = await UsersService.isCurrentUserAdmin();
     } catch (error) {
       console.warn('Nie udało się pobrać danych bieżącego klienta:', error);
     }
@@ -165,6 +180,10 @@ function changeLocale() {
 function settings() {
   // Otwórz dialog ustawień zamiast przekierowania
   showSettingsDialog.value = true;
+}
+
+function goToAdmin() {
+  router.push('/admin');
 }
 
 async function onSettingsSaved(settingsData) {
@@ -291,37 +310,83 @@ async function onSettingsSaved(settingsData) {
 .toolbar-actions {
   display: flex;
   align-items: center;
+  gap: 16px;
+}
+
+.toolbar-actions label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.toolbar-actions select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(234, 220, 246, 0.3);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%);
+  color: white;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(20, 15, 7, 0.1);
+}
+
+.toolbar-actions select:hover {
+  border-color: rgba(234, 220, 246, 0.5);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.12) 100%);
+  box-shadow: 0 4px 12px rgba(20, 15, 7, 0.15);
+}
+
+.toolbar-actions select:focus {
+  outline: none;
+  border-color: rgba(234, 220, 246, 0.6);
+  box-shadow: 0 0 12px rgba(147, 149, 250, 0.3);
+}
+
+.toolbar-actions select option {
+  background: #202950;
+  color: white;
+  padding: 8px;
 }
 
 .user-menu-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%);
+  border: 1.5px solid rgba(234, 220, 246, 0.25);
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: white;
+  box-shadow: 0 4px 12px rgba(20, 15, 7, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 
 .user-menu-btn:hover {
-  border-color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-1px);
+  border-color: rgba(234, 220, 246, 0.5);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.12) 100%);
+  box-shadow: 0 6px 16px rgba(20, 15, 7, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 0 20px rgba(147, 149, 250, 0.2);
+  transform: translateY(-2px);
 }
 
 .user-avatar {
   width: 32px;
   height: 32px;
-  background: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, rgba(147, 149, 250, 0.3) 0%, rgba(81, 91, 173, 0.2) 100%);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(234, 220, 246, 0.3);
+  transition: all 0.3s ease;
+}
+
+.user-menu-btn:hover .user-avatar {
+  background: linear-gradient(135deg, rgba(147, 149, 250, 0.5) 0%, rgba(81, 91, 173, 0.35) 100%);
+  border-color: rgba(234, 220, 246, 0.5);
 }
 
 .chevron {
@@ -334,26 +399,103 @@ async function onSettingsSaved(settingsData) {
 
 /* Dropdown styles */
 .user-dropdown {
-  min-width: 180px;
+  min-width: 260px;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  box-shadow: 0 20px 60px rgba(10, 5, 0, 0.5), 0 0 100px rgba(107, 95, 255, 0.9), inset 0 1px 20px rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(30px);
+  background: linear-gradient(135deg, #0a0d2e 0%, #1f2870 50%, #3a3f95 100%);
+  overflow: hidden;
+  padding: 4px 0;
 }
 
-.logout-item {
-  color: #e53e3e;
-  transition: all 0.3s ease;
+.user-dropdown :deep(.v-divider) {
+  display: none !important;
 }
 
-.menu-item {
-  color: #010101;
-  transition: all 0.3s ease;
+/* Wszystkie list items */
+.user-dropdown :deep(.v-list-item) {
+  background: transparent !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  padding: 10px 14px !important;
+  min-height: 40px;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+.user-dropdown :deep(.v-list-item:hover) {
+  background: linear-gradient(90deg, rgba(107, 95, 255, 0.8) 0%, rgba(80, 70, 255, 0.6) 100%) !important;
+  padding-left: 18px !important;
+}
+
+/* Ikonki */
+.user-dropdown :deep(.v-list-item__prepend) {
+  color: #a89fff !important;
+  margin-right: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  transition: all 0.3s ease !important;
+  font-weight: 700 !important;
+}
+
+.user-dropdown :deep(.v-list-item:hover .v-list-item__prepend) {
+  color: #ffff00 !important;
+  transform: scale(1.2) !important;
+  text-shadow: 0 0 8px rgba(255, 255, 0, 0.6) !important;
+}
+
+/* Tekst w menu items */
+.user-dropdown :deep(.v-list-item-title) {
+  color: #c0b0ff !important;
+  font-weight: 800 !important;
+  font-size: 0.98rem !important;
+  letter-spacing: 0.6px !important;
+  line-height: 1.3 !important;
+}
+
+.user-dropdown :deep(.v-list-item:hover .v-list-item-title) {
+  color: #ffff00 !important;
+  text-shadow: 0 0 12px rgba(255, 255, 0, 0.6) !important;
+}
+
+/* Admin i Settings items */
+.menu-item :deep(.v-list-item) {
+  color: #c0b0ff !important;
+}
+
+.menu-item :deep(.v-list-item-title) {
+  color: #c0b0ff !important;
+}
+
+/* Logout item - specjalny styl */
+.logout-item :deep(.v-list-item) {
+  background: transparent !important;
+}
+
+.logout-item :deep(.v-list-item-title) {
+  color: #ff2222 !important;
+  font-weight: 900 !important;
+  text-shadow: 0 0 8px rgba(255, 34, 34, 0.6) !important;
+}
+
+.logout-item:hover :deep(.v-list-item-title) {
+  color: #ffff00 !important;
+  text-shadow: 0 0 20px rgba(255, 255, 0, 1) !important;
 }
 
 .logout-item:hover {
-  background: rgba(229, 62, 62, 0.1);
+  background: linear-gradient(90deg, rgba(255, 80, 80, 0.7) 0%, rgba(255, 34, 34, 0.5) 100%) !important;
+}
+
+.logout-item :deep(.v-list-item__prepend) {
+  color: #ff5555 !important;
+}
+
+.logout-item:hover :deep(.v-list-item__prepend) {
+  color: #ffff00 !important;
+  transform: scale(1.2) !important;
+  text-shadow: 0 0 8px rgba(255, 255, 0, 0.6) !important;
 }
 
 /* Responsive design */

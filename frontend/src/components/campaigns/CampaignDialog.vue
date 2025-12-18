@@ -113,7 +113,7 @@
                   <v-icon color="primary">mdi-account-group</v-icon>
                   <div class="stat-info">
                     <span class="stat-number">{{ estimatedRecipients }}</span>
-                    <span class="stat-label">{{ t('campaigns.recipients') }}</span>
+                    <span class="stat-label">{{ t('campaigns.recipients_') }}</span>
                   </div>
                 </div>
               </div>

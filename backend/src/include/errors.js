@@ -9,4 +9,8 @@ export function unavailable(req, res, message=""){
     return res.status(503).send(new Response(null,false, `Not available: ${message}`))
 }
 
+export function badRequest(req, res, message=""){
+    return res.status(400).send(new Response(null,false, `Bad request: ${message}`))
+}
+
 export default null

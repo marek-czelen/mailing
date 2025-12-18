@@ -12,6 +12,7 @@ import authRouter from './routes/auth.js';
 import customerRouter from './routes/customers.js';
 import adminRouter from "./routes/admin.js";
 import mailinngRouter from "./routes/mailing.js";
+import usersRouter from "./routes/users.js";
 import uploadRoutes from './plugin/upload.js';
 import templateRoutes from './routes/templates.js';
 import cors from 'cors'
@@ -73,6 +74,7 @@ function requireAuth(req, res, next) {
 app.use('/auth', authRouter);
 
 // Chronione endpointy API
+app.use('/api', requireAuth, usersRouter);
 app.use('/customers', requireAuth, customerRouter);
 app.use('/admin', requireAuth, adminRouter);
 // /mailing z wyjątkiem publicznych linków wypisania

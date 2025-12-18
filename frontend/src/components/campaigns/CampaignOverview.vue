@@ -97,7 +97,7 @@
       <v-card class="detail-card">
         <v-card-title class="card-title">
           <v-icon color="success">mdi-account-group</v-icon>
-          {{ t('campaigns.recipients') }}
+          {{ t('campaigns.recipients_') }}
         </v-card-title>
         </v-card-title>
         <v-card-text>

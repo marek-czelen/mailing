@@ -2,6 +2,9 @@ import sequelize from '../include/db.js';
 import EmailTemplate from './EmailTemplate.js';
 import TemplateBlock from './TemplateBlock.js';
 import CampaignReply from './campaignReply.model.js';
+import User from './user.model.js';
+import Role from './role.model.js';
+import UserRole from './userRole.model.js';
 
 // Import innych modeli jeśli potrzebne
 // import Customer from './customers.model.js';
@@ -12,6 +15,9 @@ const models = {
   EmailTemplate,
   TemplateBlock,
   CampaignReply,
+  User,
+  Role,
+  UserRole,
   // Customer,
   // Database,
 };
@@ -36,12 +42,30 @@ TemplateBlock.belongsTo(EmailTemplate, {
   onDelete: 'CASCADE'
 });
 
+// Asocjacje dla systemu ról użytkowników
+User.belongsToMany(Role, {
+  through: UserRole,
+  foreignKey: 'userEmail',
+  otherKey: 'roleId',
+  as: 'Roles'
+});
+
+Role.belongsToMany(User, {
+  through: UserRole,
+  foreignKey: 'roleId',
+  otherKey: 'userEmail',
+  as: 'Users'
+});
+
 // Eksportuj modele i sequelize
 export {
   sequelize,
   EmailTemplate,
   TemplateBlock,
   CampaignReply,
+  User,
+  Role,
+  UserRole,
 };
 
 export default models;
