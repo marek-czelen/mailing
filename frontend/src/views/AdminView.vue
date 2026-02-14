@@ -19,7 +19,7 @@
             </v-list-item>
 
             <v-list-item
-              disabled
+              
               :class="{ 'selected': tab === 'roles' }"
               @click="tab = 'roles'"
               prepend-icon="mdi-shield-account"
@@ -28,7 +28,7 @@
             </v-list-item>
 
             <v-list-item
-              disabled
+              
               :class="{ 'selected': tab === 'settings' }"
               @click="tab = 'settings'"
               prepend-icon="mdi-cog"
@@ -37,7 +37,7 @@
             </v-list-item>
 
             <v-list-item
-              disabled
+              
               :class="{ 'selected': tab === 'logs' }"
               @click="tab = 'logs'"
               prepend-icon="mdi-file-document-outline"
@@ -147,21 +147,28 @@ async function checkAdminPermissions() {
 
 <style scoped>
 .admin-menu-card {
-  height: 100%;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 16px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 16px 20px;
+  background: linear-gradient(135deg, #202950 0%, #515bad 100%) !important;
+  color: #eadcf6 !important;
+  border-radius: 16px 16px 0 0 !important;
+  padding: 20px 24px !important;
 }
 
 .header-content {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 
 .header-content h3 {
@@ -172,7 +179,6 @@ async function checkAdminPermissions() {
 
 .v-list-item {
   cursor: pointer;
-  transition: all 0.2s ease;
   border-left: 3px solid transparent;
 }
 

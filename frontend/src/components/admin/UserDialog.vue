@@ -1,12 +1,13 @@
 <template>
-  <v-dialog v-model="internalDialog" max-width="600" persistent>
-    <v-card>
-      <v-card-title class="text-h5 bg-primary">
-        {{ isEdit ? $t('admin.users.dialog.editTitle') : $t('admin.users.dialog.createTitle') }}
-      </v-card-title>
-
-      <v-card-text class="pt-6">
-        <v-form ref="form" v-model="valid">
+  <GeneralDialog 
+    v-model="internalDialog" 
+    max-width="600" 
+    persistent
+    @update:model-value="val => internalDialog = val"
+    :title="t(`${isEdit ? 'admin.users.dialog.editTitle' : 'admin.users.dialog.createTitle'}`)"
+    >
+      <template #default>
+                <v-form ref="form" v-model="valid">
           <!-- Imię i nazwisko -->
           <v-text-field
             v-model="formData.name"
@@ -105,11 +106,9 @@
             hide-details
           ></v-switch>
         </v-form>
-      </v-card-text>
-
-      <v-card-actions>
-        <v-spacer></v-spacer>
-        <v-btn
+      </template>
+      <template #actions>
+                <v-btn
           variant="text"
           @click="closeDialog"
         >
@@ -123,45 +122,47 @@
         >
           {{ $t('admin.users.dialog.save') }}
         </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+      </template>
+
+
+  </GeneralDialog>
 </template>
 
-<script>
+<script setup>
+import { watch, ref, computed } from 'vue';
 import { UsersService } from '../../services/users';
+import GeneralDialog from '../GeneralDialog.vue';
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 
-export default {
-  name: 'UserDialog',
-  props: {
-    modelValue: {
-      type: Boolean,
-      default: false
-    },
-    user: {
-      type: Object,
-      default: null
-    },
-    isEdit: {
-      type: Boolean,
-      default: false
-    }
+const props = defineProps({
+  modelValue: {
+    type: Boolean,
+    default: false
   },
-  emits: ['update:modelValue', 'save'],
-  data() {
-    return {
-      valid: false,
-      showPassword: false,
-      showPasswordFields: false,
-      formData: {
-        name: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        roles: [],
-        active: true
-      },
-      rules: {
+  user: {
+    type: Object,
+    default: null
+  },
+  isEdit: {
+    type: Boolean,
+    default: false
+  }
+});
+const emit = defineEmits(['update:modelValue', 'save']);
+const valid = ref(false);
+const showPassword = ref(false);
+const showPasswordFields = ref(false);
+const formData = ref({
+  name: '',
+  email: '',
+  password: '',
+  confirmPassword: ''});
+
+const roles =ref([]);
+const active = ref(true);
+      
+const rules = {
         required: value => !!value || this.$t('validation.required'),
         email: value => {
           const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -179,63 +180,57 @@ export default {
           return this.formData.roles.length > 0 || this.$t('admin.users.errors.selectAtLeastOneRole');
         }
       }
+
+const internalDialog = computed({
+  get() {
+    return props.modelValue;
+  },
+  set(value) {
+    emit('update:modelValue', value);
+  }
+});
+
+const availableRoles = computed(() => {
+  return [
+    {
+      value: UsersService.ROLES.ADMINISTRATOR,
+      label: t('admin.roles.administrator'),
+      description: t('admin.roles.descriptions.administrator')
+    },
+    {
+      value: UsersService.ROLES.MARKETER,
+      label: t('admin.roles.marketer'),
+      description: t('admin.roles.descriptions.marketer')
+    },
+    {
+      value: UsersService.ROLES.DATA_ADMINISTRATOR,
+      label: t('admin.roles.data_administrator'),
+      description: t('admin.roles.descriptions.data_administrator')
+    }
+  ];
+});
+
+watch(props.user, (newUser) => {
+  if (newUser) {
+    formData.value = {
+      ...newUser,
+      password: '',
+      confirmPassword: '',
+      roles: newUser.roles || []
     };
-  },
-  computed: {
-    internalDialog: {
-      get() {
-        return this.modelValue;
-      },
-      set(value) {
-        this.$emit('update:modelValue', value);
-      }
-    },
-    availableRoles() {
-      return [
-        {
-          value: UsersService.ROLES.ADMINISTRATOR,
-          label: this.$t('admin.roles.administrator'),
-          description: this.$t('admin.roles.descriptions.administrator')
-        },
-        {
-          value: UsersService.ROLES.MARKETER,
-          label: this.$t('admin.roles.marketer'),
-          description: this.$t('admin.roles.descriptions.marketer')
-        },
-        {
-          value: UsersService.ROLES.DATA_ADMINISTRATOR,
-          label: this.$t('admin.roles.data_administrator'),
-          description: this.$t('admin.roles.descriptions.data_administrator')
-        }
-      ];
-    }
-  },
-  watch: {
-    user: {
-      immediate: true,
-      handler(newUser) {
-        if (newUser) {
-          this.formData = {
-            ...newUser,
-            password: '',
-            confirmPassword: '',
-            roles: newUser.roles || []
-          };
-        } else {
-          this.resetForm();
-        }
-      }
-    },
-    modelValue(newVal) {
-      if (!newVal) {
-        this.showPasswordFields = false;
-        this.showPassword = false;
-      }
-    }
-  },
-  methods: {
-    resetForm() {
-      this.formData = {
+  } else {
+    resetForm();
+  }
+});
+watch(() => props.modelValue, (newVal) => {
+  if (!newVal) {
+    showPasswordFields.value = false;
+    showPassword.value = false;
+  }
+});
+
+function resetForm() {
+      formData.value = {
         name: '',
         email: '',
         password: '',
@@ -244,12 +239,12 @@ export default {
         active: true
       };
       this.$refs.form?.resetValidation();
-    },
-    closeDialog() {
-      this.internalDialog = false;
-      this.resetForm();
-    },
-    async saveUser() {
+    }
+function closeDialog() {
+      internalDialog.value = false;
+      resetForm();
+    }
+async function saveUser() {
       const { valid } = await this.$refs.form.validate();
       
       if (valid) {
@@ -266,8 +261,7 @@ export default {
         this.$emit('save', userData);
       }
     }
-  }
-};
+
 </script>
 
 <style scoped>
