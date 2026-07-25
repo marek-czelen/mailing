@@ -1,5 +1,53 @@
-# Vue 3 + Vite
+# Mailing System — Frontend SPA
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+> **Vue 3 + Vuetify 3** — Modern single-page application for the Mailing System email campaign management platform.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## Tech Stack
+- **Framework:** Vue 3 (Composition API, `<script setup>`)
+- **UI Library:** Vuetify 3 (Material Design)
+- **Routing:** Vue Router 4 with auth guards
+- **i18n:** vue-i18n (Polish & English)
+- **HTTP:** Axios with interceptors (auto JWT injection)
+- **Charts:** Chart.js for campaign analytics
+- **Editor:** TinyMCE (rich text), Custom Block Editor (drag & drop)
+- **Build:** Vite 7
+
+## Project Structure
+```
+src/
+├── App.vue                 # Root component with layout
+├── main.js                 # Bootstrap: Vue, router, Vuetify, i18n
+├── router/index.js         # Routes with auth & admin guards
+├── views/                  # 10 page components
+│   ├── LoginView.vue       # Auth page with OAuth providers
+│   ├── dashboard.vue       # Quick-access dashboard
+│   ├── CampaignsView.vue   # Campaign management
+│   ├── DatabasesView.vue   # Contact database management
+│   ├── EmailEditorView.vue # TinyMCE HTML email editor
+│   ├── BlockEditorView.vue # Block-based email builder
+│   ├── AdminView.vue       # User & role management
+│   └── UnsubscribeView.vue # Public unsubscribe page
+├── components/             # 20+ reusable components
+├── services/               # 7 API service modules
+├── locales/                # PL & EN translations
+├── plugins/                # Vuetify configuration
+└── style.css              # Global styles & gradients
+```
+
+## Key Features
+- **Responsive design** — full-screen layout with mobile drawer
+- **Authentication** — login form with email/password and OAuth (Google, GitHub)
+- **Dashboard** — quick-access cards with gradient styling
+- **Campaign management** — list/detail view with search, filters, CRUD
+- **Database management** — contact list with import/export (Excel)
+- **Email editors** — TinyMCE WYSIWYG + custom block editor
+- **Admin panel** — user management with RBAC
+- **Internationalization** — full Polish and English support
+- **Public unsubscribe** — landing page for opt-out with confirmation
+
+## Setup
+```bash
+npm install
+npm run dev     # Development server (Vite)
+npm run build   # Production build
+```
