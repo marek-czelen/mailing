@@ -43,4 +43,11 @@ cp .env.example .env.development
 # Configure database & SMTP credentials
 npm run watch:dev    # Development with nodemon
 npm start            # Production
+npm run seed:demo    # Idempotent demo workspace seed (development only)
 ```
+
+## Demo data
+
+`npm run seed:demo` creates a fictional workspace with a demo administrator, a contact database, four campaigns, delivery results, one reply and one hard bounce. It is safe to run repeatedly: records are looked up by their demo identifiers before creation.
+
+The seed never configures SMTP or IMAP credentials and uses only `.test` addresses. The default demo login is `demo@aculeo.test` with password `DemoPass!2026`; set `DEMO_USER_PASSWORD` to override it locally. Demo seeding is blocked when `NODE_ENV=production` unless `ALLOW_DEMO_SEED=true` is explicitly provided.

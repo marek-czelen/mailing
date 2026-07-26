@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "NODE_ENV=production node ./src/bin/www.js",
+    "seed:demo": "node ./scripts/seed-demo.js",
     "watch:dev": "cross-env NODE_ENV=development nodemon --inspect ./src/bin/www.js",
     "build": "npm-run-all clean prod",
     "clean": "rimraf dist_server",

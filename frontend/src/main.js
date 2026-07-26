@@ -39,9 +39,9 @@ import '@mdi/font/css/materialdesignicons.css';
 
 
 WebFont.load({
-	google: {
-		families: ['Roboto:100,300,400,500,700,900']
-	}
+  google: {
+    families: ['Manrope:400,500,600,700,800']
+  }
 });
 
 // Montuj aplikację dopiero gdy router jest gotowy, aby uniknąć migotania layoutu

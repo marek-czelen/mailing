@@ -197,7 +197,7 @@ async function onSettingsSaved(settingsData) {
 
 <style scoped>
 .modern-toolbar {
-  background: linear-gradient(135deg, #202950 0%, #515bad 50%, #9395fa 100%);
+  background: #18212f;
   backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(234, 220, 246, 0.3);
   box-shadow: 0 4px 30px rgba(20, 15, 7, 0.15);
@@ -499,6 +499,44 @@ async function onSettingsSaved(settingsData) {
 }
 
 /* Responsive design */
+@media (max-width: 1100px) and (min-width: 769px) {
+  .toolbar-content {
+    padding: 0 14px;
+  }
+
+  .toolbar-brand {
+    gap: 7px;
+    font-size: 1.05rem;
+  }
+
+  .brand-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .toolbar-nav {
+    gap: 2px;
+  }
+
+  .nav-item {
+    gap: 5px;
+    padding: 10px 9px;
+    font-size: 0.82rem;
+  }
+
+  .toolbar-actions {
+    gap: 8px;
+  }
+
+  .toolbar-actions label {
+    display: none;
+  }
+
+  .user-menu-btn {
+    padding: 6px 8px;
+  }
+}
+
 @media (max-width: 768px) {
   .toolbar-content {
     padding: 0 16px;

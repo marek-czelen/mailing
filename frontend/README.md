@@ -37,7 +37,8 @@ src/
 ## Key Features
 - **Responsive design** — full-screen layout with mobile drawer
 - **Authentication** — login form with email/password and OAuth (Google, GitHub)
-- **Dashboard** — quick-access cards with gradient styling
+- **Dashboard** — operational workspace with campaign metrics, delivery health, activity log, recent campaigns and demonstrable loading/empty/error/success/permission states
+- **Visual system** — Manrope typography, graphite navigation, coral primary actions, restrained surfaces, status badges and responsive desktop/tablet/mobile layouts
 - **Campaign management** — list/detail view with search, filters, CRUD
 - **Database management** — contact list with import/export (Excel)
 - **Email editors** — TinyMCE WYSIWYG + custom block editor

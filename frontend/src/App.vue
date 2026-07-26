@@ -14,7 +14,7 @@ html, body {
 }
 
 body, .v-application, .v-app, * {
-  font-family: 'Roboto', Arial, sans-serif !important;
+  font-family: 'Manrope', 'Segoe UI', sans-serif !important;
 }
 
 #app {
@@ -29,7 +29,7 @@ body, .v-application, .v-app, * {
 }
 
 .v-app {
-  background: linear-gradient(135deg, #eadcf6 0%, #9395fa 100%) !important;
+  background: #f6f7f9 !important;
   width: 100vw !important;
   height: 100vh !important;
   margin: 0 !important;
