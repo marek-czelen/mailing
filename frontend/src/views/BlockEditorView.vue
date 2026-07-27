@@ -1,26 +1,33 @@
 <template>
+  <!-- 
+    WIDOK EDYTORA BLOKOWEGO E-MAILI
+    =================================
+    Pełny edytor do tworzenia marketingowych szablonów email.
+    Zawiera: drag & drop, AI asystent, placeholdery, podgląd na żywo, spam scoring.
+  -->
   <div class="block-editor-view">
-    <BlockEmailEditor />
+    <BlockEmailEditorEnhanced />
   </div>
 </template>
 
 <script>
-import BlockEmailEditor from '../components/BlockEmailEditor.vue';
+import BlockEmailEditorEnhanced from '../components/BlockEmailEditorEnhanced.vue';
 
 export default {
   name: 'BlockEditorView',
   components: {
-    BlockEmailEditor
+    BlockEmailEditorEnhanced
   }
 };
 </script>
 
 <style scoped>
 .block-editor-view {
-  width: 100vw;
+  width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
+  background: #f6f7f9;
 }
 </style>
