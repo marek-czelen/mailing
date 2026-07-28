@@ -29,7 +29,7 @@ export class UsersService {
   static async getUsers() {
     try {
       const customerId = await Account.getCurrentCustomerId();
-      const response = await axios.get(`/users?customer_id=${customerId}`);
+      const response = await axios.get(`/api/users?customer_id=${customerId}`);
       return response.data?.data || response.data || [];
     } catch (error) {
       console.error('Błąd podczas pobierania użytkowników:', error);
@@ -42,7 +42,7 @@ export class UsersService {
    */
   static async getUser(userId) {
     try {
-      const response = await axios.get(`/users/${userId}`);
+      const response = await axios.get(`/api/users/${userId}`);
       return response.data?.data || response.data;
     } catch (error) {
       console.error('Błąd podczas pobierania użytkownika:', error);
@@ -66,7 +66,7 @@ export class UsersService {
         ...userData,
         customer_id: customerId
       };
-      const response = await axios.post('/users', payload);
+      const response = await axios.post('/api/users', payload);
       return response.data?.data || response.data;
     } catch (error) {
       console.error('Błąd podczas tworzenia użytkownika:', error);
@@ -81,7 +81,7 @@ export class UsersService {
    */
   static async updateUser(userId, userData) {
     try {
-      const response = await axios.put(`/users/${userId}`, userData);
+      const response = await axios.put(`/api/users/${userId}`, userData);
       return response.data?.data || response.data;
     } catch (error) {
       console.error('Błąd podczas aktualizacji użytkownika:', error);
@@ -95,7 +95,7 @@ export class UsersService {
    */
   static async deleteUser(userId) {
     try {
-      await axios.delete(`/users/${userId}`);
+      await axios.delete(`/api/users/${userId}`);
       return true;
     } catch (error) {
       console.error('Błąd podczas usuwania użytkownika:', error);
@@ -110,7 +110,7 @@ export class UsersService {
    */
   static async changePassword(userId, newPassword) {
     try {
-      const response = await axios.post(`/users/${userId}/change-password`, {
+      const response = await axios.post(`/api/users/${userId}/change-password`, {
         password: newPassword
       });
       return response.data?.data || response.data;
@@ -126,7 +126,7 @@ export class UsersService {
    */
   static async getUserRoles(userId) {
     try {
-      const response = await axios.get(`/users/${userId}/roles`);
+      const response = await axios.get(`/api/users/${userId}/roles`);
       return response.data?.data || response.data || [];
     } catch (error) {
       console.error('Błąd podczas pobierania ról użytkownika:', error);
@@ -141,7 +141,7 @@ export class UsersService {
    */
   static async updateUserRoles(userId, roles) {
     try {
-      const response = await axios.put(`/users/${userId}/roles`, { roles });
+      const response = await axios.put(`/api/users/${userId}/roles`, { roles });
       return response.data?.data || response.data;
     } catch (error) {
       console.error('Błąd podczas aktualizacji ról użytkownika:', error);
@@ -180,7 +180,7 @@ export class UsersService {
    */
   static async setUserActive(userId, active) {
     try {
-      const response = await axios.patch(`/users/${userId}/active`, { active });
+      const response = await axios.patch(`/api/users/${userId}/active`, { active });
       return response.data?.data || response.data;
     } catch (error) {
       console.error('Błąd podczas zmiany statusu użytkownika:', error);
@@ -194,7 +194,7 @@ export class UsersService {
    */
   static async sendPasswordResetEmail(email) {
     try {
-      const response = await axios.post('/users/password-reset', { email });
+      const response = await axios.post('/api/users/password-reset', { email });
       return response.data?.data || response.data;
     } catch (error) {
       console.error('Błąd podczas wysyłania emaila resetującego hasło:', error);

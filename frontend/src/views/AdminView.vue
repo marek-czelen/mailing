@@ -147,21 +147,21 @@ async function checkAdminPermissions() {
 
 <style scoped>
 .admin-menu-card {
-  border-radius: 16px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  background: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(20px) !important;
-  height: calc(100vh - 200px);
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid #e0e0e0 !important;
+  background: #ffffff !important;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
 .card-header {
-  background: linear-gradient(135deg, #202950 0%, #515bad 100%) !important;
-  color: #eadcf6 !important;
-  border-radius: 16px 16px 0 0 !important;
-  padding: 20px 24px !important;
+  background: #fafafa !important;
+  color: #1a1a2e !important;
+  border-bottom: 1px solid #e0e0e0 !important;
+  border-radius: 8px 8px 0 0 !important;
+  padding: 10px 14px !important;
 }
 
 .header-content {
@@ -172,7 +172,7 @@ async function checkAdminPermissions() {
 }
 
 .header-content h3 {
-  font-size: 18px;
+  font-size: 0.95rem;
   font-weight: 600;
   margin: 0;
 }
@@ -180,15 +180,16 @@ async function checkAdminPermissions() {
 .v-list-item {
   cursor: pointer;
   border-left: 3px solid transparent;
+  padding: 10px 14px;
 }
 
 .v-list-item:hover:not([disabled]) {
-  background-color: rgba(102, 126, 234, 0.08);
+  background-color: #e8eaf6;
 }
 
 .v-list-item.selected {
-  background-color: rgba(102, 126, 234, 0.12);
-  border-left-color: #667eea;
+  background-color: #e8eaf6;
+  border-left-color: #6366f1;
 }
 
 .v-list-item[disabled] {

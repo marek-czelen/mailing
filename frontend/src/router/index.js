@@ -51,6 +51,11 @@ const routes = [
     }
   },
   {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('../views/SettingsView.vue')
+  },
+  {
     path: '/unsubscribe/:hash',
     name: 'Unsubscribe',
     component: () => import('../views/UnsubscribeView.vue'),

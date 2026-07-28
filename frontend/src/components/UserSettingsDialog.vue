@@ -10,7 +10,7 @@
         <v-form ref="form" v-model="valid" lazy-validation>
           <!-- Ustawienia użytkownika -->
            <div>
-          <div class="bg-primary">
+          <div class="settings-section-header">
               Ustawienia użytkownika
           </div>
               <v-text-field
@@ -18,13 +18,13 @@
                 label="Email użytkownika"
                 :rules="emailRules"
                 readonly
-                outlined
-                density="comfortable"
+                variant="outlined"
+                density="compact"
               />
         </div>
        
         <div>
-          <div class="bg-secondary">
+          <div class="settings-section-header">
               Ustawienia globalne (klienta)
           </div>
           <div>
@@ -36,8 +36,8 @@
                   label="Nazwa klienta"
                   :rules="nameRules"
                   required
-                  outlined
-                  density="comfortable"
+                  variant="outlined"
+                  density="compact"
                 />
 
                 <v-switch
@@ -55,37 +55,37 @@
                   label="Nazwa firmy"
                   :rules="companyNameRules"
                   required
-                  outlined
-                  density="comfortable"
+                  variant="outlined"
+                  density="compact"
                 />
 
                 <v-text-field
                   v-model="localCustomerSettings.companyAddressLine1"
                   label="Adres - linia 1"
-                  outlined
-                  density="comfortable"
+                  variant="outlined"
+                  density="compact"
                 />
 
                 <v-text-field
                   v-model="localCustomerSettings.companyAddressLine2"
                   label="Adres - linia 2"
-                  outlined
-                  density="comfortable"
+                  variant="outlined"
+                  density="compact"
                 />
 
                 <v-text-field
                   v-model="localCustomerSettings.companyAddressCity"
                   label="Miasto"
-                  outlined
-                  density="comfortable"
+                  variant="outlined"
+                  density="compact"
                 />
 
                 <v-text-field
                   v-model="localCustomerSettings.companyAddressPostalCode"
                   label="Kod pocztowy"
                   :rules="postalCodeRules"
-                  outlined
-                  density="comfortable"
+                  variant="outlined"
+                  density="compact"
                 />
               </div>
               <!-- Konfiguracja SMTP -->
@@ -100,8 +100,8 @@
                         v-model="localCustomerSettings.smtpHost"
                         label="Host SMTP"
                         :rules="smtpHostRules"
-                        outlined
-                        density="comfortable"
+                        variant="outlined"
+                        density="compact"
                       />
                     </v-col>
                     <v-col cols="12" md="6">
@@ -110,8 +110,8 @@
                         label="Port SMTP"
                         type="number"
                         :rules="smtpPortRules"
-                        outlined
-                        density="comfortable"
+                        variant="outlined"
+                        density="compact"
                       />
                     </v-col>
                   </v-row>
@@ -121,8 +121,8 @@
                       <v-text-field
                         v-model="localCustomerSettings.smtpUser"
                         label="Użytkownik SMTP"
-                        outlined
-                        density="comfortable"
+                        variant="outlined"
+                        density="compact"
                       />
                     </v-col>
                     <v-col cols="12" md="6">
@@ -130,8 +130,8 @@
                         v-model="localCustomerSettings.smtpPass"
                         label="Hasło SMTP"
                         type="password"
-                        outlined
-                        density="comfortable"
+                        variant="outlined"
+                        density="compact"
                       />
                     </v-col>
                   </v-row>
@@ -140,8 +140,8 @@
                     v-model="localCustomerSettings.smtpFrom"
                     label="Adres nadawcy (From)"
                     :rules="emailRules"
-                    outlined
-                    density="comfortable"
+                    variant="outlined"
+                    density="compact"
                   />
 
                   <v-switch
@@ -186,8 +186,8 @@
                       <v-text-field
                         v-model="localCustomerSettings.replyMailboxHost"
                         label="Host IMAP"
-                        outlined
-                        density="comfortable"
+                        variant="outlined"
+                        density="compact"
                       />
                     </v-col>
                     <v-col cols="12" md="6">
@@ -195,8 +195,8 @@
                         v-model.number="localCustomerSettings.replyMailboxPort"
                         label="Port IMAP"
                         type="number"
-                        outlined
-                        density="comfortable"
+                        variant="outlined"
+                        density="compact"
                       />
                     </v-col>
                   </v-row>
@@ -206,8 +206,8 @@
                       <v-text-field
                         v-model="localCustomerSettings.replyMailboxUser"
                         label="Użytkownik IMAP"
-                        outlined
-                        density="comfortable"
+                        variant="outlined"
+                        density="compact"
                       />
                     </v-col>
                     <v-col cols="12" md="6">
@@ -215,8 +215,8 @@
                         v-model="localCustomerSettings.replyMailboxPass"
                         label="Hasło IMAP"
                         type="password"
-                        outlined
-                        density="comfortable"
+                        variant="outlined"
+                        density="compact"
                       />
                     </v-col>
                   </v-row>
@@ -227,8 +227,8 @@
                         v-model="localCustomerSettings.replyMailboxProtocol"
                         label="Protokół"
                         :items="['imap', 'pop3']"
-                        outlined
-                        density="comfortable"
+                        variant="outlined"
+                        density="compact"
                       />
                     </v-col>
                     <v-col cols="12" md="6">
@@ -236,8 +236,8 @@
                         v-model="localCustomerSettings.replyMailboxFolder"
                         label="Folder"
                         placeholder="INBOX"
-                        outlined
-                        density="comfortable"
+                        variant="outlined"
+                        density="compact"
                       />
                     </v-col>
                   </v-row>
@@ -275,8 +275,8 @@
                   v-model="localCustomerSettings.rodoFooter"
                   label="Stopka RODO"
                   rows="6"
-                  outlined
-                  density="comfortable"
+                  variant="outlined"
+                  density="compact"
                   :hint="rodoFooterHint"
                   persistent-hint
                 />
@@ -568,38 +568,41 @@ async function testImapConnection() {
 
 <style scoped>
 .section {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .section-title {
-  font-size: 1.1rem;
-  font-weight: 500;
-  margin-bottom: 16px;
-  color: #424242;
-  border-bottom: 2px solid #e0e0e0;
-  padding-bottom: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #1a1a2e;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 6px;
+}
+
+.settings-section-header {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  background: #f8f9fc;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 12px;
 }
 
 .rodo-preview {
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .rodo-content {
-  padding: 16px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  font-family: 'Roboto', sans-serif;
-  line-height: 1.6;
-}
-
-:deep(.v-card-title.bg-primary) {
-  background-color: rgb(var(--v-theme-primary)) !important;
-  color: white !important;
-}
-
-:deep(.v-card-title.bg-secondary) {
-  background-color: rgb(var(--v-theme-secondary)) !important;
-  color: white !important;
+  padding: 12px;
+  background-color: #fafafa;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  font-family: inherit;
+  line-height: 1.5;
+  font-size: 0.85rem;
 }
 </style>
 

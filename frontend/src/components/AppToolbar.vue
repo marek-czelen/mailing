@@ -31,6 +31,12 @@
         </svg>
         {{ $t('nav.databases') }}
       </router-link>
+      <router-link v-if="isAdmin" to="/admin" class="nav-item">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,5A3,3 0 0,1 15,8A3,3 0 0,1 12,11A3,3 0 0,1 9,8A3,3 0 0,1 12,5M17.13,17C15.92,18.85 14.11,20.24 12,20.92C9.89,20.24 8.08,18.85 6.87,17C6.53,16.5 6.24,16 6,15.47C6,13.82 8.71,12.47 12,12.47C15.29,12.47 18,13.79 18,15.47C17.76,16 17.47,16.5 17.13,17Z"/>
+        </svg>
+        {{ $t('nav.admin') }}
+      </router-link>
       <router-link to="/block-email-editor" class="nav-item">
         <svg viewBox="0 0 24 24" width="20" height="20">
           <path fill="currentColor" d="M8,12H16V14H8V12M10,20H6V4H13V9H18V12.1L20,10.1V8L14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H10V20M20.2,13C20.3,13 20.5,13.1 20.6,13.2L21.9,14.5C22.1,14.7 22.1,15.1 21.9,15.3L20.9,16.3L18.8,14.2L19.8,13.2C19.9,13.1 20,13 20.2,13M20.2,16.9L14.1,23H12V20.9L18.1,14.8L20.2,16.9Z"/>
@@ -105,13 +111,6 @@
     </div>
   </div>
 </div>
-
-<!-- User Settings Dialog -->
-<UserSettingsDialog
-  v-model="showSettingsDialog"
-  :user="currentUser"
-  @settings-saved="onSettingsSaved"
-/>
 </template>
 
 <script setup>
@@ -119,17 +118,13 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router';
 import { Account } from '../services/account';
-import { CustomerService } from '../services/customer';
 import { UsersService } from '../services/users';
-import UserSettingsDialog from './UserSettingsDialog.vue';
 
 const router = useRouter();
 const isMobile = ref(false);
 const { locale } = useI18n()
 
 // Dialog state
-const showSettingsDialog = ref(false);
-const currentUser = ref({});
 const currentLocale = ref(locale.value)
 const isAdmin = ref(false)
 
@@ -146,14 +141,10 @@ onMounted(async () => {
   window.addEventListener('resize', checkMobile);
   
     try {
-      //customerSettings.value = await CustomerService.getCurrentCustomerSettings();
-      currentUser.value = await Account.getCurrentUser();
-      console.log('Pobrano dane bieżącego klienta:', currentUser.value);
-      
       // Sprawdź czy użytkownik jest administratorem
       isAdmin.value = await UsersService.isCurrentUserAdmin();
     } catch (error) {
-      console.warn('Nie udało się pobrać danych bieżącego klienta:', error);
+      console.warn('Nie udało się sprawdzić uprawnień admina:', error);
     }
 });
 
@@ -176,20 +167,11 @@ function changeLocale() {
 }
 
 function settings() {
-  // Otwórz dialog ustawień zamiast przekierowania
-  showSettingsDialog.value = true;
+  router.push('/settings');
 }
 
 function goToAdmin() {
   router.push('/admin');
-}
-
-async function onSettingsSaved(settingsData) {
-  // Odśwież cache ustawień klienta
-  CustomerService.clearCustomerSettingsCache();
-  currentUser.value = await Account.getCurrentUser();
-  CustomerService.getCurrentCustomerSettings(true);
-  console.log('Ustawienia zostały zapisane:', settingsData);
 }
 </script>
 
@@ -397,103 +379,97 @@ async function onSettingsSaved(settingsData) {
 
 /* Dropdown styles */
 .user-dropdown {
-  min-width: 260px;
-  border-radius: 12px;
-  border: none;
-  box-shadow: 0 20px 60px rgba(10, 5, 0, 0.5), 0 0 100px rgba(107, 95, 255, 0.9), inset 0 1px 20px rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(30px);
-  background: linear-gradient(135deg, #0a0d2e 0%, #1f2870 50%, #3a3f95 100%);
+  min-width: 220px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  background: #ffffff;
   overflow: hidden;
   padding: 4px 0;
 }
 
 .user-dropdown :deep(.v-divider) {
-  display: none !important;
+  border-color: #e0e0e0 !important;
+  margin: 4px 0 !important;
 }
 
 /* Wszystkie list items */
 .user-dropdown :deep(.v-list-item) {
   background: transparent !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  position: relative;
-  padding: 10px 14px !important;
-  min-height: 40px;
+  transition: background 0.15s ease !important;
+  padding: 8px 16px !important;
+  min-height: 36px;
   margin: 0 !important;
   border-radius: 0 !important;
 }
 
 .user-dropdown :deep(.v-list-item:hover) {
-  background: linear-gradient(90deg, rgba(107, 95, 255, 0.8) 0%, rgba(80, 70, 255, 0.6) 100%) !important;
-  padding-left: 18px !important;
+  background: #e8eaf6 !important;
 }
 
 /* Ikonki */
 .user-dropdown :deep(.v-list-item__prepend) {
-  color: #a89fff !important;
-  margin-right: 12px !important;
+  color: #718096 !important;
+  margin-right: 10px !important;
   display: flex !important;
   align-items: center !important;
-  transition: all 0.3s ease !important;
-  font-weight: 700 !important;
+  transition: color 0.15s ease !important;
 }
 
 .user-dropdown :deep(.v-list-item:hover .v-list-item__prepend) {
-  color: #ffff00 !important;
-  transform: scale(1.2) !important;
-  text-shadow: 0 0 8px rgba(255, 255, 0, 0.6) !important;
+  color: #6366f1 !important;
 }
 
 /* Tekst w menu items */
 .user-dropdown :deep(.v-list-item-title) {
-  color: #c0b0ff !important;
-  font-weight: 800 !important;
-  font-size: 0.98rem !important;
-  letter-spacing: 0.6px !important;
+  color: #1a1a2e !important;
+  font-weight: 500 !important;
+  font-size: 0.9rem !important;
+  letter-spacing: normal !important;
   line-height: 1.3 !important;
 }
 
 .user-dropdown :deep(.v-list-item:hover .v-list-item-title) {
-  color: #ffff00 !important;
-  text-shadow: 0 0 12px rgba(255, 255, 0, 0.6) !important;
+  color: #6366f1 !important;
 }
 
 /* Admin i Settings items */
 .menu-item :deep(.v-list-item) {
-  color: #c0b0ff !important;
+  color: #1a1a2e !important;
 }
 
 .menu-item :deep(.v-list-item-title) {
-  color: #c0b0ff !important;
+  color: #1a1a2e !important;
 }
 
-/* Logout item - specjalny styl */
+/* Logout item */
 .logout-item :deep(.v-list-item) {
   background: transparent !important;
 }
 
 .logout-item :deep(.v-list-item-title) {
-  color: #ff2222 !important;
-  font-weight: 900 !important;
-  text-shadow: 0 0 8px rgba(255, 34, 34, 0.6) !important;
+  color: #e53e3e !important;
+  font-weight: 500 !important;
+  text-shadow: none !important;
 }
 
 .logout-item:hover :deep(.v-list-item-title) {
-  color: #ffff00 !important;
-  text-shadow: 0 0 20px rgba(255, 255, 0, 1) !important;
+  color: #e53e3e !important;
+  text-shadow: none !important;
 }
 
 .logout-item:hover {
-  background: linear-gradient(90deg, rgba(255, 80, 80, 0.7) 0%, rgba(255, 34, 34, 0.5) 100%) !important;
+  background: #fef2f2 !important;
 }
 
 .logout-item :deep(.v-list-item__prepend) {
-  color: #ff5555 !important;
+  color: #e53e3e !important;
 }
 
 .logout-item:hover :deep(.v-list-item__prepend) {
-  color: #ffff00 !important;
-  transform: scale(1.2) !important;
-  text-shadow: 0 0 8px rgba(255, 255, 0, 0.6) !important;
+  color: #e53e3e !important;
+  transform: none !important;
+  text-shadow: none !important;
 }
 
 /* Responsive design */
