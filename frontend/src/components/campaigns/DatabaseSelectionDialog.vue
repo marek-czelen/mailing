@@ -330,38 +330,8 @@ function formatDate(date) {
 </script>
 
 <style scoped>
-.database-dialog {
-  border-radius: 16px !important;
-}
-
-.dialog-header {
-  background: linear-gradient(135deg, #202950 0%, #515bad 100%) !important;
-  color: white !important;
-  border-radius: 16px 16px 0 0 !important;
-  padding: 20px 24px !important;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.header-info {
-  display: flex;
-  align-items: center;
-}
-
-.header-info h2 {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 600;
-}
-
-.dialog-content {
-  padding: 24px;
-}
+/* DatabaseSelectionDialog uses GeneralDialog for consistent header/footer */
+/* Only internal content styles below */
 
 .section-header {
   display: flex;

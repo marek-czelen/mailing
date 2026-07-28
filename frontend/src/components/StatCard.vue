@@ -46,57 +46,61 @@ const className = computed(() => {
 </script>
 <style scoped>
 .stat-card {
-  border-radius: 12px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px) !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  border: 1px solid #e8eaed !important;
+  background: #fafbfc !important;
+  flex: 1;
+  min-width: 140px;
 }
 
 .stat-content {
   display: flex;
   align-items: center;
-  padding: 5px 5px 5px 10px;
+  padding: 8px 14px;
+  gap: 10px;
 }
 
 .stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 16px;
   color: white;
+  flex-shrink: 0;
 }
 
 .stat-icon-1 {
-  background: linear-gradient(135deg, #202950 0%, #515bad 100%);
+  background: #6366f1;
 }
 
 .stat-icon-2 {
-  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  background: #10b981;
 }
 
 .stat-icon-3 {
-  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  background: #f59e0b;
 }
 
 .stat-icon-4 {
-  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+  background: #8b5cf6;
 }
 
 .stat-info h3 {
-  font-size: 1.8rem;
+  font-size: 1.2rem;
   font-weight: 700;
   margin: 0;
-  color: #333;
+  color: #1a1a2e;
+  line-height: 1.1;
 }
 
 .stat-info p {
-  margin: 0;
-  color: #666;
-  font-size: 0.9rem;
+  margin: 1px 0 0 0;
+  color: #718096;
+  font-size: 0.72rem;
+  white-space: nowrap;
 }
 
 </style>

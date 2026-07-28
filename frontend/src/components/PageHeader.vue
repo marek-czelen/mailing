@@ -1,7 +1,9 @@
 <template>
     <div class="page-header">
-      <h1 class="page-title">{{props.title}}</h1>
-      <p class="page-subtitle">{{props.subtitle}}</p>
+      <div class="header-inner">
+        <h1 class="page-title">{{props.title}}</h1>
+        <p class="page-subtitle" v-if="props.subtitle">{{props.subtitle}}</p>
+      </div>
     </div>
 </template>
 
@@ -20,23 +22,29 @@ const props = defineProps({
 
 <style scoped>
 .page-header {
-  background: linear-gradient(135deg, #202950 0%, #515bad 100%);
-  padding: 10px 0;
-  text-align: center;
-  color: #eadcf6;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 0;
   margin: 0;
   width: 100%;
+  flex-shrink: 0;
+}
+
+.header-inner {
+  padding: 8px 18px;
 }
 
 .page-title {
-  font-size: 1.8rem;
-  font-weight: 800;
-  margin-bottom: 8px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0;
+  line-height: 1.3;
 }
 
 .page-subtitle {
-  font-size: 0.9rem;
-  opacity: 0.9;
+  font-size: 0.75rem;
+  color: #718096;
+  margin: 1px 0 0 0;
 }
 </style>

@@ -4,6 +4,9 @@
 .env.development
 .env.production
 
+# Konfiguracja AI z kluczami API
+src/config/ai.config.json
+
 # Logi
 logs/*
 !logs/.gitkeep

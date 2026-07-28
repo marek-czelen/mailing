@@ -40,7 +40,7 @@ import { useI18n } from 'vue-i18n'
 const props = defineProps({
   modelValue: Boolean,
   title: { type: String, default: '' },
-  maxWidth: { type: String, default: '600px' },
+  maxWidth: { type: String, default: '700px' },
   saveButton: { type: Boolean, default: false },
   cancelButton: { type: Boolean, default: true },
   persistent: { type: Boolean, default: true }
@@ -63,37 +63,40 @@ function save() {
 
 <style scoped>
 .general-dialog {
-  border-radius: 16px !important;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12) !important;
 }
 
 .dialog-header {
-  background: linear-gradient(135deg, #202950 0%, #515bad 100%) !important;
-  color: #eadcf6 !important;
-  padding: 24px !important;
+  background: #fafafa !important;
+  color: #1a1a2e !important;
+  padding: 12px 16px !important;
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .dialog-header h2 {
   margin: 0;
   font-weight: 600;
+  font-size: 1rem;
 }
 
 .close-btn {
-  color: #eadcf6 !important;
+  color: #718096 !important;
 }
 
 .dialog-content {
-  
-  max-height: 80vh;
+  max-height: calc(100vh - 180px);
   overflow-y: auto;
+  padding: 16px 20px;
 }
 
 .dialog-actions {
-  padding: 16px 24px 24px 24px !important;
-  background: #f8f9fa;
+  padding: 10px 16px !important;
+  background: #fafafa;
+  border-top: 1px solid #e0e0e0;
 }
 
 /* Scrollbar styling */
@@ -114,8 +117,6 @@ function save() {
 .dialog-content::-webkit-scrollbar-thumb:hover {
   background: #a1a1a1;
 }
-
-
 </style>
 <style>
 .section {
@@ -136,7 +137,7 @@ function save() {
   content: '';
   width: 4px;
   height: 20px;
-  background: linear-gradient(135deg, #515bad 0%, #9395fa 100%);
+  background: #6366f1;
   border-radius: 2px;
 }
 

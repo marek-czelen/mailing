@@ -117,9 +117,9 @@ function deleteCampaign() {
   justify-content: flex-end;
   margin-bottom: 20px;
   padding: 16px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-  border-radius: 12px;
-  border: 1px solid rgba(102, 126, 234, 0.1);
+  background: #f8f9fc;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
 }
 
 .details-header .v-btn {
@@ -155,8 +155,7 @@ function deleteCampaign() {
   margin-top: 24px;
   border: 1px solid rgba(102, 126, 234, 0.2);
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(245, 247, 250, 0.9) 0%, rgba(195, 207, 226, 0.5) 100%);
-  backdrop-filter: blur(10px);
+  background: #fafafa;
   padding: 20px;
 }
 

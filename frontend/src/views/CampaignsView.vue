@@ -87,6 +87,15 @@
         </v-card-text>
       </v-card>
     </template>
+
+    <!-- Stats bar - pokazuje się gdy kampania jest wybrana -->
+    <template #stats v-if="selectedCampaign">
+      <StatGrid :statElements="[
+        { icon: 'mdi-account-group', title: t('campaigns.recipientsCount'), value: selectedCampaign.databaseInfo?.emailCount || 0, class: 'recipients' },
+        { icon: 'mdi-email-send', title: t('campaigns.unsubscribedCount'), value: selectedCampaign.databaseInfo?.unsubscribedEmailCount || 0, class: 'sent' },
+      ]" />
+    </template>
+
     <template #right-panel>
       <!-- Loading State -->
       <div v-if="loadingCampaignDetails" class="loading-state">
@@ -98,11 +107,6 @@
       </div>
 
       <div v-else-if="selectedCampaign" class="campaign-details">
-        <!-- Campaign Stats Cards -->
-        <StatGrid :statElements="[
-          { icon: 'mdi-account-group', title: t('campaigns.recipientsCount'), value: selectedCampaign.databaseInfo?.emailCount || 0, class: 'recipients' },
-          { icon: 'mdi-email-send', title: t('campaigns.unsubscribedCount'), value: selectedCampaign.databaseInfo?.unsubscribedEmailCount || 0, class: 'sent' },
-        ]" />
 
         <!-- Tabs Section -->
         <v-card class="details-card">
@@ -1192,21 +1196,21 @@ async function sendTest() {
 <style scoped>
 /* Campaign List Card */
 .campaign-list-card {
-  border-radius: 16px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  background: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(20px) !important;
-  height: calc(100vh - 200px);
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid #e0e0e0 !important;
+  background: #ffffff !important;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
 .card-header {
-  background: linear-gradient(135deg, #202950 0%, #515bad 100%) !important;
-  color: #eadcf6 !important;
-  border-radius: 16px 16px 0 0 !important;
-  padding: 20px 24px !important;
+  background: #fafafa !important;
+  color: #1a1a2e !important;
+  border-bottom: 1px solid #e0e0e0 !important;
+  border-radius: 8px 8px 0 0 !important;
+  padding: 10px 14px !important;
 }
 
 .header-content {
@@ -1227,9 +1231,10 @@ async function sendTest() {
 }
 
 .add-btn {
-  background: rgba(234, 220, 246, 0.2) !important;
-  color: #eadcf6 !important;
-  border: 1px solid rgba(234, 220, 246, 0.3) !important;
+  background: #6366f1 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 1px 2px rgba(99, 102, 241, 0.3) !important;
 }
 
 .campaign-list-content {
@@ -1240,16 +1245,16 @@ async function sendTest() {
 }
 
 .search-section {
-  padding: 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid #eee;
   flex-shrink: 0;
 }
 
 .filter-chips {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .campaign-list {
@@ -1281,10 +1286,10 @@ async function sendTest() {
 .campaign-item {
   display: flex;
   align-items: center;
-  padding: 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.15s ease;
 }
 
 .campaign-item:hover {
@@ -1292,19 +1297,19 @@ async function sendTest() {
 }
 
 .campaign-item.selected {
-  background: linear-gradient(135deg, rgba(32, 41, 80, 0.1) 0%, rgba(81, 91, 173, 0.1) 100%);
-  border-left: 4px solid #515bad;
+  background: #e8eaf6;
+  border-left: 3px solid #6366f1;
 }
 
 .campaign-icon {
-  margin-right: 12px;
-  width: 40px;
-  height: 40px;
+  margin-right: 10px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(81, 91, 173, 0.1) 0%, rgba(147, 149, 250, 0.1) 100%);
-  border-radius: 8px;
+  background: #eef2ff;
+  border-radius: 6px;
 }
 
 .campaign-info {
@@ -1314,15 +1319,17 @@ async function sendTest() {
 
 .campaign-name {
   font-weight: 600;
-  margin: 0 0 4px 0;
-  font-size: 1rem;
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .campaign-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: #718096;
 }
 
 .open-rate {
@@ -1353,11 +1360,10 @@ async function sendTest() {
 
 /* Details Card */
 .details-card {
-  border-radius: 16px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  background: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(20px) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid #e0e0e0 !important;
+  background: #ffffff !important;
 }
 
 /* Loading State */
@@ -1366,10 +1372,9 @@ async function sendTest() {
   align-items: center;
   justify-content: center;
   height: 50vh;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 16px;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
 }
 
 .loading-content {
@@ -1391,10 +1396,9 @@ async function sendTest() {
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 16px;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
 }
 
 .empty-icon {
@@ -1414,13 +1418,14 @@ async function sendTest() {
 
 /* Delete Dialog */
 .delete-dialog {
-  border-radius: 16px !important;
+  border-radius: 8px !important;
 }
 
 .delete-header {
-  background: linear-gradient(135deg, #e53e3e 0%, #f56565 100%) !important;
-  color: white !important;
-  border-radius: 16px 16px 0 0 !important;
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+  border-radius: 8px 8px 0 0 !important;
+  border-bottom: 1px solid #fecaca !important;
 }
 
 /* Delete item styling */

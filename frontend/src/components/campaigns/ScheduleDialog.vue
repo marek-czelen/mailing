@@ -1,5 +1,5 @@
 <template>
-  <v-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" max-width="600px" persistent>
+  <v-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" max-width="700px" persistent>
     <v-card class="schedule-dialog">
       <v-card-title class="card-title">
         <v-icon color="primary">mdi-calendar-clock</v-icon>
@@ -64,7 +64,7 @@
 
           <!-- Schedule Settings -->
           <div v-if="scheduleData.sendMode === 'scheduled'" class="schedule-settings">
-            <v-divider class="my-6"></v-divider>
+            <v-divider class="my-3"></v-divider>
             
             <h4>{{ t('campaigns.scheduleSettings') }}</h4>
             
@@ -76,7 +76,7 @@
                   :label="t('campaigns.sendDate')"
                   type="date"
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   :min="minDate"
                   :rules="dateRules"
                 ></v-text-field>
@@ -86,7 +86,7 @@
                   :label="t('campaigns.sendTime')"
                   type="time"
                   variant="outlined"
-                  density="comfortable"
+                  density="compact"
                   :rules="timeRules"
                 ></v-text-field>
               </div>
@@ -97,7 +97,7 @@
                 :items="timezones"
                 :label="t('campaigns.timezone')"
                 variant="outlined"
-                density="comfortable"
+                density="compact"
               ></v-select>
               
               <!-- Scheduled DateTime Preview -->
@@ -113,7 +113,7 @@
 
           <!-- Send Rate Settings -->
           <div v-if="scheduleData.sendMode !== 'draft'" class="send-rate-section">
-            <v-divider class="my-6"></v-divider>
+            <v-divider class="my-3"></v-divider>
             
             <h4>Szybkość wysyłki</h4>
             <p class="section-description">
@@ -163,7 +163,7 @@
 
           <!-- Advanced Options -->
           <div v-if="scheduleData.sendMode !== 'draft'" class="advanced-options">
-            <v-divider class="my-6"></v-divider>
+            <v-divider class="my-3"></v-divider>
             
             <v-expansion-panels variant="accordion">
               <v-expansion-panel>
@@ -228,7 +228,7 @@
 
           <!-- Summary -->
           <div class="schedule-summary">
-            <v-divider class="my-6"></v-divider>
+            <v-divider class="my-3"></v-divider>
             
             <div class="summary-card">
               <h4>Podsumowanie</h4>
@@ -481,19 +481,20 @@ watch(() => scheduleData.value.sendMode, (newMode) => {
 
 <style scoped>
 .schedule-dialog {
-  border-radius: 12px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12) !important;
 }
 
 .card-title {
-  background: linear-gradient(135deg, rgba(32, 41, 80, 0.05) 0%, rgba(81, 91, 173, 0.05) 100%);
+  background: #fafafa;
   font-weight: 600 !important;
-  font-size: 1.1rem !important;
-  padding: 20px 24px !important;
+  font-size: 1rem !important;
+  padding: 12px 16px !important;
   display: flex !important;
   align-items: center !important;
-  gap: 12px !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  gap: 10px !important;
+  border-bottom: 1px solid #e0e0e0;
+  color: #1a1a2e;
 }
 
 .schedule-content {
@@ -503,8 +504,8 @@ watch(() => scheduleData.value.sendMode, (newMode) => {
 .mode-selection h4,
 .schedule-settings h4,
 .send-rate-section h4 {
-  margin: 0 0 16px 0;
-  font-size: 1rem;
+  margin: 0 0 10px 0;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #333;
 }

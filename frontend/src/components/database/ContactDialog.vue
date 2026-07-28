@@ -2,7 +2,7 @@
   <v-dialog 
     :model-value="modelValue" 
     @update:model-value="$emit('update:modelValue', $event)"
-    max-width="600px"
+    max-width="700px"
     persistent
   >
     <v-card class="contact-dialog">
@@ -516,8 +516,8 @@ function close() {
 
 <style scoped>
 .contact-dialog {
-  border-radius: 16px !important;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12) !important;
   position: relative;
 }
 
@@ -531,60 +531,62 @@ function close() {
 }
 
 .loading-title {
-  margin: 24px 0 8px 0;
+  margin: 20px 0 6px 0;
   font-weight: 600;
-  font-size: 1.4rem;
+  font-size: 1.2rem;
 }
 
 .loading-subtitle {
   margin: 0;
   opacity: 0.9;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 .dialog-header {
-  background: linear-gradient(135deg, #202950 0%, #515bad 100%) !important;
-  color: #eadcf6 !important;
-  padding: 24px !important;
+  background: #fafafa !important;
+  color: #1a1a2e !important;
+  padding: 12px 16px !important;
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .dialog-header h2 {
   margin: 0;
   font-weight: 600;
+  font-size: 1rem;
 }
 
 .close-btn {
-  color: #eadcf6 !important;
+  color: #718096 !important;
 }
 
 .dialog-content {
-  padding: 32px !important;
-  max-height: 70vh;
+  padding: 16px 20px !important;
+  max-height: calc(100vh - 180px);
   overflow-y: auto;
 }
 
 .section {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .section-title {
-  font-size: 1.2rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 5px;
+  color: #1a1a2e;
+  margin-bottom: 4px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .section-title::before {
   content: '';
-  width: 4px;
-  height: 20px;
-  background: linear-gradient(135deg, #515bad 0%, #9395fa 100%);
+  width: 3px;
+  height: 16px;
+  background: #6366f1;
   border-radius: 2px;
 }
 
@@ -592,11 +594,11 @@ function close() {
 .contact-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 12px;
 }
 
 .unsubscribe-section {
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .unsubscribe-actions,
@@ -607,24 +609,27 @@ function close() {
 }
 
 .dialog-actions {
-  padding: 16px 24px 24px 24px !important;
-  background: #f8f9fa;
+  padding: 10px 16px !important;
+  background: #fafafa;
+  border-top: 1px solid #e0e0e0;
 }
 
 /* Confirmation Dialog Styles */
 .confirmation-header {
-  background: #f8f9fa;
+  background: #fafafa;
   font-weight: 600;
-  padding: 20px 24px 16px 24px !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid #e0e0e0;
+  color: #1a1a2e;
 }
 
 .confirmation-content {
-  padding: 20px 24px !important;
+  padding: 16px !important;
 }
 
 .confirmation-content p {
   margin-bottom: 0;
-  font-size: 1rem;
+  font-size: 0.95rem;
   line-height: 1.5;
 }
 

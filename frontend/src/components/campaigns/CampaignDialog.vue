@@ -1098,32 +1098,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.campaign-dialog {
-  border-radius: 16px !important;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15) !important;
-}
-
-.dialog-header {
-  background: linear-gradient(135deg, #202950 0%, #515bad 100%) !important;
-  color: #eadcf6 !important;
-  padding: 10px 24px 10px 24px !important;
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-}
-
-.dialog-header h2 {
-  margin: 0;
-  font-weight: 600;
-}
-
-.close-btn {
-  color: #eadcf6 !important;
-}
-
-.dialog-content {
-  padding: 0 !important;
-}
+/* CampaignDialog uses GeneralDialog for consistent styling */
 
 /* Step Header */
 .step-header {

@@ -4,6 +4,7 @@ import XLSX from 'xlsx';
 import MailAddress from '../models/mailAddress.model.js';
 import UPLOAD_DIR from '../config/upload.config.js';
 import Path from 'path';
+import { fileURLToPath } from 'url';
 import Databases from '../models/databases.model.js';
 import Customers from '../models/customers.model.js';
 import sequelize from '../include/db.js';
@@ -15,6 +16,33 @@ import Sequelize from 'sequelize';
 import Mail from '../include/mail.js';
 import { Admin } from '../include/admin.js';
 import MarketingCampaniesMailingResult from '../models/marketingCampaniesMailing.model.js';
+
+// === KONFIGURACJA AI ===
+// Wczytuje ustawienia z pliku JSON w folderze config
+// Zmienne środowiskowe mają priorytet nad plikiem JSON
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = Path.dirname(__filename);
+const aiConfigPath = Path.resolve(__dirname, '../config/ai.config.json');
+const aiConfig = JSON.parse(fs.readFileSync(aiConfigPath, 'utf-8'));
+
+// Provider: huggingface | deepseek | openai
+const AI_PROVIDER = process.env.AI_PROVIDER || aiConfig.defaults?.provider || 'huggingface';
+
+// HuggingFace
+const HF_API_KEY = process.env.HF_API_KEY || aiConfig.huggingface?.apiKey || '';
+const HF_MODEL = process.env.HF_MODEL || aiConfig.huggingface?.model || 'mistralai/Mistral-7B-Instruct-v0.2';
+
+// DeepSeek (OpenAI-kompatybilne API)
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || aiConfig.deepseek?.apiKey || '';
+const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || aiConfig.deepseek?.model || 'deepseek-chat';
+
+// OpenAI
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || aiConfig.openai?.apiKey || '';
+const OPENAI_MODEL = process.env.OPENAI_MODEL || aiConfig.openai?.model || 'gpt-3.5-turbo';
+
+// Wspólne
+const AI_MAX_TOKENS = parseInt(process.env.AI_MAX_TOKENS) || 500;
+const AI_TEMPERATURE = parseFloat(process.env.AI_TEMPERATURE) || 0.7;
 
 // Pobierz wszystkie kampanie
 export async function getCampaignsList(req, res) {
@@ -186,10 +214,6 @@ export async function campaignSendingProgress(req, res) {
     }   
 }
 
-
-const HF_API_KEY = "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"; // ustaw swój token Hugging Face
-
-
 export async function listModels(req, res) {
     try {
         const response = await fetch("https://router.huggingface.co/v1/models", {
@@ -213,7 +237,7 @@ export async function listModels(req, res) {
 
 
 export async function generateMailContent(req, res) {
-    console.log("generateMailContent called");
+    console.log("generateMailContent called, provider:", AI_PROVIDER);
 
     const prompt = req.body.prompt;
     if (!prompt) {
@@ -221,42 +245,129 @@ export async function generateMailContent(req, res) {
     }
 
     try {
-        const model = "togethercomputer/GPT-NeoXT-Chat-Base-20B"; // Możesz zmienić na inny model dostępny na HF
+        const provider = req.body.provider || AI_PROVIDER;
 
-        const response = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${HF_API_KEY}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                inputs: prompt,
-                parameters: { max_new_tokens: 300 },
-            }),
-        });
-
-        if (!response.ok) {
-            const text = await response.text();
-            throw new Error(`HTTP ${response.status}: ${text}`);
-        }
-
-        const resultJson = await response.json();
-
-        // Obsługa formatu zwracanego przez HF
-        let generatedText = "";
-        if (Array.isArray(resultJson) && resultJson[0]?.generated_text) {
-            generatedText = resultJson[0].generated_text;
-        } else if (resultJson.generated_text) {
-            generatedText = resultJson.generated_text;
-        } else {
-            generatedText = JSON.stringify(resultJson);
+        let generatedText = '';
+        switch (provider) {
+            case 'deepseek':
+                generatedText = await generateWithDeepSeek(prompt, req.body);
+                break;
+            case 'openai':
+                generatedText = await generateWithOpenAI(prompt, req.body);
+                break;
+            case 'huggingface':
+            default:
+                generatedText = await generateWithHuggingFace(prompt, req.body);
+                break;
         }
 
         res.send(new Response(generatedText, true, "OK."));
-
     } catch (error) {
         res.send(new Response(null, false, `Failed to generate mail content: ${error.message}`));
     }
+}
+
+// ========== PROVIDER IMPLEMENTACJE ==========
+
+/** HuggingFace Inference API */
+async function generateWithHuggingFace(prompt, options = {}) {
+    const model = options.model || HF_MODEL;
+    const maxTokens = options.maxTokens || AI_MAX_TOKENS;
+
+    const response = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${HF_API_KEY}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            inputs: prompt,
+            parameters: { max_new_tokens: maxTokens, temperature: AI_TEMPERATURE },
+        }),
+    });
+
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`HuggingFace HTTP ${response.status}: ${text}`);
+    }
+
+    const resultJson = await response.json();
+    if (Array.isArray(resultJson) && resultJson[0]?.generated_text) {
+        return resultJson[0].generated_text;
+    } else if (resultJson.generated_text) {
+        return resultJson.generated_text;
+    }
+    return JSON.stringify(resultJson);
+}
+
+/** DeepSeek API (OpenAI-kompatybilne) */
+async function generateWithDeepSeek(prompt, options = {}) {
+    if (!DEEPSEEK_API_KEY) {
+        throw new Error('Brak klucza DeepSeek API. Ustaw DEEPSEEK_API_KEY w ai.config.json lub zmiennej środowiskowej.');
+    }
+
+    const model = options.model || DEEPSEEK_MODEL;
+    const maxTokens = options.maxTokens || AI_MAX_TOKENS;
+
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            model: model,
+            messages: [
+                { role: 'system', content: 'Jesteś profesjonalnym copywriterem email marketingu. Tworzysz treści w języku polskim i angielskim. Odpowiadasz wyłącznie gotową treścią emaila - bez zbędnych opisów i komentarzy.' },
+                { role: 'user', content: prompt }
+            ],
+            max_tokens: maxTokens,
+            temperature: AI_TEMPERATURE,
+        }),
+    });
+
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`DeepSeek HTTP ${response.status}: ${text}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || JSON.stringify(data);
+}
+
+/** OpenAI API */
+async function generateWithOpenAI(prompt, options = {}) {
+    if (!OPENAI_API_KEY) {
+        throw new Error('Brak klucza OpenAI API. Ustaw OPENAI_API_KEY w ai.config.json lub zmiennej środowiskowej.');
+    }
+
+    const model = options.model || OPENAI_MODEL;
+    const maxTokens = options.maxTokens || AI_MAX_TOKENS;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            model: model,
+            messages: [
+                { role: 'system', content: 'You are a professional email marketing copywriter. Respond only with the completed email content - no extra descriptions or commentary.' },
+                { role: 'user', content: prompt }
+            ],
+            max_tokens: maxTokens,
+            temperature: AI_TEMPERATURE,
+        }),
+    });
+
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`OpenAI HTTP ${response.status}: ${text}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || JSON.stringify(data);
 }
 
 

@@ -1,0 +1,28 @@
+{
+  "huggingface": {
+    "apiKey": "TWÓJ_KLUCZ_HUGGINGFACE",
+    "model": "mistralai/Mistral-7B-Instruct-v0.2",
+    "fallbackModel": "togethercomputer/GPT-NeoXT-Chat-Base-20B",
+    "maxTokens": 500,
+    "temperature": 0.7,
+    "timeout": 30000
+  },
+  "deepseek": {
+    "apiKey": "TWÓJ_KLUCZ_DEEPSEEK",
+    "model": "deepseek-chat",
+    "maxTokens": 500,
+    "temperature": 0.7
+  },
+  "openai": {
+    "enabled": false,
+    "apiKey": "TWÓJ_KLUCZ_OPENAI",
+    "model": "gpt-3.5-turbo",
+    "maxTokens": 500,
+    "temperature": 0.7
+  },
+  "defaults": {
+    "provider": "huggingface",
+    "language": "pl",
+    "tone": "professional"
+  }
+}
