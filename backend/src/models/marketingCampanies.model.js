@@ -59,6 +59,11 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
         type: DataTypes.DATE,
         field:"date_end"
     },
+    archivedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'archived_at'
+    },
     process:{
         type:DataTypes.INTEGER,
         field:"progress"

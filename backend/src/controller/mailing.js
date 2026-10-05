@@ -192,6 +192,35 @@ export async function deleteCampaign(req, res) {
     }
 }
 
+export async function setCampaignArchived(req, res) {
+    try {
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, "User not found."));
+        }
+        if (typeof req.body.archived !== 'boolean') {
+            return res.status(400).send(new Response(null, false, "Archived must be a boolean."));
+        }
+
+        const [updated] = await MarketingCampanies.update({
+            archivedAt: req.body.archived ? new Date() : null
+        }, {
+            where: { id: req.params.id, customerId: userData.customerId }
+        });
+
+        if (!updated) {
+            return res.status(404).send(new Response(null, false, "Campaign not found."));
+        }
+
+        const campaign = await MarketingCampanies.findOne({
+            where: { id: req.params.id, customerId: userData.customerId }
+        });
+        res.status(200).send(new Response(campaign, true, "Campaign archive status updated."));
+    } catch (error) {
+        res.status(500).send(new Response(null, false, `Failed to update campaign archive status. ${error.message}`));
+    }
+}
+
 export async function campaignSendingProgress(req, res) {
     try {
         const { id } = req.params;

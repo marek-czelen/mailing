@@ -5,6 +5,7 @@ import CampaignReply from './campaignReply.model.js';
 import User from './user.model.js';
 import Role from './role.model.js';
 import UserRole from './userRole.model.js';
+import PasswordResetToken from './passwordResetToken.model.js';
 
 // Import innych modeli jeśli potrzebne
 // import Customer from './customers.model.js';
@@ -18,6 +19,7 @@ const models = {
   User,
   Role,
   UserRole,
+  PasswordResetToken,
   // Customer,
   // Database,
 };
@@ -66,6 +68,7 @@ export {
   User,
   Role,
   UserRole,
+  PasswordResetToken,
 };
 
 export default models;

@@ -34,6 +34,16 @@ export class Account {
     }
   }
 
+  static async requestPasswordReset(email) {
+    const response = await axios.post('/auth/forgot-password', { email });
+    return response.status === 200;
+  }
+
+  static async resetPassword(token, password) {
+    const response = await axios.post('/auth/reset-password', { token, password });
+    return response.status === 200;
+  }
+
 
   static logout() {
     localStorage.removeItem('auth_token');

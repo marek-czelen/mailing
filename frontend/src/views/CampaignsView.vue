@@ -6,7 +6,7 @@
           <div class="header-content">
             <div class="header-info">
               <h3>{{ t('campaigns.title') }}</h3>
-              <span class="campaign-count">{{ campaigns.length }} {{ t('campaigns.newCampaign') /* fallback label */ }}</span>
+              <span class="campaign-count">{{ filteredCampaigns.length }} {{ t('campaigns.campaignsCount') }}</span>
             </div>
               <v-btn color="primary" class="add-btn" @click="openCreateDialog">
               <v-icon left>mdi-plus</v-icon>
@@ -20,6 +20,24 @@
           <div class="search-section">
             <v-text-field v-model="searchQuery" :placeholder="t('campaigns.searchPlaceholder')" prepend-inner-icon="mdi-magnify"
               variant="outlined" density="comfortable" hide-details />
+            <v-btn-toggle
+              v-model="campaignArchiveFilter"
+              class="archive-toggle"
+              color="primary"
+              density="compact"
+              divided
+              mandatory
+              @update:model-value="selectedCampaign = null"
+            >
+              <v-btn value="active">
+                <v-icon start>mdi-email-outline</v-icon>
+                {{ t('campaigns.activeCampaigns') }}
+              </v-btn>
+              <v-btn value="archived">
+                <v-icon start>mdi-archive-outline</v-icon>
+                {{ t('campaigns.archivedCampaigns') }}
+              </v-btn>
+            </v-btn-toggle>
             <div class="filter-chips">
               <v-chip
                 disabled 
@@ -34,6 +52,9 @@
 
           <!-- Campaign List -->
           <div class="campaign-list">
+            <div v-if="filteredCampaigns.length === 0" class="campaign-empty-state">
+              {{ t('campaigns.noCampaignsFound') }}
+            </div>
             <div v-for="campaign in filteredCampaigns" :key="campaign.id" class="campaign-item"
               :class="{ 'selected': selectedCampaign?.id === campaign.id }" @click="selectCampaign(campaign)">
               <div class="campaign-icon">
@@ -69,6 +90,12 @@
                       <v-list-item-title>
                         <v-icon left size="16">mdi-content-copy</v-icon>
                         {{ t('campaigns.duplicateCampaign') }}
+                      </v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click.stop="setCampaignArchived(campaign, !campaign.archivedAt)">
+                      <v-list-item-title>
+                        <v-icon left size="16">{{ campaign.archivedAt ? 'mdi-archive-arrow-up-outline' : 'mdi-archive-arrow-down-outline' }}</v-icon>
+                        {{ t(campaign.archivedAt ? 'campaigns.restoreCampaign' : 'campaigns.archiveCampaign') }}
                       </v-list-item-title>
                     </v-list-item>
                     <v-divider />
@@ -428,6 +455,7 @@ const getTinyMCELanguage = () => {
 const campaigns = ref([])
 const selectedCampaign = ref(null)
 const searchQuery = ref('')
+const campaignArchiveFilter = ref('active')
 const statusFilter = ref('')
 const activeTab = ref('content')
 const showCampaignDialog = ref(false)
@@ -682,7 +710,9 @@ const statusFilters = [
 
 // Computed
 const filteredCampaigns = computed(() => {
-  let filtered = campaigns.value
+  let filtered = campaigns.value.filter(campaign =>
+    campaignArchiveFilter.value === 'archived' ? Boolean(campaign.archivedAt) : !campaign.archivedAt
+  )
 
   // Filter by search query
   if (searchQuery.value) {
@@ -830,6 +860,26 @@ async function deleteCampaign() {
 
   deleteDialog.value = false
   campaignToDelete.value = null
+}
+
+async function setCampaignArchived(campaign, archived) {
+  try {
+    const updatedCampaign = await Campaigns.setArchived(campaign.id, archived)
+    const index = campaigns.value.findIndex(item => item.id === campaign.id)
+    if (index !== -1) {
+      campaigns.value[index] = {
+        ...campaigns.value[index],
+        ...updatedCampaign,
+        archivedAt: updatedCampaign.archivedAt || (archived ? new Date().toISOString() : null)
+      }
+    }
+    if (selectedCampaign.value?.id === campaign.id) {
+      selectedCampaign.value = null
+    }
+  } catch (error) {
+    console.error('Błąd zmiany statusu archiwum kampanii:', error)
+    showNotification(t('campaigns.archiveFailed'), 'error')
+  }
 }
 
 
@@ -1124,24 +1174,18 @@ onMounted(async () => {
   }
 
   // Sprawdź czy jest parametr selectedCampaign z query
-  let selectedCampaignId = route.query.selectedCampaign;
-  if (!selectedCampaignId && campaigns.value.length > 0) {
-    selectedCampaignId = campaigns.value[0].id;
-  }
-  if (selectedCampaignId && campaigns.value.length > 0) {
-    // Znajdź i wybierz kampanię o danym ID
-    const campaignToSelect = campaigns.value.find(c => c.id.toString() === selectedCampaignId.toString());
-    if (campaignToSelect) {
-      await selectCampaign(campaignToSelect);
+  const selectedCampaignId = route.query.selectedCampaign
+  const campaignToSelect = selectedCampaignId
+    ? campaigns.value.find(campaign => campaign.id.toString() === selectedCampaignId.toString())
+    : campaigns.value.find(campaign => !campaign.archivedAt)
 
-      // Pokaż komunikat o aktualizacji treści jeśli jest parametr contentUpdated
-      if (route.query.contentUpdated) {
-        console.log('Treść kampanii została zaktualizowana pomyślnie');
-        // Możesz dodać toast/snackbar notification tutaj
-      }
+  if (campaignToSelect) {
+    campaignArchiveFilter.value = campaignToSelect.archivedAt ? 'archived' : 'active'
+    await selectCampaign(campaignToSelect)
+
+    if (route.query.contentUpdated) {
+      console.log('Treść kampanii została zaktualizowana pomyślnie')
     }
-  } else if (campaigns.value.length > 0) {
-    selectedCampaign.value = campaigns.value[0]
   }
 })
 
@@ -1248,6 +1292,23 @@ async function sendTest() {
   padding: 10px 12px;
   border-bottom: 1px solid #eee;
   flex-shrink: 0;
+}
+
+.archive-toggle {
+  display: flex;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.archive-toggle .v-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.campaign-empty-state {
+  padding: 24px 12px;
+  color: #777;
+  text-align: center;
 }
 
 .filter-chips {

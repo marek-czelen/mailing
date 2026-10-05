@@ -354,7 +354,8 @@ function testSend() {
       user: customerConfig.value.smtpUser,
       pass: customerConfig.value.smtpPass,
       from: `${props.campaign.senderName || props.campaign.senderEmail} <${props.campaign.senderEmail}>`,
-    }
+    },
+    props.campaign.id
   )
     .then(response => {
       console.log('Test email wysłany pomyślnie:', response)
@@ -364,7 +365,7 @@ function testSend() {
     .catch(error => {
       console.error('Błąd podczas wysyłania testowego e-maila:', error)
       testEmailSending.value = false
-      showSnackbar('Nie udało się wysłać testowego e-maila', 'error')
+      showSnackbar(error.response?.data?.response?.message || 'Nie udało się wysłać testowego e-maila', 'error')
     })
 }
 

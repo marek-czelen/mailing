@@ -176,6 +176,16 @@ class EnvironmentConfig {
   }
 
   /**
+   * Zwraca konfigurację odzyskiwania hasła
+   */
+  static getPasswordResetConfig() {
+    return {
+      tokenTtlMinutes: this.getNumber('PASSWORD_RESET_TOKEN_TTL_MINUTES', 60),
+      frontendUrl: this.get('FRONTEND_URL', 'http://localhost:5173').replace(/\/$/, '')
+    };
+  }
+
+  /**
    * Zwraca konfigurację CORS
    */
   static getCORSConfig() {

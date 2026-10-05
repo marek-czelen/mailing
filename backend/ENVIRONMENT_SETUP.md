@@ -49,6 +49,8 @@ npm run dev:debug
 | `NODE_ENV` | Środowisko aplikacji | `development` |
 | `APP_NAME` | Nazwa aplikacji | `Mailing System` |
 | `BASE_URL` | Bazowy URL aplikacji | `http://localhost:3000` |
+| `FRONTEND_URL` | Adres frontendu używany w linkach resetu hasła | `http://localhost:5173` |
+| `PASSWORD_RESET_TOKEN_TTL_MINUTES` | Czas ważności linku resetującego hasło | `60` |
 
 ### Serwer
 
@@ -198,6 +200,8 @@ SMTP_USER=test_user
 SMTP_PASS=test_pass
 SMTP_IGNORE_TLS=true
 SMTP_REJECT_UNAUTHORIZED=false
+FRONTEND_URL=http://localhost:5173
+PASSWORD_RESET_TOKEN_TTL_MINUTES=60
 ```
 
 ### Production
@@ -220,7 +224,12 @@ SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=app_password
 SMTP_REJECT_UNAUTHORIZED=true
+FRONTEND_URL=https://yourdomain.com
+PASSWORD_RESET_TOKEN_TTL_MINUTES=60
 ```
+
+Po wdrożeniu funkcji odzyskiwania hasła uruchom migrację
+`backend/db/migrations/20261005_create_password_reset_tokens.sql` na bazie MySQL 8.x.
 
 ## 🚨 Troubleshooting
 

@@ -69,6 +69,10 @@
             <path fill="currentColor" d="M4,11V13H16L10.5,18.5L11.92,19.92L19.84,12L11.92,4.08L10.5,5.5L16,11H4Z"/>
           </svg>
         </button>
+
+        <router-link to="/forgot-password" class="forgot-password-link">
+          {{ $t('login.forgotPassword') }}
+        </router-link>
         
         <div v-if="error" class="error-message">
           <svg viewBox="0 0 24 24" width="16" height="16">
@@ -406,6 +410,19 @@ function loginWithGitHub() {
 
 .login-btn:hover .btn-arrow {
   transform: translateX(4px);
+}
+
+.forgot-password-link {
+  align-self: center;
+  margin-top: -8px;
+  color: #515bad;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.forgot-password-link:hover {
+  color: #202950;
+  text-decoration: underline;
 }
 
 .error-message {

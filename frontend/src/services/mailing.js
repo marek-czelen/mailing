@@ -11,7 +11,7 @@ export class MailingService {
     }
   }
 
-  static async sendTestEmail(emailTo, emailSubject, emailData, smtpConfig) {
+  static async sendTestEmail(emailTo, emailSubject, emailData, smtpConfig, campaignId = null) {
     try {
       const result = await axios.post(`/mailing/sendEmail`, {
         
@@ -28,7 +28,8 @@ export class MailingService {
         from: smtpConfig.from || smtpConfig.user,
         to: [emailTo],
         subject: emailSubject,
-        html: emailData
+        html: emailData,
+        campaignId
 
       });
 

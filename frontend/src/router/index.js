@@ -27,6 +27,24 @@ const routes = [
     component: LoginView
   },
   {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('../views/PasswordResetView.vue'),
+    meta: {
+      requiresAuth: false,
+      layout: 'public'
+    }
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('../views/PasswordResetView.vue'),
+    meta: {
+      requiresAuth: false,
+      layout: 'public'
+    }
+  },
+  {
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('../views/dashboard.vue')

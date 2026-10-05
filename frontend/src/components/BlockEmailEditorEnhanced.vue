@@ -147,6 +147,18 @@
                 </v-btn>
               </v-btn-toggle>
 
+              <v-btn
+                class="mobile-properties-toggle"
+                icon
+                size="x-small"
+                variant="text"
+                :title="$t('editor.properties')"
+                :aria-label="$t('editor.properties')"
+                @click="showMobileProperties = !showMobileProperties"
+              >
+                <v-icon size="small">mdi-cog</v-icon>
+              </v-btn>
+
               <v-divider vertical class="mx-1"></v-divider>
 
               <!-- Akcje -->
@@ -327,7 +339,7 @@
         </v-col>
 
         <!-- ============ PANEL PRAWY: WŁAŚCIWOŚCI + AI ASYSTENT ============ -->
-        <v-col cols="auto" class="right-panel">
+        <v-col cols="auto" class="right-panel" :class="{ 'mobile-properties-open': showMobileProperties }">
           <v-card class="pa-2 h-100 d-flex flex-column" style="border-radius: 0;">
             
             <!-- Zakładki panelu prawego -->
@@ -339,6 +351,17 @@
                 <v-icon size="small" color="purple">mdi-robot</v-icon>
               </v-tab>
             </v-tabs>
+            <v-btn
+              class="mobile-properties-close"
+              icon
+              size="x-small"
+              variant="text"
+              :title="$t('editor.close')"
+              :aria-label="$t('editor.close')"
+              @click="showMobileProperties = false"
+            >
+              <v-icon size="small">mdi-close</v-icon>
+            </v-btn>
 
             <div class="right-panel-content flex-1-1 overflow-y-auto">
               
@@ -383,12 +406,24 @@
                     
                     <!-- Opcjonalnie kolor tła bloku -->
                     <label class="text-caption d-block mb-1">{{ $t('editor.backgroundColor') }}</label>
-                    <input
-                      type="color"
-                      v-model="selectedBlock.style.backgroundColor"
-                      class="color-input-small mb-1"
-                      @input="commitChange"
-                    />
+                    <div class="background-color-control">
+                      <input
+                        type="color"
+                        :value="colorInputValue(selectedBlock.style.backgroundColor)"
+                        class="color-input-small mb-1"
+                        @input="setSelectedBlockBackground($event.target.value)"
+                      />
+                      <v-btn
+                        icon
+                        size="x-small"
+                        variant="text"
+                        :title="$t('editor.transparent')"
+                        :aria-label="$t('editor.transparent')"
+                        @click="setSelectedBlockBackground('transparent')"
+                      >
+                        <v-icon size="small">mdi-format-color-fill-off</v-icon>
+                      </v-btn>
+                    </div>
                   </div>
 
                   <v-divider class="mb-2"></v-divider>
@@ -636,6 +671,7 @@ export default {
       history: [],
       historyIndex: -1,
       maxHistory: HISTORY_MAX,
+      restoringHistory: false,
 
       // === TRYBY ===
       canvasMode: 'desktop',
@@ -645,6 +681,7 @@ export default {
       // === PANELE (zakładki) ===
       leftPanelTab: 'blocks',
       rightPanelTab: 'properties',
+      showMobileProperties: false,
 
       // === DIALOGI ===
       previewDialog: false,
@@ -731,6 +768,7 @@ export default {
   watch: {
     emailBlocks: {
       handler() {
+        if (this.restoringHistory) return;
         this.pushHistory();
       },
       deep: true
@@ -778,15 +816,23 @@ export default {
     undo() {
       if (!this.canUndo) return;
       this.historyIndex--;
+      this.restoringHistory = true;
       this.emailBlocks = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
       this.selectedBlockId = null;
+      this.$nextTick(() => {
+        this.restoringHistory = false;
+      });
     },
 
     redo() {
       if (!this.canRedo) return;
       this.historyIndex++;
+      this.restoringHistory = true;
       this.emailBlocks = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
       this.selectedBlockId = null;
+      this.$nextTick(() => {
+        this.restoringHistory = false;
+      });
     },
 
     // ======================== ZARZĄDZANIE BLOKAMI ========================
@@ -921,6 +967,9 @@ export default {
 
     selectBlock(blockId) {
       this.selectedBlockId = blockId;
+      if (typeof window !== 'undefined' && window.innerWidth <= 900) {
+        this.showMobileProperties = true;
+      }
     },
 
     removeBlock(index) {
@@ -949,6 +998,16 @@ export default {
       if (idx !== -1) {
         this.emailBlocks.splice(idx, 1, { ...this.emailBlocks[idx] });
       }
+    },
+
+    colorInputValue(value) {
+      return /^#[0-9a-f]{6}$/i.test(value || '') ? value : '#ffffff';
+    },
+
+    setSelectedBlockBackground(value) {
+      if (!this.selectedBlock) return;
+      this.selectedBlock.style.backgroundColor = value;
+      this.commitChange();
     },
 
     updateBlock(blockId, updates) {
@@ -1094,22 +1153,25 @@ export default {
           return `
             <div class="mobile-padding" style="padding:0 20px;${divStyle}">
               <p class="mobile-text" style="font-size:${c.fontSize || 16}px;color:${c.color || '#333'};font-weight:${c.fontWeight || 'normal'};font-style:${c.fontStyle || 'normal'};font-family:${c.fontFamily || 'Arial,sans-serif'};margin:0;line-height:1.6;">
-                ${c.text || ''}
+                ${this.escapeHtml(c.text || '')}
               </p>
             </div>`;
 
         case 'button':
-          const btnHref = c.url ? `href="${c.url}"` : '';
+          const btnUrl = this.safeUrl(c.url);
+          const btnHref = btnUrl ? `href="${this.escapeHtml(btnUrl)}"` : '';
           return `
             <div class="mobile-padding" style="padding:0 20px;${divStyle}">
-              <a ${btnHref} target="_blank" style="display:inline-block;background-color:${c.backgroundColor || '#6366f1'};color:${c.textColor || '#fff'};padding:${c.padding || '14px 32px'};border-radius:${c.borderRadius || 8}px;text-decoration:none;font-weight:bold;font-size:16px;font-family:Arial,sans-serif;">
-                ${c.text || 'Kliknij'}
+              <a ${btnHref} target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:${c.backgroundColor || '#6366f1'};color:${c.textColor || '#fff'};padding:${c.padding || '14px 32px'};border-radius:${c.borderRadius || 8}px;text-decoration:none;font-weight:bold;font-size:16px;font-family:Arial,sans-serif;">
+                ${this.escapeHtml(c.text || 'Kliknij')}
               </a>
             </div>`;
 
         case 'image':
-          const imgTag = `<img src="${c.src}" alt="${c.alt || ''}" style="width:${c.width || 560}px;height:auto;max-width:100%;border-radius:${c.borderRadius || 0}px;display:block;margin:0 auto;">`;
-          const imgLinked = c.url ? `<a href="${c.url}" target="_blank">${imgTag}</a>` : imgTag;
+          const imageSrc = this.safeUrl(c.src);
+          const imageUrl = this.safeUrl(c.url);
+          const imgTag = `<img src="${this.escapeHtml(imageSrc)}" alt="${this.escapeHtml(c.alt || '')}" style="width:${c.width || 560}px;height:auto;max-width:100%;border-radius:${c.borderRadius || 0}px;display:block;margin:0 auto;">`;
+          const imgLinked = imageUrl ? `<a href="${this.escapeHtml(imageUrl)}" target="_blank" rel="noopener noreferrer">${imgTag}</a>` : imgTag;
           return `
             <div class="mobile-padding" style="padding:0 20px;${divStyle}">
               ${imgLinked}
@@ -1131,9 +1193,10 @@ export default {
           let socialLinks = '';
           const links = c.links || [];
           for (const link of links) {
-            if (!link.url) continue;
+            const socialUrl = this.safeUrl(link.url);
+            if (!socialUrl) continue;
             socialLinks += `
-              <a href="${link.url}" target="_blank" rel="noopener" style="display:inline-block;width:${c.iconSize || 36}px;height:${c.iconSize || 36}px;margin:0 6px;border-radius:${c.iconShape === 'circle' ? '50%' : (c.borderRadius || 4) + 'px'};background-color:${c.iconBgColor || '#6366f1'};color:${c.iconColor || '#fff'};text-align:center;line-height:${c.iconSize || 36}px;text-decoration:none;font-size:14px;">
+              <a href="${this.escapeHtml(socialUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;width:${c.iconSize || 36}px;height:${c.iconSize || 36}px;margin:0 6px;border-radius:${c.iconShape === 'circle' ? '50%' : (c.borderRadius || 4) + 'px'};background-color:${c.iconBgColor || '#6366f1'};color:${c.iconColor || '#fff'};text-align:center;line-height:${c.iconSize || 36}px;text-decoration:none;font-size:14px;">
                 ${this.getSocialEmoji(link.platform)}
               </a>`;
           }
@@ -1142,19 +1205,36 @@ export default {
         case 'header':
           let hHtml = '';
           if (c.logoSrc) {
-            hHtml += `<img src="${c.logoSrc}" alt="${c.logoAlt || 'Logo'}" style="max-width:${c.logoWidth || 180}px;height:auto;display:block;margin:0 auto ${c.logoMarginBottom || 16}px;">`;
+            hHtml += `<img src="${this.escapeHtml(this.safeUrl(c.logoSrc))}" alt="${this.escapeHtml(c.logoAlt || 'Logo')}" style="max-width:${c.logoWidth || 180}px;height:auto;display:block;margin:0 auto ${c.logoMarginBottom || 16}px;">`;
           }
           if (c.title) {
-            hHtml += `<h1 style="font-size:${c.titleSize || 24}px;font-weight:${c.titleWeight || 'bold'};color:${c.titleColor || '#1a1a1a'};margin:0 0 8px 0;line-height:1.3;font-family:${c.titleFont || 'inherit'};">${c.title}</h1>`;
+            hHtml += `<h1 style="font-size:${c.titleSize || 24}px;font-weight:${c.titleWeight || 'bold'};color:${c.titleColor || '#1a1a1a'};margin:0 0 8px 0;line-height:1.3;font-family:${c.titleFont || 'inherit'};">${this.escapeHtml(c.title)}</h1>`;
           }
           if (c.subtitle) {
-            hHtml += `<p style="font-size:${c.subtitleSize || 16}px;color:${c.subtitleColor || '#666'};margin:0;line-height:1.5;font-family:${c.subtitleFont || 'inherit'};">${c.subtitle}</p>`;
+            hHtml += `<p style="font-size:${c.subtitleSize || 16}px;color:${c.subtitleColor || '#666'};margin:0;line-height:1.5;font-family:${c.subtitleFont || 'inherit'};">${this.escapeHtml(c.subtitle)}</p>`;
           }
           return `<div style="${divStyle}padding:16px 20px;">${hHtml}</div>`;
 
         default:
           return '';
       }
+    },
+
+    escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[character]);
+    },
+
+    safeUrl(value) {
+      const url = String(value ?? '').trim();
+      if (!url || /^javascript:/i.test(url) || /^data:(?!image\/)/i.test(url)) return '';
+      if (/^(https?:|mailto:|tel:|#|\/|\{\{)/i.test(url)) return url;
+      return '';
     },
 
     getSocialEmoji(platform) {
@@ -1413,6 +1493,7 @@ export default {
   height: 100%;
   background: #f6f7f9;
   outline: none;
+  position: relative;
 }
 
 /* === PANELE === */
@@ -1439,6 +1520,11 @@ export default {
   background: #fff;
   border-bottom: 1px solid #e0e0e0;
   min-height: 36px;
+}
+
+.mobile-properties-toggle,
+.mobile-properties-close {
+  display: none;
 }
 
 /* === BLOKI W PANELU === */
@@ -1671,6 +1757,27 @@ export default {
   .right-panel {
     display: none;
   }
+  .mobile-properties-toggle,
+  .mobile-properties-close {
+    display: inline-flex;
+  }
+  .right-panel.mobile-properties-open {
+    display: flex;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    width: min(320px, calc(100vw - 16px));
+    min-width: 0;
+    box-shadow: -8px 0 24px rgba(15, 23, 42, 0.18);
+  }
+  .right-panel.mobile-properties-open .mobile-properties-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+  }
   .live-preview-panel {
     display: none;
   }
@@ -1684,12 +1791,18 @@ export default {
 
 /* === COLOR INPUT === */
 .color-input-small {
-  width: 100%;
+  flex: 1;
   height: 32px;
   border: 1px solid #bdbdbd;
   border-radius: 4px;
   cursor: pointer;
   padding: 2px 4px;
+}
+
+.background-color-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 </style>
 

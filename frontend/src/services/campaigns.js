@@ -87,6 +87,11 @@ export class Campaigns {
     return response.data;
   }
 
+  static async setArchived(id, archived) {
+    const response = await axios.put(`/mailing/archiveCampaign/${id}`, { archived });
+    return response.data.data;
+  }
+
   static async send(id) {
     // Wyślij kampanię natychmiast
     const response = await axios.post(`/mailing/sendCampaign/${id}`, {}, {

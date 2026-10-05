@@ -1,11 +1,13 @@
 import express from 'express';
 const router = express.Router();
 
-import { addUser, login, me } from "../controller/auth.js";
+import { addUser, login, me, requestPasswordReset, resetPassword } from "../controller/auth.js";
 import { startOAuth, handleRedirect, processCallback } from "../controller/oauth.js";
 
 // Klasyczne logowanie + user info
 router.post('/login', login);
+router.post('/forgot-password', requestPasswordReset);
+router.post('/reset-password', resetPassword);
 router.post('/addUser', addUser);
 router.get('/me', me);
 

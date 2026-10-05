@@ -5,6 +5,7 @@ import {
     createCampaign,
     updateCampaign,
     deleteCampaign,
+    setCampaignArchived,
     generateMailContent,
     computeSpamRating,
     listModels,
@@ -52,6 +53,7 @@ router.put('/updateCampaign/:id', updateCampaign);
 
 // Usuń kampanię po ID
 router.delete('/deleteCampaign/:id', deleteCampaign);
+router.put('/archiveCampaign/:id', setCampaignArchived);
 router.get('/listModels', listModels);
 router.post('/generateMailContent', generateMailContent);
 // Oblicz ocenę SPAM dla treści mailingu

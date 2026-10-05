@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS `marketing_campanies` (
   `mail_content` mediumtext COLLATE utf8mb4_unicode_ci,
   `date_start` date DEFAULT NULL,
   `date_end` date DEFAULT NULL,
+  `archived_at` datetime DEFAULT NULL,
   `progress` int DEFAULT NULL,
   `active` tinyint(1) DEFAULT '1',
   PRIMARY KEY (`id`),
@@ -203,8 +204,15 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `hash` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `customer_id` int DEFAULT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_login` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`email`),
   KEY `idx_customer_id` (`customer_id`),
+  KEY `idx_active` (`active`),
+  KEY `idx_created_at` (`created_at`),
   CONSTRAINT `users_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

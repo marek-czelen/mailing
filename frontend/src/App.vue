@@ -299,12 +299,12 @@ const isPublicRoute = computed(() => {
   const currentName = route.name
   
   // Check by path
-  if (currentPath === '/login' || currentPath.startsWith('/unsubscribe/')) {
+  if (currentPath === '/login' || currentPath === '/forgot-password' || currentPath === '/reset-password' || currentPath.startsWith('/unsubscribe/')) {
     return true
   }
   
   // Check by route name
-  if (currentName === 'Login' || currentName === 'Unsubscribe') {
+  if (currentName === 'Login' || currentName === 'ForgotPassword' || currentName === 'ResetPassword' || currentName === 'Unsubscribe') {
     return true
   }
   
