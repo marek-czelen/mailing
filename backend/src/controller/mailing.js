@@ -4,7 +4,6 @@ import XLSX from 'xlsx';
 import MailAddress from '../models/mailAddress.model.js';
 import UPLOAD_DIR from '../config/upload.config.js';
 import Path from 'path';
-import { fileURLToPath } from 'url';
 import Databases from '../models/databases.model.js';
 import Customers from '../models/customers.model.js';
 import sequelize from '../include/db.js';
@@ -16,33 +15,26 @@ import Sequelize from 'sequelize';
 import Mail from '../include/mail.js';
 import { Admin } from '../include/admin.js';
 import MarketingCampaniesMailingResult from '../models/marketingCampaniesMailing.model.js';
+import { generateText, getDefaultProvider, listModels as fetchAiModels } from '../services/ai.service.js';
 
-// === KONFIGURACJA AI ===
-// Wczytuje ustawienia z pliku JSON w folderze config
-// Zmienne środowiskowe mają priorytet nad plikiem JSON
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = Path.dirname(__filename);
-const aiConfigPath = Path.resolve(__dirname, '../config/ai.config.json');
-const aiConfig = JSON.parse(fs.readFileSync(aiConfigPath, 'utf-8'));
+async function getLatestSendDates(campaignIds) {
+    if (campaignIds.length === 0) return new Map();
 
-// Provider: huggingface | deepseek | openai
-const AI_PROVIDER = process.env.AI_PROVIDER || aiConfig.defaults?.provider || 'huggingface';
+    const results = await MarketingCampaniesMailingResult.findAll({
+        attributes: [
+            'marketingCampaniesId',
+            [Sequelize.fn('MAX', Sequelize.col('send_date')), 'sentAt']
+        ],
+        where: {
+            marketingCampaniesId: { [Op.in]: campaignIds },
+            isSend: true
+        },
+        group: ['marketingCampaniesId'],
+        raw: true
+    });
 
-// HuggingFace
-const HF_API_KEY = process.env.HF_API_KEY || aiConfig.huggingface?.apiKey || '';
-const HF_MODEL = process.env.HF_MODEL || aiConfig.huggingface?.model || 'mistralai/Mistral-7B-Instruct-v0.2';
-
-// DeepSeek (OpenAI-kompatybilne API)
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || aiConfig.deepseek?.apiKey || '';
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || aiConfig.deepseek?.model || 'deepseek-chat';
-
-// OpenAI
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || aiConfig.openai?.apiKey || '';
-const OPENAI_MODEL = process.env.OPENAI_MODEL || aiConfig.openai?.model || 'gpt-3.5-turbo';
-
-// Wspólne
-const AI_MAX_TOKENS = parseInt(process.env.AI_MAX_TOKENS) || 500;
-const AI_TEMPERATURE = parseFloat(process.env.AI_TEMPERATURE) || 0.7;
+    return new Map(results.map(result => [result.marketingCampaniesId, result.sentAt]));
+}
 
 // Pobierz wszystkie kampanie
 export async function getCampaignsList(req, res) {
@@ -56,7 +48,12 @@ export async function getCampaignsList(req, res) {
             where: { customerId: userData.customerId },
             attributes: { exclude: ['htmlContent', 'textContent', 'suggestions'] }
         });
-        res.status(200).send(new Response(campaigns, true, "Data received successfully."));
+        const latestSendDates = await getLatestSendDates(campaigns.map(campaign => campaign.id));
+        const campaignsWithSendDates = campaigns.map(campaign => ({
+            ...campaign.toJSON(),
+            sentAt: latestSendDates.get(campaign.id) || null
+        }));
+        res.status(200).send(new Response(campaignsWithSendDates, true, "Data received successfully."));
     } catch (error) {
         res.status(500).send(new Response(null, false, `Failed to fetch campaigns. ${error.message}`));
     }
@@ -77,7 +74,11 @@ export async function getCampaignById(req, res) {
         if (!campaign) {
             return res.status(403).send(new Response(null, false, "Campaign not found."));
         }
-        res.status(200).send(new Response(campaign, true, "Data received successfully."));
+        const latestSendDates = await getLatestSendDates([campaign.id]);
+        res.status(200).send(new Response({
+            ...campaign.toJSON(),
+            sentAt: latestSendDates.get(campaign.id) || null
+        }, true, "Data received successfully."));
     } catch (error) {
         res.status(500).send(new Response(null, false, `Failed to fetch campaign. ${error.message}`));
     }
@@ -130,8 +131,10 @@ export async function updateCampaign(req, res) {
         if (req.body.description !== undefined) updateData.description = req.body.description;
         if (req.body.senderName !== undefined) updateData.senderName = req.body.senderName;
         if (req.body.senderEmail !== undefined) updateData.senderEmail = req.body.senderEmail;
+        if (req.body.senderPhone !== undefined) updateData.senderPhone = req.body.senderPhone;
         if (req.body.textContent !== undefined) updateData.textContent = req.body.textContent;
         if (req.body.htmlContent !== undefined) updateData.htmlContent = req.body.htmlContent;
+        if (req.body.aiGenerationData !== undefined) updateData.aiGenerationData = req.body.aiGenerationData;
         if (req.body.dateStart !== undefined) updateData.dateStart = req.body.dateStart;
         if (req.body.dateEnd !== undefined) updateData.dateEnd = req.body.dateEnd;
         if (req.body.progress !== undefined) updateData.progress = Number(req.body.progress);
@@ -159,16 +162,37 @@ export async function updateCampaign(req, res) {
         if (req.body.smtpAllowSelfSigned !== undefined) updateData.smtpAllowSelfSigned = (req.body.smtpAllowSelfSigned === true || req.body.smtpAllowSelfSigned === 'true' || req.body.smtpAllowSelfSigned === 1 || req.body.smtpAllowSelfSigned === '1');
 
         const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, "User not found."));
+        }
+
+        const campaignWhere = { id: req.params.id, customerId: userData.customerId };
+        const campaign = await MarketingCampanies.findOne({ where: campaignWhere });
+        if (!campaign) {
+            return res.status(404).send(new Response(null, false, "Campaign not found."));
+        }
+        if (campaign.sent) {
+            return res.status(409).send(new Response(null, false, "Sent campaigns cannot be updated."));
+        }
+
         const [updated] = await MarketingCampanies.update(updateData, {
-            where: { id: req.params.id, customerId: userData.customerId }
+            where: { ...campaignWhere, sent: false }
         });
 
         const updatedCampaign = await MarketingCampanies.findOne({
-            where: { id: req.params.id, customerId: userData.customerId }
+            where: campaignWhere
         });
-        // Automatycznie licz scoring i sugestie po edycji kampanii
+        if (!updatedCampaign) {
+            return res.status(404).send(new Response(null, false, "Campaign not found."));
+        }
+        if (updatedCampaign.sent) {
+            return res.status(409).send(new Response(null, false, "Sent campaigns cannot be updated."));
+        }
 
-        await computeSpamRating({ body: { id: updatedCampaign.id } }, { send: () => { } });
+        // Automatycznie licz scoring i sugestie po edycji kampanii
+        if (updated) {
+            await computeSpamRating({ body: { id: updatedCampaign.id } }, { send: () => { } });
+        }
 
         res.status(200).send(new Response(updatedCampaign, true, "Campaign updated successfully."));
     } catch (error) {
@@ -245,160 +269,33 @@ export async function campaignSendingProgress(req, res) {
 
 export async function listModels(req, res) {
     try {
-        const response = await fetch("https://router.huggingface.co/v1/models", {
-            headers: {
-                "Authorization": `Bearer ${HF_API_KEY}`,
-            },
-        });
-
-        if (!response.ok) {
-            const text = await response.text();
-            return res.send(new Response(null, false, `HTTP ${response.status}: ${text}`));
-        }
-
-        const models = await response.json();
-        // Zwróć listę modeli w odpowiedzi
-        res.send(new Response(models.data, true, "Models fetched successfully."));
+        const models = await fetchAiModels();
+        res.send(new Response(models, true, "Models fetched successfully."));
     } catch (err) {
         res.send(new Response(null, false, `Failed to fetch models: ${err.message}`));
     }
 }
 
-
 export async function generateMailContent(req, res) {
-    console.log("generateMailContent called, provider:", AI_PROVIDER);
-
     const prompt = req.body.prompt;
     if (!prompt) {
         return res.send(new Response(null, false, "Brak promptu do wygenerowania treści."));
     }
 
     try {
-        const provider = req.body.provider || AI_PROVIDER;
-
-        let generatedText = '';
-        switch (provider) {
-            case 'deepseek':
-                generatedText = await generateWithDeepSeek(prompt, req.body);
-                break;
-            case 'openai':
-                generatedText = await generateWithOpenAI(prompt, req.body);
-                break;
-            case 'huggingface':
-            default:
-                generatedText = await generateWithHuggingFace(prompt, req.body);
-                break;
-        }
-
+        const generatedText = await generateText({
+            prompt,
+            systemPrompt: typeof req.body.systemPrompt === 'string' ? req.body.systemPrompt.slice(0, 4000) : undefined,
+            provider: req.body.provider || getDefaultProvider(),
+            model: req.body.model,
+            maxTokens: req.body.maxTokens,
+            temperature: req.body.temperature
+        });
         res.send(new Response(generatedText, true, "OK."));
     } catch (error) {
         res.send(new Response(null, false, `Failed to generate mail content: ${error.message}`));
     }
 }
-
-// ========== PROVIDER IMPLEMENTACJE ==========
-
-/** HuggingFace Inference API */
-async function generateWithHuggingFace(prompt, options = {}) {
-    const model = options.model || HF_MODEL;
-    const maxTokens = options.maxTokens || AI_MAX_TOKENS;
-
-    const response = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${HF_API_KEY}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            inputs: prompt,
-            parameters: { max_new_tokens: maxTokens, temperature: AI_TEMPERATURE },
-        }),
-    });
-
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`HuggingFace HTTP ${response.status}: ${text}`);
-    }
-
-    const resultJson = await response.json();
-    if (Array.isArray(resultJson) && resultJson[0]?.generated_text) {
-        return resultJson[0].generated_text;
-    } else if (resultJson.generated_text) {
-        return resultJson.generated_text;
-    }
-    return JSON.stringify(resultJson);
-}
-
-/** DeepSeek API (OpenAI-kompatybilne) */
-async function generateWithDeepSeek(prompt, options = {}) {
-    if (!DEEPSEEK_API_KEY) {
-        throw new Error('Brak klucza DeepSeek API. Ustaw DEEPSEEK_API_KEY w ai.config.json lub zmiennej środowiskowej.');
-    }
-
-    const model = options.model || DEEPSEEK_MODEL;
-    const maxTokens = options.maxTokens || AI_MAX_TOKENS;
-
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            model: model,
-            messages: [
-                { role: 'system', content: 'Jesteś profesjonalnym copywriterem email marketingu. Tworzysz treści w języku polskim i angielskim. Odpowiadasz wyłącznie gotową treścią emaila - bez zbędnych opisów i komentarzy.' },
-                { role: 'user', content: prompt }
-            ],
-            max_tokens: maxTokens,
-            temperature: AI_TEMPERATURE,
-        }),
-    });
-
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`DeepSeek HTTP ${response.status}: ${text}`);
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || JSON.stringify(data);
-}
-
-/** OpenAI API */
-async function generateWithOpenAI(prompt, options = {}) {
-    if (!OPENAI_API_KEY) {
-        throw new Error('Brak klucza OpenAI API. Ustaw OPENAI_API_KEY w ai.config.json lub zmiennej środowiskowej.');
-    }
-
-    const model = options.model || OPENAI_MODEL;
-    const maxTokens = options.maxTokens || AI_MAX_TOKENS;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            model: model,
-            messages: [
-                { role: 'system', content: 'You are a professional email marketing copywriter. Respond only with the completed email content - no extra descriptions or commentary.' },
-                { role: 'user', content: prompt }
-            ],
-            max_tokens: maxTokens,
-            temperature: AI_TEMPERATURE,
-        }),
-    });
-
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`OpenAI HTTP ${response.status}: ${text}`);
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || JSON.stringify(data);
-}
-
 
 // computeSpamRating (advanced heuristics)
 // zachowuje strukturę wyniku: { score, rating, details, suggestions }

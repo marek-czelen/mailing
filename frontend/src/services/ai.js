@@ -5,6 +5,21 @@ import axios from 'axios';
  * Wykorzystuje backendowe endpointy HuggingFace
  */
 export class AiService {
+  static async generateText(prompt, options = {}) {
+    const response = await axios.post('/mailing/generateMailContent', {
+      prompt,
+      ...options
+    });
+    const result = response.data;
+    if (result?.response?.success === false) {
+      throw new Error(result?.response?.message || 'Nie udało się wygenerować treści.');
+    }
+    if (typeof result.data !== 'string' || !result.data.trim()) {
+      throw new Error('Usługa AI zwróciła pustą treść.');
+    }
+    return result.data;
+  }
+
   /**
    * Generuj treść emaila na podstawie promptu
    * @param {string} prompt - Opis co ma być wygenerowane
@@ -12,11 +27,7 @@ export class AiService {
    * @returns {Promise<string>} Wygenerowana treść
    */
   static async generateContent(prompt, options = {}) {
-    const response = await axios.post('/mailing/generateMailContent', {
-      prompt: this._buildPrompt(prompt, options),
-      ...options
-    });
-    return response.data.data;
+    return this.generateText(this._buildPrompt(prompt, options), options);
   }
 
   /**
@@ -25,9 +36,7 @@ export class AiService {
    * @returns {Promise<string>} Sugerowany temat
    */
   static async generateSubject(context) {
-    const prompt = `Generate a compelling email subject line for a marketing campaign about: ${context}. 
-    Requirements: maximum 60 characters, engaging, no spam words, personalized tone.
-    Return ONLY the subject line, nothing else.`;
+    const prompt = `Zaproponuj temat wiadomości dotyczącej: ${context}. Temat ma mieć maksymalnie 60 znaków, jasno odnosić się do podanej oferty i nie może obiecywać niczego, czego nie ma w kontekście. Zwróć wyłącznie temat, bez komentarza.`;
     
     const response = await axios.post('/mailing/generateMailContent', {
       prompt,
@@ -44,16 +53,13 @@ export class AiService {
    */
   static async improveText(text, style = 'professional') {
     const stylePrompts = {
-      professional: 'Make it more professional and polished',
-      casual: 'Make it more casual and friendly',
-      persuasive: 'Make it more persuasive and compelling',
-      urgent: 'Make it more urgent and action-driving'
+      professional: 'Nadaj mu bardziej formalny i dopracowany ton',
+      casual: 'Napisz go swobodniej i bardziej przystępnie',
+      persuasive: 'Przedstaw argumenty jasno i przekonująco, bez dodawania niepotwierdzonych obietnic',
+      urgent: 'Podkreśl pilność wyłącznie wtedy, gdy wynika ona z podanych informacji'
     };
 
-    const prompt = `Improve the following marketing email text. ${stylePrompts[style] || stylePrompts.professional}.
-    Keep the same core message but enhance the language. Return ONLY the improved text.
-    
-    Original text: "${text}"`;
+    const prompt = `Zredaguj poniższy tekst wiadomości. ${stylePrompts[style] || stylePrompts.professional}. Zachowaj sens, fakty, ceny, warunki, linki i język oryginału. Nie dodawaj informacji ani obietnic. Zwróć wyłącznie poprawiony tekst.\n\nTekst źródłowy:\n${text}`;
 
     const response = await axios.post('/mailing/generateMailContent', {
       prompt,
@@ -69,10 +75,7 @@ export class AiService {
    * @returns {Promise<string[]>} Warianty tekstu
    */
   static async generateVariants(text, count = 3) {
-    const prompt = `Create ${count} different variations of the following marketing text. 
-    Each variation should have a different tone or angle. Number them 1-${count}.
-    
-    Original: "${text}"`;
+    const prompt = `Przygotuj ${count} różne wersje poniższego tekstu. Mogą różnić się tonem i sposobem ujęcia, ale zachowaj te same fakty, ceny, warunki i sens. Nie dodawaj nowych twierdzeń. Ponumeruj wersje od 1 do ${count}.\n\nTekst źródłowy:\n${text}`;
 
     const response = await axios.post('/mailing/generateMailContent', {
       prompt,
@@ -103,9 +106,7 @@ export class AiService {
    * @returns {Promise<string[]>} Sugerowane CTA
    */
   static async generateCTA(context) {
-    const prompt = `Generate 5 compelling call-to-action button texts for a marketing email about: ${context}.
-    Each CTA should be short (2-5 words), action-oriented, and persuasive.
-    Return each CTA on a new line, no numbering.`;
+    const prompt = `Zaproponuj 5 krótkich etykiet przycisku lub linku zachęcających do działania w wiadomości na temat: ${context}. Każda propozycja ma mieć od 2 do 5 słów, być konkretna i zgodna z podaną ofertą. Zwróć każdą propozycję w osobnym wierszu, bez numerowania.`;
 
     const response = await axios.post('/mailing/generateMailContent', {
       prompt,
@@ -134,10 +135,7 @@ export class AiService {
    * @returns {Promise<string>} Sugerowany preheader
    */
   static async generatePreheader(subject, content) {
-    const prompt = `Generate a short email preheader (40-100 characters) that complements this subject line: "${subject}".
-    The preheader should entice the reader to open the email.
-    Context: ${content.substring(0, 200)}
-    Return ONLY the preheader text.`;
+    const prompt = `Napisz krótki preheader o długości 40–100 znaków, który uzupełnia temat: "${subject}". Oprzyj go na treści wiadomości, bez dodawania nowych obietnic.\nKontekst: ${content.substring(0, 200)}\nZwróć wyłącznie preheader.`;
 
     const response = await axios.post('/mailing/generateMailContent', {
       prompt,
@@ -153,10 +151,8 @@ export class AiService {
    * @returns {Promise<string>} Przetłumaczony tekst
    */
   static async translate(text, targetLang = 'en') {
-    const prompt = `Translate the following marketing text to ${targetLang === 'pl' ? 'Polish' : 'English'}. 
-    Keep the marketing tone and persuasion. Return ONLY the translation.
-    
-    Text: "${text}"`;
+    const targetLanguage = targetLang === 'pl' ? 'polski' : targetLang === 'en' ? 'angielski' : targetLang
+    const prompt = `Przetłumacz poniższy tekst na język ${targetLanguage}. Zachowaj jego sens, fakty, ceny, warunki, linki i odpowiedni ton. Nie dodawaj nowych informacji. Zwróć wyłącznie tłumaczenie.\n\nTekst:\n${text}`;
 
     const response = await axios.post('/mailing/generateMailContent', {
       prompt,
@@ -170,26 +166,32 @@ export class AiService {
    */
   static _buildPrompt(prompt, options = {}) {
     let fullPrompt = prompt;
+    const toneNames = {
+      professional: 'formalnym i profesjonalnym',
+      casual: 'swobodnym i przystępnym',
+      persuasive: 'przekonującym, ale rzeczowym',
+      urgent: 'pilnym, wyłącznie jeśli wynika to z faktów'
+    }
 
     if (options.tone) {
-      fullPrompt = `Use a ${options.tone} tone. ${fullPrompt}`;
+      fullPrompt = `Użyj tonu ${toneNames[options.tone] || options.tone}. ${fullPrompt}`;
     }
     if (options.targetAudience) {
-      fullPrompt = `Target audience: ${options.targetAudience}. ${fullPrompt}`;
+      fullPrompt = `Odbiorcy: ${options.targetAudience}. ${fullPrompt}`;
     }
     if (options.industry) {
-      fullPrompt = `Industry: ${options.industry}. ${fullPrompt}`;
+      fullPrompt = `Branża: ${options.industry}. ${fullPrompt}`;
     }
     if (options.length === 'short') {
-      fullPrompt += ' Keep it concise, around 50-100 words.';
+      fullPrompt += ' Napisz zwięźle, w około 50–100 słowach.';
     } else if (options.length === 'long') {
-      fullPrompt += ' Make it detailed, around 200-400 words.';
+      fullPrompt += ' Rozwiń tekst do około 200–400 słów.';
     }
     if (options.includeCTA) {
-      fullPrompt += ' Include a clear call-to-action.';
+      fullPrompt += ' Dodaj jasne wezwanie do działania, zgodne z podaną ofertą.';
     }
 
-    fullPrompt += ' Format the output as clean HTML suitable for email (use <p>, <h2>, <h3> tags, no <html> or <body> tags). Include personalization placeholders like {{first_name}} where appropriate.';
+    fullPrompt += ' Zwróć czysty HTML odpowiedni do wiadomości email (używaj znaczników <p>, <h2>, <h3>, bez <html> i <body>). Zachowaj placeholdery personalizacyjne, takie jak {{first_name}}, jeśli występują w tekście źródłowym. Nie wymyślaj faktów, cen ani obietnic.';
 
     return fullPrompt;
   }

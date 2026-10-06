@@ -41,6 +41,11 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
     allowNull: true,
     field: "sender_email"
   },
+  senderPhone: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: "sender_phone"
+  },
   textContent: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -50,6 +55,11 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
     type: DataTypes.TEXT("medium"),
     field: "html_content",
     allowNull: true
+  },
+  aiGenerationData: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    field: "ai_generation_data"
   },
     dateStart:{
       type: DataTypes.DATE,

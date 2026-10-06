@@ -69,6 +69,10 @@
                     {{ campaign.subject || '' }}
                   </span>
                   <span class="campaign-date">{{ formatDate(campaign.dateStart) }}</span>
+                  <span v-if="campaign.sentAt" class="campaign-date">
+                    <v-icon size="14">mdi-email-check</v-icon>
+                    {{ t('campaigns.sentAt') }}: {{ formatDateTime(campaign.sentAt) }}
+                  </span>
                 </div>
               </div>
               <div class="campaign-actions">
@@ -79,7 +83,7 @@
                     </v-btn>
                   </template>
                   <v-list>
-                    <v-list-item @click="editCampaign(campaign)">
+                    <v-list-item v-if="!isCampaignSent(campaign)" @click="editCampaign(campaign)">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-pencil</v-icon>
                         {{ t('campaigns.editCampaign') }}
@@ -167,6 +171,7 @@
                 <CampaignContent :campaign="selectedCampaign" 
                   @edit-template="editTemplate"
                   @edit-content="editHtmlContent"
+                  @create-ai-email="showAiEmailDialog = true"
                   @update:campaign="updateCampaign" />
               </v-window-item>
 
@@ -175,7 +180,7 @@
                 <div class="recipients-management">
                   <div class="recipients-header">
                     <h3>{{ t('campaigns.manageRecipients') }}</h3>
-                    <v-btn color="primary" variant="outlined" @click="editCampaignDatabase">
+                    <v-btn color="primary" variant="outlined" @click="editCampaignDatabase" :disabled="isCampaignSent(selectedCampaign)">
                       <v-icon left>mdi-database-edit</v-icon>
                       {{ t('campaigns.changeDatabase') }}
                     </v-btn>
@@ -248,14 +253,15 @@
                             <v-radio disabled :label="t('campaigns.sendImmediate')" value="immediate"
                               :disabled="selectedCampaign.status === 'sent'" />
                             <v-radio disabled :label="t('campaigns.saveDraft')" value="draft"
-                              :disabled="selectedCampaign.status === 'sent'" />
+                              :disabled="isCampaignSent(selectedCampaign)" />
                             <v-radio :label="t('campaigns.sendScheduled')" value="scheduled"
-                              :disabled="selectedCampaign.status === 'sent'" />
+                              :disabled="isCampaignSent(selectedCampaign)" />
                           </v-radio-group>
 
                           <div v-if="selectedCampaign.sendMode === 'scheduled'" class="mt-4">
                             <v-text-field v-model="scheduledDateTime" :label="t('campaigns.sendDateTime')"
                               type="datetime-local" variant="outlined" density="comfortable" :min="minDateTime"
+                              :disabled="isCampaignSent(selectedCampaign)"
                               @update:model-value="updateScheduledDate" />
                           </div>
                         </v-card-text>
@@ -291,7 +297,7 @@
                           </div>
 
                           <div class="action-buttons mt-4">
-                            <v-btn v-if="selectedCampaign.status === 'draft'" color="success" variant="elevated"
+                            <v-btn v-if="selectedCampaign.status === 'draft' && !isCampaignSent(selectedCampaign)" color="success" variant="elevated"
                               @click="sendCampaignNow" :disabled="!selectedCampaign.database">
                               <v-icon left>mdi-send</v-icon>
                               {{ t('campaigns.sendNow') }}
@@ -366,6 +372,13 @@
     <DatabaseSelectionDialog v-model="showDatabaseDialog" :campaign="selectedCampaign"
       @database-changed="updateCampaignDatabase" />
 
+    <CampaignAiEmailDialog
+      v-model="showAiEmailDialog"
+      :campaign="selectedCampaign"
+      @use-draft="useAiEmailDraft"
+      @generation-data-saved="handleAiGenerationDataSaved"
+    />
+
     <GeneralDialog 
       style="z-index: 0;"
       v-model="showHtmlEditor" 
@@ -375,14 +388,37 @@
       persistent 
       >
       <template #default>
-            <editor
-              :key="editorKey"
-              api-key="2p3hkyrffhcego8910cy6tydhz46fsjjz1jst5bidxga9e58"
-              v-model="htmlEditorContent"
-              :init="editorConfig"
-              :inline="false"
-              style="height: 100%; margin: 0;"
-            />
+        <v-btn-toggle v-model="htmlEditorMode" mandatory color="primary" density="compact" class="mb-3">
+          <v-btn value="visual">
+            <v-icon start>mdi-format-text</v-icon>
+            {{ t('campaigns.visualEditor') }}
+          </v-btn>
+          <v-btn value="html">
+            <v-icon start>mdi-code-tags</v-icon>
+            {{ t('campaigns.htmlSource') }}
+          </v-btn>
+        </v-btn-toggle>
+
+        <div v-if="htmlEditorMode === 'visual'" class="editor-container">
+          <QuillEditor
+            :key="editorKey"
+            v-model:content="htmlEditorContent"
+            content-type="html"
+            theme="snow"
+            :toolbar="quillToolbar"
+            :placeholder="t('campaigns.htmlHint')"
+          />
+        </div>
+        <v-textarea
+          v-else
+          v-model="htmlEditorContent"
+          :label="t('campaigns.htmlSource')"
+          variant="outlined"
+          rows="24"
+          auto-grow
+          hide-details
+          class="html-source-editor"
+        />
         </template>
 
             <template #actions>
@@ -427,6 +463,7 @@ import CampaignContent from '../components/campaigns/CampaignContent.vue'
 import CampaignRecipients from '../components/campaigns/CampaignRecipients.vue'
 import CampaignReplies from '../components/campaigns/CampaignReplies.vue'
 import CampaignBounces from '../components/campaigns/CampaignBounces.vue'
+import CampaignAiEmailDialog from '../components/campaigns/CampaignAiEmailDialog.vue'
 import CampaignDialog from '../components/campaigns/CampaignDialog.vue'
 import ScheduleDialog from '../components/campaigns/ScheduleDialog.vue'
 import DatabaseSelectionDialog from '../components/campaigns/DatabaseSelectionDialog.vue'
@@ -435,21 +472,13 @@ import { Databases } from '../services/databases.js'
 import StatCard from '../components/StatCard.vue'
 import PageContent from '../components/PageContent.vue'
 import StatGrid from '../components/StatGrid.vue'
-import Editor  from '@tinymce/tinymce-vue'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import GeneralDialog from '../components/GeneralDialog.vue'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
-
-// Get TinyMCE language code from current locale
-const getTinyMCELanguage = () => {
-  const languageMap = {
-    'pl': 'pl',
-    'en': 'en'
-  }
-  return languageMap[locale.value] || 'en'
-}
 
 // Reactive data
 const campaigns = ref([])
@@ -467,228 +496,30 @@ const scheduledDateTime = ref('')
 const showDatabaseDialog = ref(false)
 const testEmail = ref('')
 const loadingCampaignDetails = ref(false)
+const showAiEmailDialog = ref(false)
 const showHtmlEditor = ref(false)
 const htmlEditorContent = ref('<p>Wprowadź treść kampanii...</p>')
+const htmlEditorMode = ref('visual')
 const editorKey = ref(0)
 const snackbar = ref({
   show: false,
   message: '',
   color: 'success'
 })
-const editorConfig = {
-  height: 600,
-  menubar: true, // Włączamy menubar dla większej funkcjonalności
-  readonly: false,
-  language: getTinyMCELanguage(),
-  language_url: `/tinymce/langs/${getTinyMCELanguage()}.js`,
-  
-  // Rozszerzona lista pluginów
-  plugins: [
-    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-    'insertdatetime', 'media', 'table', 'help', 'wordcount', 'emoticons',
-    'template', 'textcolor', 'colorpicker', 'textpattern',
-    'codesample', 'hr', 'pagebreak', 'nonbreaking', 'toc', 'imagetools',
-    'quickbars', 'powerpaste', 'importcss'
-  ],
-  
-  // Zaawansowany toolbar w wielu liniach
-  toolbar1: 'undo redo | bold italic underline strikethrough | subscript superscript | removeformat |bullist numlist | blockquote hr nonbreaking pagebreak | link unlink anchor | image media table | insertdatetime charmap emoticons',
-  toolbar2: 'fontselect fontsizeselect | forecolor backcolor | alignleft aligncenter alignright alignjustify | outdent indent | placeholder',
-  
-  // Konfiguracja menu
-  menu: {
-    file: { title: t('campaigns.menu.file'), items: 'newdocument restoredraft | preview | export print | deleteallconversations' },
-    edit: { title: t('campaigns.menu.edit'), items: 'undo redo | cut copy paste pastetext | selectall | searchreplace' },
-    view: { title: t('campaigns.menu.view'), items: 'code | visualaid visualchars visualblocks | spellchecker | preview fullscreen | showcomments' },
-    insert: { title: t('campaigns.menu.insert'), items: 'image link media addcomment pageembed template codesample inserttable | charmap emoticons hr | pagebreak nonbreaking anchor tableofcontents | insertdatetime' },
-    format: { title: t('campaigns.menu.format'), items: 'bold italic underline strikethrough superscript subscript codeformat | styles blocks fontfamily fontsize align lineheight | forecolor backcolor | language | removeformat' },
-    tools: { title: t('campaigns.menu.tools'), items: 'spellchecker spellcheckerlanguage | a11ycheck code wordcount' },
-    table: { title: t('campaigns.menu.table'), items: 'inserttable | cell row column | advtablesort | tableprops deletetable' }
-  },
-  
-  // Konfiguracja obrazków
-  image_advtab: true,
-  image_caption: true,
-  image_list: false,
-  
-  // Konfiguracja linków
-  link_list: false,
-  link_context_toolbar: true,
-  
-  // Konfiguracja tabel
-  table_toolbar: 'tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol',
-  table_appearance_options: true,
-  table_grid: true,
-  table_resize_bars: true,
-  
-  // Szybkie paski narzędzi
-  quickbars_selection_toolbar: 'bold italic | quicklink h2 h3 blockquote quickimage quicktable',
-  quickbars_insert_toolbar: 'quickimage quicktable | hr pagebreak',
-  
-  // Ustawienia czcionek
-  font_formats: 'Arial=arial,helvetica,sans-serif; Courier New=courier new,courier,monospace; AkrutiKndPadmini=Akpdmi-n; Times New Roman=times new roman,times,serif; Verdana=verdana,geneva,sans-serif;',
-  fontsize_formats: '8pt 10pt 12pt 14pt 16pt 18pt 24pt 36pt 48pt',
-  
-  // Szablony dla emaili marketingowych
-  templates: [],
-  
-  // Konfiguracja wklejania
-  paste_data_images: true,
-  paste_as_text: false,
-  paste_retain_style_properties: "color font-size font-family background-color text-decoration text-align",
-  
-  // Automatyczne wzorce tekstu
-  textpattern_patterns: [
-    {start: '*', end: '*', format: 'italic'},
-    {start: '**', end: '**', format: 'bold'},
-    {start: '#', format: 'h1'},
-    {start: '##', format: 'h2'},
-    {start: '###', format: 'h3'},
-    {start: '1. ', cmd: 'InsertOrderedList'},
-    {start: '* ', cmd: 'InsertUnorderedList'},
-    {start: '- ', cmd: 'InsertUnorderedList'}
-  ],
-  
-  // Sprawdzanie pisowni
-  browser_spellcheck: true,
-  
-  setup: (editor) => {
-    editor.on('init', () => {
-      // TinyMCE 6+ udostępnia API przez editor.mode.set('design') zamiast legacy editor.setMode
-      // Dodajemy zachowanie defensywne aby uniknąć błędu TypeError: editor.setMode is not a function
-      try {
-        if (editor.mode && typeof editor.mode.set === 'function') {
-          editor.mode.set('design') // Wymuszenie trybu edycji (tryb edycji / design)
-        } else if (typeof editor.setMode === 'function') {
-          editor.setMode('design') // Kompatybilność ze starszym API
-        } // Jeśli żaden nie istnieje, domyślny tryb już jest edycyjny przy readonly:false
-      } catch (e) {
-        console.warn('Nie udało się ustawić trybu edycji TinyMCE:', e)
-      }
-    })
-    
-    // Dodatkowe przyciski w toolbar
-    editor.ui.registry.addButton('placeholder', {
-      text: 'Placeholder',
-      tooltip: 'Wstaw placeholder',
-      onAction: () => {
-        const placeholders = [
-          '{{CONTACT_FIRST_NAME}}',
-          '{{CONTACT_LAST_NAME}}', 
-          '{{CONTACT_EMAIL}}',
-          '{{COMPANY_NAME}}',
-          '{{COMPANY_ADDRESS}}',
-          '{{UNSUBSCRIBE_LINK}}',
-          '{{CAMPAIGN_NAME}}'
-        ]
-        
-        editor.windowManager.open({
-          title: 'Wybierz placeholder',
-          body: {
-            type: 'panel',
-            items: [{
-              type: 'selectbox',
-              name: 'placeholder',
-              label: 'Placeholder:',
-              items: placeholders.map(p => ({ text: p, value: p }))
-            }]
-          },
-          buttons: [
-            {
-              type: 'cancel',
-              text: 'Anuluj'
-            },
-            {
-              type: 'submit',
-              text: 'Wstaw',
-              primary: true
-            }
-          ],
-          onSubmit: (api) => {
-            const data = api.getData()
-            editor.insertContent(data.placeholder)
-            api.close()
-          }
-        })
-      }
-    })
-  },
-  
-  // Style CSS dla treści
-  content_style: `
-    body { 
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      font-size: 14px; 
-      line-height: 1.6;
-      color: #333;
-      margin: 20px;
-    }
-    .email-container { 
-      max-width: 600px; 
-      margin: 0 auto; 
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    h1, h2, h3 { 
-      color: #2c3e50; 
-      margin-top: 0;
-    }
-    p { 
-      margin-bottom: 16px; 
-    }
-    a { 
-      color: #007bff; 
-      text-decoration: underline;
-    }
-    table { 
-      border-collapse: collapse; 
-      width: 100%; 
-    }
-    td, th { 
-      border: 1px solid #ddd; 
-      padding: 8px; 
-      text-align: left;
-    }
-    th { 
-      background-color: #f2f2f2; 
-      font-weight: bold;
-    }
-    blockquote { 
-      border-left: 4px solid #007bff; 
-      padding-left: 16px; 
-      margin: 16px 0;
-      font-style: italic;
-    }
-    code { 
-      background-color: #f4f4f4; 
-      padding: 2px 4px; 
-      border-radius: 3px;
-      font-family: 'Courier New', monospace;
-    }
-  `,
-  
-  // Ustawienia dodatkowe
-  resize: true,
-  statusbar: true,
-  elementpath: true,
-  branding: false,
-  promotion: false
-}
-
 const emailRules = [
   v => !!v || 'Email jest wymagany',
   v => /.+@.+\..+/.test(v) || 'Email musi być poprawny'
 ]
 
-// Konfiguracja toolbar dla VueQuill
-const toolbarOptions = [
+const quillToolbar = [
   [{ 'header': [1, 2, 3, false] }],
+  [{ 'size': ['small', false, 'large', 'huge'] }],
   ['bold', 'italic', 'underline', 'strike'],
   [{ 'color': [] }, { 'background': [] }],
+  [{ 'script': 'sub' }, { 'script': 'super' }],
   [{ 'align': [] }],
   [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+  [{ 'indent': '-1' }, { 'indent': '+1' }],
   ['blockquote', 'code-block'],
   ['link', 'image'],
   ['clean']
@@ -774,8 +605,13 @@ function openCreateDialog() {
 }
 
 function editCampaign(campaign) {
+  if (isCampaignSent(campaign)) return
   editingCampaign.value = { ...campaign }
   showCampaignDialog.value = true
+}
+
+function isCampaignSent(campaign) {
+  return Boolean(campaign?.sent || campaign?.status === 'sent')
 }
 
 function saveCampaign(campaignData) {
@@ -904,7 +740,7 @@ function editTemplate() {
 }
 
 async function updateCampaign(updatedData) {
-  if (!selectedCampaign.value) return
+  if (!selectedCampaign.value || isCampaignSent(selectedCampaign.value)) return
 
   try {
     const updatedCampaign = await Campaigns.update(selectedCampaign.value.id, updatedData)
@@ -926,7 +762,7 @@ async function updateCampaign(updatedData) {
 }
 
 async function editHtmlContent() {
-  if (selectedCampaign.value) {
+  if (selectedCampaign.value && !isCampaignSent(selectedCampaign.value)) {
     console.log('Otwieranie edytora HTML dla kampanii:', selectedCampaign.value.name)
     
     // Wyciągnij treść <body> lub użyj całej zawartości, jeśli nie ma <body>
@@ -943,8 +779,25 @@ async function editHtmlContent() {
   }
 }
 
+function useAiEmailDraft(htmlContent) {
+  if (!selectedCampaign.value || isCampaignSent(selectedCampaign.value)) return
+
+  htmlEditorContent.value = htmlContent
+  htmlEditorMode.value = 'visual'
+  editorKey.value++
+  showHtmlEditor.value = true
+}
+
+function handleAiGenerationDataSaved(updatedCampaign) {
+  if (!updatedCampaign || !selectedCampaign.value) return
+
+  selectedCampaign.value = { ...selectedCampaign.value, ...updatedCampaign }
+  const index = campaigns.value.findIndex(campaign => campaign.id === updatedCampaign.id)
+  if (index !== -1) campaigns.value[index] = { ...campaigns.value[index], ...updatedCampaign }
+}
+
 async function saveHtmlContent() {
-  if (!selectedCampaign.value) return
+  if (!selectedCampaign.value || isCampaignSent(selectedCampaign.value)) return
 
   try {
 
@@ -995,6 +848,7 @@ function editRecipients() {
 
 // New functions for database and scheduling management
 function editCampaignDatabase() {
+  if (isCampaignSent(selectedCampaign.value)) return
   // Open dedicated database selection dialog
   showDatabaseDialog.value = true
 }
@@ -1019,7 +873,7 @@ function updateScheduledDate(dateTime) {
 }
 
 async function updateCampaignScheduling() {
-  if (!selectedCampaign.value) return
+  if (!selectedCampaign.value || isCampaignSent(selectedCampaign.value)) return
 
   try {
     // Update campaign scheduling via API
@@ -1151,18 +1005,6 @@ watch(() => selectedCampaign.value?.dateStart, (newScheduledAt) => {
     scheduledDateTime.value = ''
   }
 }, { immediate: true })
-
-// Watch for language changes and update editor configuration
-watch(() => locale.value, (newLocale) => {
-  // Update editor language configuration when app language changes
-  editorConfig.language = getTinyMCELanguage()
-  editorConfig.language_url = `/tinymce/langs/${getTinyMCELanguage()}.js`
-  
-  // Force editor re-render if editor is open
-  if (showHtmlEditor.value) {
-    editorKey.value++
-  }
-})
 
 // Sample data
 onMounted(async () => {
@@ -1636,6 +1478,10 @@ async function sendTest() {
 .editor-container :deep(.ql-editor.ql-blank::before) {
   color: #999;
   font-style: italic;
+}
+
+.html-source-editor :deep(textarea) {
+  font-family: monospace;
 }
 
 .editor-container :deep(.ql-editor h1) {

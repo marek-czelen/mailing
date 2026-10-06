@@ -86,12 +86,16 @@ npm run dev:debug
 | `SMTP_IGNORE_TLS` | Ignoruj TLS | `false` |
 | `SMTP_REJECT_UNAUTHORIZED` | Weryfikuj certyfikaty | `true` |
 
-### OpenAI
+### AI i DeepSeek
 
-| Zmienna | Opis |
-|---------|------|
-| `OPENAI_API_KEY` | Klucz API OpenAI |
-| `OPENAI_MODEL` | Model GPT |
+| Zmienna | Opis | Domyślna wartość |
+|---------|------|------------------|
+| `AI_PROVIDER` | Domyślny provider dla funkcji AI | `deepseek` |
+| `DEEPSEEK_API_KEY` | Klucz API DeepSeek; przechowuj wyłącznie po stronie backendu w `.env` lub menedżerze sekretów | brak |
+| `DEEPSEEK_MODEL` | Model DeepSeek | `deepseek-flash` |
+| `AI_TIMEOUT_MS` | Limit czasu wywołania dostawcy AI w milisekundach | `30000` |
+
+Aktualnie udokumentowane modele to `deepseek-flash` (szybszy, niższy koszt) i `deepseek-v4-pro` (większe możliwości). Ustaw `AI_PROVIDER=deepseek` oraz `DEEPSEEK_MODEL` w backendowym `.env.development` lub `.env.production`. Po zmianie konfiguracji zrestartuj backend. Klucz przechowuj wyłącznie po stronie backendu.
 
 ### Bezpieczeństwo
 

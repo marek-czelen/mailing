@@ -6,6 +6,15 @@
         <p>{{ t('campaigns.contentDesc') }}</p>
       </div>
       <div class="header-buttons">
+        <v-btn
+          color="primary"
+          variant="outlined"
+          :disabled="sendingInProgress || campaignIsSent"
+          @click="emit('create-ai-email')"
+        >
+          <v-icon start>mdi-robot</v-icon>
+          {{ t('campaigns.aiEmailCreate') }}
+        </v-btn>
         <v-btn 
           disabled
           color="primary" 
@@ -68,7 +77,7 @@
                 <v-icon size="64" color="grey-lighten-2">mdi-email-outline</v-icon>
                 <h3>{{ t('campaigns.noContent') }}</h3>
                 <p>{{ t('campaigns.selectTemplateOrCreateContent') }}</p>
-                <v-btn color="primary" @click="emit('edit-content')">
+                <v-btn color="primary" :disabled="sendingInProgress || campaignIsSent" @click="emit('edit-content')">
                   <v-icon left>mdi-plus</v-icon>
                   {{ t('campaigns.addContent') }}
                 </v-btn>
@@ -220,7 +229,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['edit-template', 'edit-content', 'update:campaign'])
+const emit = defineEmits(['edit-template', 'edit-content', 'update:campaign', 'create-ai-email'])
 
 // Snackbar
 const snackbar = ref(false)
@@ -234,7 +243,7 @@ const testEmailSending = ref(false)
 const sendingProgress = ref(0)
 
 const campaignIsSent = computed(() => {
-  return props.campaign.sent || false
+  return Boolean(props.campaign.sent || props.campaign.status === 'sent')
 })
 
 const sendingInProgress = computed(() => {

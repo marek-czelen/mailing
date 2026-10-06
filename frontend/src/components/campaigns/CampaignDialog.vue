@@ -177,6 +177,13 @@
                 :rules="[rules.required, rules.email]"
                 required
               />
+              <v-text-field
+                v-model="formData.senderPhone"
+                :label="t('campaigns.senderPhone')"
+                type="tel"
+                density="compact"
+                variant="outlined"
+              />
             </div>
           </div>
 
@@ -486,6 +493,7 @@ const formData = ref({
   htmlContent: '',
   senderName: customerSettings.value.smtpUser || '',
   senderEmail: customerSettings.value.smtpFrom || '',
+  senderPhone: '',
   // SMTP Configuration
   smtpHost: customerSettings.value.smtpHost || '',
   smtpPort: customerSettings.value.smtpPort || 587,
@@ -992,6 +1000,7 @@ watch(() => props.campaign, (newCampaign) => {
       htmlContent: newCampaign.htmlContent || '',
       senderName: newCampaign.senderName || '',
       senderEmail: newCampaign.senderEmail ||  '',
+      senderPhone: newCampaign.senderPhone || '',
       smtpHost: newCampaign.smtpHost || '',
       smtpPort: newCampaign.smtpPort || 587,
       smtpUser: newCampaign.smtpUser || '',
@@ -1034,6 +1043,7 @@ watch(() => props.campaign, (newCampaign) => {
       htmlContent: '',
       senderName:  customerSettings.value.smtpUser || '',
       senderEmail:  customerSettings.value.smtpFrom || '',
+      senderPhone: '',
       sendMode: 'scheduled',
       scheduledAt: null,
       trackOpens: true,
