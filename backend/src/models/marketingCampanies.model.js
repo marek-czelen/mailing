@@ -109,6 +109,11 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
       allowNull: false,
       field: "database_id"
     },
+    recipientTags: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      field: "recipient_tags"
+    },
     sent:{
       type: DataTypes.BOOLEAN,
       allowNull: false,

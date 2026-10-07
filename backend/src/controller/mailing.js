@@ -13,6 +13,7 @@ import fs from 'fs';
 import Auth from '../include/auth.js';
 import Sequelize from 'sequelize';
 import Mail from '../include/mail.js';
+import { generateContactTags } from '../include/contactTags.js';
 import { Admin } from '../include/admin.js';
 import MarketingCampaniesMailingResult from '../models/marketingCampaniesMailing.model.js';
 import { generateText, getDefaultProvider, listModels as fetchAiModels } from '../services/ai.service.js';
@@ -93,6 +94,9 @@ export async function createCampaign(req, res) {
         // Normalizacja danych dla MySQL/MariaDB
         const normalized = {
             ...data,
+            recipientTags: Array.isArray(data.recipientTags)
+                ? [...new Set(data.recipientTags.filter(tag => typeof tag === 'string' && tag.trim()).map(tag => tag.trim().slice(0, 255)))]
+                : [],
             active: (data.active === true || data.active === 'true' || data.active === 1 || data.active === '1'),
             sent: (data.sent === true || data.sent === 'true' || data.sent === 1 || data.sent === '1') || false,
             progress: data.progress ? Number(data.progress) : 0,
@@ -143,6 +147,11 @@ export async function updateCampaign(req, res) {
         if (req.body.scoring !== undefined) updateData.scoring = req.body.scoring ? Number(req.body.scoring) : null;
         if (req.body.suggestions !== undefined) updateData.suggestions = req.body.suggestions; // JSON
         if (req.body.databaseId !== undefined) updateData.databaseId = Number(req.body.databaseId);
+        if (req.body.recipientTags !== undefined) {
+            updateData.recipientTags = Array.isArray(req.body.recipientTags)
+                ? [...new Set(req.body.recipientTags.filter(tag => typeof tag === 'string' && tag.trim()).map(tag => tag.trim().slice(0, 255)))]
+                : [];
+        }
         if (req.body.customerId !== undefined) updateData.customerId = Number(req.body.customerId);
         // Pola konfiguracji sprawdzania skrzynki
         if (req.body.replyCheckEnabled !== undefined) updateData.replyCheckEnabled = (req.body.replyCheckEnabled === true || req.body.replyCheckEnabled === 'true' || req.body.replyCheckEnabled === 1 || req.body.replyCheckEnabled === '1');
@@ -983,10 +992,56 @@ export async function computeSpamRating(req, res) {
  *   "deleteAfterImport": true
  * }
  */
+const IMPORT_FIELD_ALIASES = {
+    email: ['email', 'e-mail', 'address', 'adres'],
+    createdAt: ['creation time', 'created at', 'created_at', 'data utworzenia'],
+    unsubscribeDate: ['removed time', 'unsubscribe date', 'unsubscribes date', 'data wypisania'],
+    status: ['status'],
+    city: ['miasto', 'city'],
+    type: ['rodzaj', 'type', 'typ'],
+    phone: ['phone', 'telefon', 'tel', 'mobile'],
+    name2: ['nazwa 2', 'nazwa_2', 'name 2']
+};
+
+const IMPORT_FIELD_NAMES = Object.keys(IMPORT_FIELD_ALIASES);
+
+function normalizeImportHeader(value) {
+    return repairImportText(value).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function repairImportText(value) {
+    const text = String(value ?? '');
+    if (!/(?:Ã[\u0080-\u00bf]|Å[\u0080-\u00bf]|Ä[\u0080-\u00bf]|Â[\u0080-\u00bf])/.test(text)) {
+        return text;
+    }
+
+    const repaired = Buffer.from(text, 'latin1').toString('utf8');
+    return repaired.includes('\uFFFD') ? text : repaired;
+}
+
+function parseImportDate(value) {
+    if (value === null || value === undefined || String(value).trim() === '') return null;
+    let date = value;
+    if (typeof value === 'number') {
+        const dateParts = XLSX.SSF.parse_date_code(value);
+        date = dateParts
+            ? new Date(dateParts.y, dateParts.m - 1, dateParts.d, dateParts.H, dateParts.M, dateParts.S, dateParts.u)
+            : null;
+    } else if (!(value instanceof Date)) {
+        date = new Date(value);
+    }
+    return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+
+function normalizeImportText(value) {
+    const text = repairImportText(value).trim();
+    return text ? text.slice(0, 255) : null;
+}
+
 export async function importExcelToDatabase(req, res) {
     try {
         const { databaseId } = req.params;
-        const { filename } = req.body;
+        const { filename, fieldMapping } = req.body;
 
         // Walidacja parametrów
         if (!databaseId) {
@@ -1023,10 +1078,35 @@ export async function importExcelToDatabase(req, res) {
         }
 
         // Wczytaj i przetwórz plik Excel
-        const workbook = XLSX.readFile(filePath);
+        const workbook = XLSX.readFile(filePath, { cellDates: true });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json(sheet);
+        const sheetRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true });
+
+        if (sheetRows.length === 0) {
+            return res.send(new Response(null, false, "Excel file is empty or has no valid data."));
+        }
+
+        const headers = sheetRows[0];
+        const providedMapping = fieldMapping && typeof fieldMapping === 'object' && Object.keys(fieldMapping).length > 0;
+        const mapping = providedMapping
+            ? Object.entries(fieldMapping)
+                .filter(([index, target]) => /^\d+$/.test(index) && IMPORT_FIELD_NAMES.includes(target) && Number(index) < headers.length)
+                .map(([index, target]) => [Number(index), target])
+            : headers.reduce((result, header, index) => {
+                const normalizedHeader = normalizeImportHeader(header);
+                const target = IMPORT_FIELD_NAMES.find(field =>
+                    IMPORT_FIELD_ALIASES[field].some(alias => normalizeImportHeader(alias) === normalizedHeader)
+                );
+                if (target) result.push([index, target]);
+                return result;
+            }, []);
+        const rows = sheetRows.slice(1)
+            .filter(row => row.some(value => String(value ?? '').trim() !== ''))
+            .map(row => mapping.reduce((mappedRow, [index, target]) => {
+                mappedRow[target] = row[index] ?? '';
+                return mappedRow;
+            }, {}));
 
         if (rows.length === 0) {
             return res.send(new Response(null, false, "Excel file is empty or has no valid data."));
@@ -1042,44 +1122,104 @@ export async function importExcelToDatabase(req, res) {
         try {
             for (const row of rows) {
                 try {
-                    if (row.email) {
-                        // Sprawdź czy adres email już istnieje dla tego klienta
+                    const email = String(row.email ?? '').trim();
+                    if (email) {
+                        const createdAt = parseImportDate(row.createdAt);
+                        const unsubscribesDate = parseImportDate(row.unsubscribeDate);
+                        const city = normalizeImportText(row.city);
+                        const type = normalizeImportText(row.type);
+                        const phone = normalizeImportText(row.phone);
+                        const name2 = normalizeImportText(row.name2);
+                        const status = normalizeImportText(row.status);
+                        const generatedTags = generateContactTags(name2, type);
+                        const inactiveStatus = status && /bounce|inactive|blocked|removed|deleted|unsubscrib/i.test(status);
+
                         const existingEmail = await MailAddress.findOne({
                             where: {
-                                mailAddress: row.email,
+                                mailAddress: email,
                                 databaseId: databaseId
-
                             },
                             transaction
                         });
 
                         if (existingEmail) {
-                            errorCount++;
-                            errorList.push({
-                                email: row.email,
-                                error: "Email already exists for this customer",
-                                row: row
+                            const updates = {};
+                            if (city) updates.miasto = city;
+                            if (type) updates.rodzaj = type;
+                            if (phone) updates.phone = phone;
+                            if (name2) updates.nazwa2 = name2;
+                            if (status) updates.status = status;
+                            if (createdAt) updates.createdAt = createdAt;
+                            if (generatedTags.length > 0) {
+                                updates.tags = [...new Set([...(existingEmail.tags || []), ...generatedTags])];
+                            }
+                            if (unsubscribesDate) {
+                                updates.unsubscribesDate = unsubscribesDate;
+                                updates.active = 0;
+                            } else if (inactiveStatus) {
+                                updates.active = 0;
+                            } else if (status && /\b(active|aktywny|aktywna)\b/i.test(status)) {
+                                updates.active = 1;
+                            }
+
+                            if (Object.keys(updates).length > 0) {
+                                try {
+                                    await existingEmail.update(updates, { transaction });
+                                } catch (updateError) {
+                                    console.warn(`Could not update imported fields for ${email}:`, updateError.message);
+                                }
+                            }
+
+                            importedAddresses.push({
+                                id: existingEmail.id,
+                                email: existingEmail.mailAddress,
+                                miasto: existingEmail.miasto,
+                                rodzaj: existingEmail.rodzaj,
+                                nazwa2: existingEmail.nazwa2,
+                                status: existingEmail.status
                             });
+                            successCount++;
                             continue;
                         }
 
-
-                        // Dodaj nowy adres e-mail do bazy
-                        const newMailRecord = await MailAddress.create({
-                            mailAddress: row.email,
-                            hash: Mail.HashEmail(row.email),
-                            miasto: row.miasto || null,
-                            rodzaj: row.rodzaj || null,
-                            active: 1,
+                        const importData = {
+                            mailAddress: email,
+                            hash: Mail.HashEmail(email),
+                            miasto: city,
+                            rodzaj: type,
+                            phone,
+                            nazwa2: name2,
+                            tags: generatedTags,
+                            status,
+                            createdAt: createdAt || undefined,
+                            unsubscribesDate,
+                            active: inactiveStatus || unsubscribesDate ? 0 : 1,
                             customerId: database.customer_id,
                             databaseId: databaseId
-                        }, { transaction });
+                        };
+                        let newMailRecord;
+                        try {
+                            newMailRecord = await MailAddress.create(importData, { transaction });
+                        } catch (importError) {
+                            console.warn(`Retrying contact import with email only for ${email}:`, importError.message);
+                            newMailRecord = await MailAddress.create({
+                                mailAddress: email,
+                                hash: importData.hash,
+                                tags: generatedTags,
+                                active: importData.active,
+                                customerId: database.customer_id,
+                                databaseId: databaseId
+                            }, { transaction });
+                        }
 
                         importedAddresses.push({
                             id: newMailRecord.id,
                             email: newMailRecord.mailAddress,
                             miasto: newMailRecord.miasto,
-                            rodzaj: newMailRecord.rodzaj
+                            rodzaj: newMailRecord.rodzaj,
+                            nazwa2: newMailRecord.nazwa2,
+                            tags: newMailRecord.tags,
+                            status: newMailRecord.status
                         });
                         successCount++;
 
@@ -1597,6 +1737,79 @@ export async function getCustomerDatabasesStats(req, res) {
 }
 
 // Pobierz wszystkie kontakty przypisane do konkretnej bazy danych
+export async function getDatabaseRecipientTags(req, res) {
+    try {
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, 'User not found.'));
+        }
+
+        const database = await Databases.findOne({
+            where: {
+                id: req.params.databaseId,
+                customer_id: userData.customerId,
+                deleted_at: null
+            }
+        });
+        if (!database) {
+            return res.status(404).send(new Response(null, false, 'Database not found.'));
+        }
+
+        let selectedTags = [];
+        if (req.query.selectedTags) {
+            try {
+                const parsedTags = JSON.parse(req.query.selectedTags);
+                if (Array.isArray(parsedTags)) {
+                    selectedTags = [...new Set(parsedTags
+                        .filter(tag => typeof tag === 'string' && tag.trim())
+                        .map(tag => tag.trim().slice(0, 255)))];
+                }
+            } catch {
+                return res.status(400).send(new Response(null, false, 'Invalid selected tags.'));
+            }
+        }
+
+        const taggedContacts = await MailAddress.findAll({
+            attributes: ['tags'],
+            where: { databaseId: database.id, customerId: userData.customerId }
+        });
+        const availableTags = new Set();
+        for (const contact of taggedContacts) {
+            const contactTags = contact.tags;
+            if (Array.isArray(contactTags)) {
+                for (const tag of contactTags) {
+                    if (typeof tag === 'string' && tag.trim()) availableTags.add(tag.trim());
+                }
+            }
+        }
+
+        const eligibleWhere = {
+            databaseId: database.id,
+            customerId: userData.customerId,
+            active: 1,
+            unsubscribesDate: null
+        };
+        if (selectedTags.length > 0) {
+            eligibleWhere[Op.or] = selectedTags.map(tag =>
+                Sequelize.where(
+                    Sequelize.fn('JSON_CONTAINS', Sequelize.col('tags'), JSON.stringify(tag)),
+                    1
+                )
+            );
+        }
+
+        const eligibleCount = await MailAddress.count({ where: eligibleWhere });
+        const result = {
+            tags: [...availableTags].sort((left, right) => left.localeCompare(right, 'pl')),
+            eligibleCount
+        };
+        res.send(new Response(result, true, 'Recipient tags retrieved successfully.'));
+    } catch (error) {
+        console.error('Failed to fetch recipient tags:', error);
+        res.status(500).send(new Response(null, false, `Failed to fetch recipient tags. ${error.message}`));
+    }
+}
+
 export async function getDatabaseContacts(req, res) {
     try {
         const { databaseId } = req.params;
@@ -1693,6 +1906,9 @@ export async function getDatabaseContacts(req, res) {
                 mailAddress: contact.mailAddress,
                 miasto: contact.miasto,
                 rodzaj: contact.rodzaj,
+                nazwa2: contact.nazwa2,
+                tags: contact.tags,
+                status: contact.status,
                 phone: contact.phone,
                 active: contact.active,
                 unsubscribesDate: contact.unsubscribesDate,

@@ -3,7 +3,7 @@ import MarketingCampanies from '../models/marketingCampanies.model.js';
 import MailAddress from '../models/mailAddress.model.js';
 import Customers from '../models/customers.model.js';
 import Mail from '../include/mail.js';
-import { Op } from 'sequelize';
+import Sequelize, { Op } from 'sequelize';
 import MarketingCampaniesMailingResult from '../models/marketingCampaniesMailing.model.js';
 import EnvironmentConfig from '../config/environment.config.js';
 
@@ -55,14 +55,25 @@ class MailingTask {
             await activeCampaign.update({ sendingInProgress: true });
 
             // Pobierz listę adresów dla klienta
-            const mailAddresses = await MailAddress.findAll({
-                where: {
-                    active: 1,
-                    customerId: activeCampaign.customerId,
-                    databaseId: activeCampaign.databaseId,
-                    unsubscribesDate: null
-                }
-            });
+            const recipientWhere = {
+                active: 1,
+                customerId: activeCampaign.customerId,
+                databaseId: activeCampaign.databaseId,
+                unsubscribesDate: null
+            };
+            const recipientTags = Array.isArray(activeCampaign.recipientTags)
+                ? activeCampaign.recipientTags
+                : [];
+            if (recipientTags.length > 0) {
+                recipientWhere[Op.or] = recipientTags.map(tag =>
+                    Sequelize.where(
+                        Sequelize.fn('JSON_CONTAINS', Sequelize.col('tags'), JSON.stringify(tag)),
+                        1
+                    )
+                );
+            }
+
+            const mailAddresses = await MailAddress.findAll({ where: recipientWhere });
 
             console.log(`Kampania ${activeCampaign.name} (klient ${customer.id}): znaleziono ${mailAddresses.length} adresów do wysyłki`);
 

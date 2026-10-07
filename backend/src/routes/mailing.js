@@ -18,6 +18,7 @@ import {
     deleteDatabase,
     getDatabasesByCustomer,
     getCustomerDatabasesStats,
+    getDatabaseRecipientTags,
     getDatabaseContacts,
     unsubscribeContact,
     resubscribeContact,
@@ -87,6 +88,7 @@ router.get('/getCustomerDatabasesStats/:customerId', getCustomerDatabasesStats);
 
 // Pobierz kontakty przypisane do konkretnej bazy danych
 router.get('/getDatabaseContacts/:databaseId', getDatabaseContacts);
+router.get('/getDatabaseRecipientTags/:databaseId', getDatabaseRecipientTags);
 // Eksport wszystkich kontaktów z bazy danych
 import { exportDatabaseContacts } from '../controller/mailing.js';
 router.get('/exportDatabaseContacts/:databaseId', exportDatabaseContacts);

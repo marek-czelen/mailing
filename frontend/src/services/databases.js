@@ -153,6 +153,12 @@ export class Databases {
     return response.data.data;
   }
 
+  static async getDatabaseRecipientTags(databaseId, selectedTags = []) {
+    const query = new URLSearchParams({ selectedTags: JSON.stringify(selectedTags) });
+    const response = await axios.get(`/mailing/getDatabaseRecipientTags/${databaseId}?${query}`);
+    return response.data.data;
+  }
+
   /**
    * Dodaj kontakt do bazy danych
    * @param {number} id - ID bazy danych

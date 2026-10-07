@@ -184,7 +184,9 @@
       "totalRecipients": "Łączna liczba odbiorców",
       "unsubscribed": "Wypisani"
     },
-    "recipientsDesc": "Wybierz bazę odbiorców i segmenty",
+    "recipientsDesc": "Wybierz bazę odbiorców i opcjonalne tagi kontaktów",
+    "recipientTags": "Tagi odbiorców",
+    "recipientTagsHint": "Wybierz wiele tagów. Puste pole oznacza wszystkich aktywnych, niewypisanych odbiorców z bazy.",
     "recipientsTitle": "Ustawienia odbiorców",
     "refreshData": "Odśwież dane",
     "rejections": "Odrzucenia",
@@ -231,7 +233,6 @@
     "searchByEmail": "Szukaj po adresie email...",
     "searchInReplies": "Wyszukaj w odpowiedziach...",
     "searchPlaceholder": "Wyszukaj kampanię...",
-    "segments": "Segmenty",
     "selectDatabase": "Wybierz bazę",
     "selectedDatabase": "Wybrana baza",
     "selectTemplateOrCreateContent": "Wybierz szablon lub utwórz niestandardową treść",
@@ -369,6 +370,7 @@
       "active": "Aktywny",
       "city": "Miasto",
       "email": "Email",
+      "tags": "Tagi",
       "type": "Rodzaj",
       "unsubscribesDate": "Data wypisania"
     },
@@ -579,12 +581,15 @@
     "csvEmpty": "Plik CSV jest pusty",
     "dbFields": {
       "city": "Miasto",
+      "createdAt": "Data utworzenia",
       "email": "Email",
       "firstName": "Imię",
       "lastName": "Nazwisko",
+      "name2": "Nazwa 2",
       "phone": "Telefon",
+      "status": "Status",
       "type": "Rodzaj kontaktu",
-      "unsubscribeDate": "Data wypisania"
+      "unsubscribeDate": "Data usunięcia / wypisania"
     },
     "emailMappingRequired": "Musisz zmapować pole email",
     "errorDetailsTitle": "Szczegóły błędów ({count})",
@@ -603,6 +608,8 @@
     "importIntro": "Rozpocznij import danych z przesłanego pliku do wybranej bazy danych",
     "importTitle": "Import danych do bazy",
     "mappedFields": "pól zmapowanych",
+    "mapTo": "Pole docelowe",
+    "mappingTitle": "Mapowanie kolumn",
     "missingEmailColumnConfirm": "Nie znaleziono kolumny email. Czy chcesz kontynuować? Będziesz musiał ręcznie zmapować pole email.",
     "modeLabel": "Tryb",
     "modes": {
@@ -643,6 +650,7 @@
     "supportedFormats": "Obsługiwane formaty: CSV, Excel (.xlsx, .xls)",
     "title": "Import kontaktów",
     "unknownFile": "nieznany",
+    "unnamedColumn": "Kolumna bez nazwy",
     "unsupportedFormat": "Nieobsługiwany format pliku. Wybierz plik CSV lub Excel.",
     "uploadError": "Błąd podczas przesyłania pliku",
     "uploading": "Przesyłanie pliku...",

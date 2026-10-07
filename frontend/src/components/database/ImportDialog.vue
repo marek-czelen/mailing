@@ -127,6 +127,32 @@
                     {{ t('import.previewInfo', { shown: filePreview.totalRows < 5 ? filePreview.totalRows : 5, total: filePreview.totalRows }) }}
                   </p>
                 </div>
+
+                <div v-if="filePreview" class="mapping-section">
+                  <h4>{{ t('import.mappingTitle') }}</h4>
+                  <div
+                    v-for="(header, index) in filePreview.headers"
+                    :key="index"
+                    class="mapping-row"
+                  >
+                    <div class="source-field">
+                      <strong>{{ header || t('import.unnamedColumn') }}</strong>
+                      <span class="field-example">{{ getFieldExample(index) }}</span>
+                    </div>
+                    <v-icon class="mapping-arrow">mdi-arrow-right</v-icon>
+                    <v-select
+                      v-model="fieldMapping[index]"
+                      :items="databaseFields"
+                      item-title="title"
+                      item-value="value"
+                      :label="t('import.mapTo')"
+                      variant="outlined"
+                      density="compact"
+                      clearable
+                      hide-details
+                    />
+                  </div>
+                </div>
               </div>
             </v-window-item>
 
@@ -443,12 +469,13 @@ function resetDialogState() {
 // Database fields for mapping (localized titles)
 const databaseFields = [
   { title: t('import.dbFields.email'), value: 'email' },
-  { title: t('import.dbFields.firstName'), value: 'firstName' },
-  { title: t('import.dbFields.lastName'), value: 'lastName' },
+  { title: t('import.dbFields.createdAt'), value: 'createdAt' },
+  { title: t('import.dbFields.unsubscribeDate'), value: 'unsubscribeDate' },
+  { title: t('import.dbFields.status'), value: 'status' },
   { title: t('import.dbFields.phone'), value: 'phone' },
   { title: t('import.dbFields.city'), value: 'city' },
   { title: t('import.dbFields.type'), value: 'type' },
-  { title: t('import.dbFields.unsubscribeDate'), value: 'unsubscribeDate' }
+  { title: t('import.dbFields.name2'), value: 'name2' }
 ]
 
 const statusOptions = [
@@ -522,9 +549,11 @@ async function handleFileSelect() {
     }
     
     // Sprawdź czy jest kolumna email
-    const hasEmailColumn = parsedData.headers.some(header => 
-      header.toLowerCase().includes('email') || header.toLowerCase().includes('e-mail')
-    )
+    const hasEmailColumn = parsedData.headers.some(header => {
+      const normalizedHeader = header.toLowerCase()
+      return normalizedHeader.includes('email') || normalizedHeader.includes('e-mail') ||
+        normalizedHeader.includes('address') || normalizedHeader.includes('adres')
+    })
     
     if (!hasEmailColumn) {
       const userConfirm = confirm(t('import.missingEmailColumnConfirm'))
@@ -549,41 +578,16 @@ async function handleFileSelect() {
 }
 
 async function parseCSVFile(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      try {
-        const text = e.target.result
-        const lines = text.split('\n').filter(line => line.trim())
-        
-        if (lines.length === 0) {
-          reject(new Error(t('import.csvEmpty')))
-          return
-        }
-        
-        // Parsowanie CSV (obsługa prostych przypadków)
-        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
-        const rows = []
-        
-        for (let i = 1; i < Math.min(lines.length, 6); i++) { // Tylko pierwsze 5 wierszy do podglądu
-          const row = lines[i].split(',').map(cell => cell.trim().replace(/"/g, ''))
-          if (row.length === headers.length) {
-            rows.push(row)
-          }
-        }
-        
-        resolve({
-          headers,
-          rows,
-          totalRows: lines.length - 1 // Bez nagłówka
-        })
-      } catch (error) {
-        reject(error)
-      }
-    }
-    reader.onerror = () => reject(new Error(t('import.fileReadError')))
-    reader.readAsText(file)
-  })
+  const data = new Uint8Array(await file.arrayBuffer())
+  const workbook = XLSX.read(data, { type: 'array', cellDates: true })
+  const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+  const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: true })
+
+  if (rows.length === 0) {
+    throw new Error(t('import.csvEmpty'))
+  }
+
+  return createFilePreview(rows)
 }
 
 async function parseExcelFile(file) {
@@ -592,28 +596,17 @@ async function parseExcelFile(file) {
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target.result)
-        const workbook = XLSX.read(data, { type: 'array' })
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true })
         
-        // Pobierz pierwszy arkusz
-        const sheetName = workbook.SheetNames[0]
-        const worksheet = workbook.Sheets[sheetName]
-        
-        // Konwertuj do JSON
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
-        
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: true })
+
         if (jsonData.length === 0) {
           reject(new Error(t('import.excelEmpty')))
           return
         }
-        
-        const headers = jsonData[0].map(h => (h || '').toString().trim())
-        const rows = jsonData.slice(1, 6).filter(row => row.some(cell => cell !== undefined && cell !== ''))
-        
-        resolve({
-          headers,
-          rows: rows.map(row => row.map(cell => (cell || '').toString())),
-          totalRows: rows.length 
-        })
+
+        resolve(createFilePreview(jsonData))
       } catch (error) {
         reject(error)
       }
@@ -623,25 +616,61 @@ async function parseExcelFile(file) {
   })
 }
 
+function createFilePreview(data) {
+  const headers = data[0].map(header => repairImportText(header).trim())
+  const dataRows = data.slice(1).filter(row => row.some(cell => String(cell ?? '').trim() !== ''))
+
+  return {
+    headers,
+    rows: dataRows.slice(0, 5).map(row => headers.map((_, index) => repairImportText(row[index] ?? ''))),
+    totalRows: dataRows.length
+  }
+}
+
+function repairImportText(value) {
+  const text = String(value ?? '')
+  if (!/(?:Ã[\u0080-\u00bf]|Å[\u0080-\u00bf]|Ä[\u0080-\u00bf]|Â[\u0080-\u00bf])/.test(text)) {
+    return text
+  }
+
+  const bytes = new Uint8Array(text.length)
+  for (let index = 0; index < text.length; index++) {
+    const charCode = text.charCodeAt(index)
+    if (charCode > 255) return text
+    bytes[index] = charCode
+  }
+
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  } catch {
+    return text
+  }
+}
+
 function autoMapFields(headers) {
   const mapping = {}
   
   headers.forEach((header, index) => {
-    const lowerHeader = header.toLowerCase()
+    const lowerHeader = repairImportText(header).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
     
     // Mapowanie email
-    if (lowerHeader.includes('email') || lowerHeader.includes('e-mail')) {
+    if (lowerHeader.includes('email') || lowerHeader.includes('e-mail') ||
+        lowerHeader === 'address' || lowerHeader === 'adres') {
       mapping[index] = 'email'
     }
-    // Mapowanie imienia
-    else if (lowerHeader.includes('first') && lowerHeader.includes('name') || 
-             lowerHeader.includes('imię') || lowerHeader === 'imie') {
-      mapping[index] = 'firstName'
+    // Mapowanie daty utworzenia
+    else if (lowerHeader.includes('creation time') || lowerHeader.includes('created at') ||
+             lowerHeader.includes('data utworzenia')) {
+      mapping[index] = 'createdAt'
     }
-    // Mapowanie nazwiska
-    else if (lowerHeader.includes('last') && lowerHeader.includes('name') || 
-             lowerHeader.includes('nazwisko') || lowerHeader.includes('surname')) {
-      mapping[index] = 'lastName'
+    // Mapowanie daty usunięcia
+    else if (lowerHeader.includes('removed time') || lowerHeader.includes('unsubscribe') ||
+             lowerHeader.includes('wypisanie') || lowerHeader.includes('wypisal')) {
+      mapping[index] = 'unsubscribeDate'
+    }
+    // Mapowanie statusu
+    else if (lowerHeader === 'status') {
+      mapping[index] = 'status'
     }
     // Mapowanie telefonu
     else if (lowerHeader.includes('phone') || lowerHeader.includes('telefon') || 
@@ -657,10 +686,9 @@ function autoMapFields(headers) {
              lowerHeader.includes('typ')) {
       mapping[index] = 'type'
     }
-    // Mapowanie daty wypisania
-    else if (lowerHeader.includes('unsubscribe') || lowerHeader.includes('wypisanie') || 
-             lowerHeader.includes('wypisał')) {
-      mapping[index] = 'unsubscribeDate'
+    // Mapowanie dodatkowej nazwy
+    else if (lowerHeader === 'nazwa 2' || lowerHeader === 'nazwa_2' || lowerHeader === 'name 2') {
+      mapping[index] = 'name2'
     }
   })
   

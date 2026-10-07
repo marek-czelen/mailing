@@ -78,6 +78,21 @@
         <span>{{ item.miasto || '-' }}</span>
       </template>
 
+      <!-- Tags Column -->
+      <template v-slot:item.tags="{ item }">
+        <div class="d-flex flex-wrap ga-1">
+          <v-chip
+            v-for="tag in item.tags || []"
+            :key="tag"
+            size="x-small"
+            variant="tonal"
+          >
+            {{ tag }}
+          </v-chip>
+          <span v-if="!item.tags?.length">-</span>
+        </div>
+      </template>
+
       <!-- Actions Column -->
       <template v-slot:item.actions="{ item }">
         <div class="action-buttons">
@@ -196,6 +211,7 @@ const headers = [
   { title: t('contactsList.headers.unsubscribesDate'), key: 'unsubscribesDate', sortable: true },
   { title: t('contactsList.headers.type'), key: 'rodzaj', sortable: true },
   { title: t('contactsList.headers.city'), key: 'miasto', sortable: true },
+  { title: t('contactsList.headers.tags'), key: 'tags', sortable: false },
   { title: t('contactsList.headers.active'), key: 'active', sortable: true },
   { title: t('contactsList.headers.actions'), key: 'actions', sortable: false, width: 120 }
 ]
@@ -235,7 +251,7 @@ async function fetchContacts() {
     }
     const data = await Databases.getContacts(props.database.id, params)
     items.value = data.contacts || []
-    totalItems.value = data.total || 0
+    totalItems.value = data.filteredTotal ?? data.total ?? 0
   } catch (e) {
     console.error('Błąd pobierania kontaktów:', e)
     items.value = []

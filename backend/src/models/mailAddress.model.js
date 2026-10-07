@@ -27,6 +27,34 @@ const MailAddress = sequelize.define('mail_addresses', {
         type: DataTypes.STRING,
         field: "rodzaj"
     },    
+    nazwa2:{
+        type: DataTypes.STRING,
+        field: "nazwa_2"
+    },
+    tags: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        get() {
+            const value = this.getDataValue('tags');
+            if (Array.isArray(value)) return value;
+            if (typeof value === 'string') {
+                try {
+                    const parsed = JSON.parse(value);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                    return [];
+                }
+            }
+            return [];
+        },
+        set(value) {
+            this.setDataValue('tags', Array.isArray(value) ? value : []);
+        }
+    },
+    status:{
+        type: DataTypes.STRING,
+        field: "status"
+    },
     phone:{
         type: DataTypes.STRING,
         field: "phone"

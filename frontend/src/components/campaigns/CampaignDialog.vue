@@ -87,17 +87,20 @@
             />
 
             <v-select
-              v-model="formData.segments"
-              :disabled="true"
-              :items="['All']"
-              :label="t('campaigns.segments')"
+              v-model="formData.recipientTags"
+              :items="availableRecipientTags"
+              :label="t('campaigns.recipientTags')"
+              :loading="loadingRecipientTags"
+              :disabled="!formData.databaseId || loadingRecipientTags"
               variant="outlined"
               density="compact"
-              prepend-inner-icon="mdi-filter"
+              prepend-inner-icon="mdi-tag-multiple"
               multiple
               chips
               closable-chips
+              clearable
             />
+            <p class="recipient-tags-hint">{{ t('campaigns.recipientTagsHint') }}</p>
 
             <div v-if="availableDatabases.length === 0 && !loadingDatabases" class="no-databases-warning">
               <v-alert type="warning" variant="tonal">
@@ -488,7 +491,7 @@ const formData = ref({
   subject: '',
   description: '',
   databaseId: null,
-  segments: [],
+  recipientTags: [],
   template: null,
   htmlContent: '',
   senderName: customerSettings.value.smtpUser || '',
@@ -521,17 +524,14 @@ const formData = ref({
 // Database data from API
 const availableDatabases = ref([])
 const loadingDatabases = ref(false)
+const availableRecipientTags = ref([])
+const loadingRecipientTags = ref(false)
+const eligibleRecipientCount = ref(0)
+let recipientTagsRequestId = 0
 
 // Template data
 const availableTemplates = ref([])
 const loadingTemplates = ref(false)
-
-const availableSegments = ref([
-  { title: 'Bardzo aktywni', value: 'very_active' },
-  { title: 'Nowi klienci', value: 'new_customers' },
-  { title: 'VIP', value: 'vip' }
-])
-
 
 // Validation rules
 const rules = {
@@ -581,15 +581,18 @@ const canProceed = computed(() => {
 })
 
 const estimatedRecipients = computed(() => {
-  if (!formData.value.databaseId) return '0'
-  
-  // Find selected database
-  const selectedDb = availableDatabases.value.find(db => db.value === formData.value.databaseId)
-  if (selectedDb) {
-    return selectedDb.contactsCount.toLocaleString('pl-PL')
+  return eligibleRecipientCount.value.toLocaleString('pl-PL')
+})
+
+watch(() => formData.value.databaseId, async (databaseId, previousDatabaseId) => {
+  if (previousDatabaseId && databaseId !== previousDatabaseId) {
+    formData.value.recipientTags = []
   }
-  
-  return '0'
+  await loadRecipientTagData(databaseId)
+})
+
+watch(() => JSON.stringify(formData.value.recipientTags), () => {
+  if (formData.value.databaseId) loadRecipientTagData()
 })
 
 // Methods
@@ -697,7 +700,7 @@ async function save() {
     const campaignData = {
       ...formData.value,
       contentType: contentMode.value,
-      recipientsCount: parseInt(estimatedRecipients.value.replace(',', '')) || 0,
+      recipientsCount: eligibleRecipientCount.value,
       createdAt: props.campaign?.createdAt || new Date(),
       updatedAt: new Date()
     }
@@ -958,6 +961,32 @@ async function loadDatabases() {
   }
 }
 
+async function loadRecipientTagData(databaseId = formData.value.databaseId) {
+  const requestId = ++recipientTagsRequestId
+  if (!databaseId) {
+    availableRecipientTags.value = []
+    eligibleRecipientCount.value = 0
+    loadingRecipientTags.value = false
+    return
+  }
+
+  loadingRecipientTags.value = true
+  try {
+    const result = await Databases.getDatabaseRecipientTags(databaseId, formData.value.recipientTags)
+    if (requestId !== recipientTagsRequestId) return
+    availableRecipientTags.value = result.tags || []
+    eligibleRecipientCount.value = result.eligibleCount || 0
+  } catch (error) {
+    if (requestId === recipientTagsRequestId) {
+      console.error('Nie udało się pobrać tagów odbiorców:', error)
+      availableRecipientTags.value = []
+      eligibleRecipientCount.value = 0
+    }
+  } finally {
+    if (requestId === recipientTagsRequestId) loadingRecipientTags.value = false
+  }
+}
+
 // Load templates from local file
 function loadTemplates() {
   loadingTemplates.value = true
@@ -994,7 +1023,7 @@ watch(() => props.campaign, (newCampaign) => {
       subject: newCampaign.subject || '',
       description: newCampaign.description || '',
       databaseId: newCampaign.databaseId || null,
-      segments: newCampaign.segments || [],
+      recipientTags: newCampaign.recipientTags || [],
       template: newCampaign.template || null,
       contentType: newCampaign.contentType || 'no-template',
       htmlContent: newCampaign.htmlContent || '',
@@ -1037,7 +1066,7 @@ watch(() => props.campaign, (newCampaign) => {
       subject: '',
       description: '',
       databaseId: null,
-      segments: [],
+      recipientTags: [],
       template: null,
       contentType: 'no-template',
       htmlContent: '',
