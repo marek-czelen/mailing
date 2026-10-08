@@ -6,9 +6,18 @@ import Mail from '../include/mail.js';
 import Sequelize, { Op } from 'sequelize';
 import MarketingCampaniesMailingResult from '../models/marketingCampaniesMailing.model.js';
 import EnvironmentConfig from '../config/environment.config.js';
+import { randomUUID } from 'node:crypto';
 
 // Interwał na podstawie zmiennej środowiskowej
 let interval = EnvironmentConfig.get('MAILING_TASK_INTERVAL', 600000); // domyślnie 10 minut
+
+const logCampaignEvent = (event, data) => {
+    console.log(`[CAMPAIGN_EVENT] ${JSON.stringify({
+        event,
+        timestamp: new Date().toISOString(),
+        ...data
+    })}`);
+};
 
 /**
  * Pobiera i wysyła maile dla aktywnych kampanii, używając konfiguracji SMTP przypisanej do klienta
@@ -76,6 +85,16 @@ class MailingTask {
             const mailAddresses = await MailAddress.findAll({ where: recipientWhere });
 
             console.log(`Kampania ${activeCampaign.name} (klient ${customer.id}): znaleziono ${mailAddresses.length} adresów do wysyłki`);
+            const campaignRunId = randomUUID();
+            let submittedCount = 0;
+            let failedCount = 0;
+            logCampaignEvent('campaign_started', {
+                campaign_id: String(activeCampaign.id),
+                campaign_run_id: campaignRunId,
+                campaign_name: activeCampaign.name,
+                customer_id: String(customer.id),
+                recipient_count: mailAddresses.length
+            });
 
             // Konfiguracja SMTP z kampanii
             const smtpHost = activeCampaign.smtpHost;
@@ -94,7 +113,7 @@ class MailingTask {
 
             for (const address of mailAddresses) {
                 try {
-                    Mail.sendEmail({
+                    const result = await Mail.sendEmail({
                         smtp: {
                             host: smtpHost,
                             port: smtpPort,
@@ -120,41 +139,75 @@ class MailingTask {
                                 CONTACT_HASH: address.hash,
                                 CONTACT_EMAIL: address.mailAddress,
                             }
-                        })
-                        .then((result) => {
-                            if (!result.success) {
-                                MarketingCampaniesMailingResult.upsert({
-                                    marketingCampaniesId: activeCampaign.id,
-                                    mailAddressesId: address.id,
-                                    error: true,
-                                    errorMessage: result.error
-                                });
-                                return;
-                            }else {
-                                // Zaktualizuj status wysyłki w bazie danych
-                                MarketingCampaniesMailingResult.upsert({
-                                    marketingCampaniesId: activeCampaign.id,
-                                    mailAddressesId: address.id,
-                                    isSend: true,
-                                    sendDate: new Date(),
-                                    messageId: result.messageId || null
-                                }).catch(err => {
-                                    console.error(`Błąd zapisu statusu wysyłki dla ${address.mailAddress}:`, err && err.message ? err.message : err);
-                                });
-                                if (EnvironmentConfig.isDevelopment()) {
-                                    console.log(`✉️ [MailingTask] Wysłano: campaignId=${activeCampaign.id} mailAddressId=${address.id} messageId=${result.messageId}`);
-                                }
-                            }
+                    });
+
+                    if (!result.success) {
+                        failedCount++;
+                        logCampaignEvent('smtp_submission_failed', {
+                            campaign_id: String(activeCampaign.id),
+                            campaign_run_id: campaignRunId,
+                            campaign_name: activeCampaign.name,
+                            contact_id: String(address.id),
+                            recipient: address.mailAddress,
+                            error: result.error || 'Nieznany błąd SMTP'
                         });
+                        await MarketingCampaniesMailingResult.upsert({
+                            marketingCampaniesId: activeCampaign.id,
+                            mailAddressesId: address.id,
+                            error: true,
+                            errorMessage: result.error
+                        });
+                    } else {
+                        submittedCount++;
+                        logCampaignEvent('smtp_submission_accepted', {
+                            campaign_id: String(activeCampaign.id),
+                            campaign_run_id: campaignRunId,
+                            campaign_name: activeCampaign.name,
+                            contact_id: String(address.id),
+                            recipient: address.mailAddress,
+                            message_id: result.messageId || '',
+                            smtp_response: result.response || ''
+                        });
+                        await MarketingCampaniesMailingResult.upsert({
+                            marketingCampaniesId: activeCampaign.id,
+                            mailAddressesId: address.id,
+                            isSend: true,
+                            sendDate: new Date(),
+                            messageId: result.messageId || null
+                        }).catch(err => {
+                            console.error(`Błąd zapisu statusu wysyłki dla ${address.mailAddress}:`, err && err.message ? err.message : err);
+                        });
+                        if (EnvironmentConfig.isDevelopment()) {
+                            console.log(`✉️ [MailingTask] Wysłano: campaignId=${activeCampaign.id} mailAddressId=${address.id} messageId=${result.messageId}`);
+                        }
+                    }
 
                         // Opóźnienie między wysyłkami na podstawie zmiennej środowiskowej
                         const sendDelay = EnvironmentConfig.get('MAILING_SEND_DELAY', 100);
                         await new Promise(resolve => setTimeout(resolve, sendDelay));
                     } catch (error) {
                         console.error(`Błąd wysyłki na adres ${address.mailAddress}:`, error && error.message ? error.message : error);
+                        failedCount++;
+                        logCampaignEvent('smtp_submission_failed', {
+                            campaign_id: String(activeCampaign.id),
+                            campaign_run_id: campaignRunId,
+                            campaign_name: activeCampaign.name,
+                            contact_id: String(address.id),
+                            recipient: address.mailAddress,
+                            error: error && error.message ? error.message : String(error)
+                        });
                         continue;
                     }
             }
+            logCampaignEvent('campaign_finished', {
+                campaign_id: String(activeCampaign.id),
+                campaign_run_id: campaignRunId,
+                campaign_name: activeCampaign.name,
+                customer_id: String(customer.id),
+                recipient_count: mailAddresses.length,
+                submitted_count: submittedCount,
+                failed_count: failedCount
+            });
             activeCampaign.sent = true;
             await activeCampaign.save();
             console.log(`Kampania ${activeCampaign.name} (klient ${customer.id}): wysyłka zakończona`);
