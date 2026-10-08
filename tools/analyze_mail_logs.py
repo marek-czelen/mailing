@@ -54,6 +54,7 @@ class DeliveryEvent:
     source: str
     message_id: str = ""
     campaign_id: str = ""
+    campaign_run_id: str = ""
     campaign_name: str = ""
     contact_id: str = ""
 
@@ -172,6 +173,7 @@ def parse_log_files(paths: Iterable[Path], year: int) -> tuple[list[DeliveryEven
                     **event.__dict__,
                     "message_id": message_id,
                     "campaign_id": str(app_event.get("campaign_id", "")),
+                            "campaign_run_id": str(app_event.get("campaign_run_id", "")),
                     "campaign_name": str(app_event.get("campaign_name", "")),
                     "contact_id": str(app_event.get("contact_id", "")),
                 }
@@ -179,6 +181,61 @@ def parse_log_files(paths: Iterable[Path], year: int) -> tuple[list[DeliveryEven
         )
     deliveries.sort(key=lambda event: (event.timestamp, event.queue_id, event.recipient.casefold()))
     return deliveries, queue_message_ids, campaign_events
+
+
+def filter_campaign_runs(
+    deliveries: list[DeliveryEvent],
+    campaign_events: list[dict],
+    started_since: datetime | None,
+    started_until: datetime | None,
+) -> tuple[list[DeliveryEvent], list[dict]]:
+    has_start_markers = any(event.get("event") == "campaign_started" for event in campaign_events)
+    selected_runs = set()
+    for event in campaign_events:
+        if event.get("event") != "campaign_started":
+            continue
+        started_at = parse_iso_timestamp(str(event.get("timestamp", "")))
+        if started_at is None:
+            continue
+        if started_since and started_at < started_since:
+            continue
+        if started_until and started_at > started_until:
+            continue
+        campaign_id = str(event.get("campaign_id", ""))
+        run_id = str(event.get("campaign_run_id", ""))
+        if campaign_id and run_id:
+            selected_runs.add((campaign_id, run_id))
+
+    if has_start_markers:
+        selected_deliveries = [
+            event for event in deliveries
+            if (event.campaign_id, event.campaign_run_id) in selected_runs
+        ]
+        selected_events = [
+            event for event in campaign_events
+            if (str(event.get("campaign_id", "")), str(event.get("campaign_run_id", ""))) in selected_runs
+        ]
+        return selected_deliveries, selected_events
+
+    first_attempts: dict[tuple[str, str], datetime] = {}
+    for event in deliveries:
+        key = (event.queue_id, event.recipient.casefold())
+        first_attempts[key] = min(first_attempts.get(key, event.timestamp), event.timestamp)
+    selected_queues = {
+        key for key, timestamp in first_attempts.items()
+        if (started_since is None or timestamp >= started_since)
+        and (started_until is None or timestamp <= started_until)
+    }
+    selected_deliveries = [
+        event for event in deliveries
+        if (event.queue_id, event.recipient.casefold()) in selected_queues
+    ]
+    selected_message_ids = {event.message_id for event in selected_deliveries if event.message_id}
+    selected_events = [
+        event for event in campaign_events
+        if normalized_message_id(str(event.get("message_id", ""))) in selected_message_ids
+    ]
+    return selected_deliveries, selected_events
 
 
 def status_label(status: str) -> tuple[str, str]:
@@ -233,18 +290,22 @@ def smtp_code(response: str) -> str:
 
 
 def delivery_groups(deliveries: list[DeliveryEvent], campaign_events: list[dict]) -> list[dict]:
-    groups: dict[tuple[str, str, str], list[DeliveryEvent]] = defaultdict(list)
+    groups: dict[tuple[str, str, str, str], list[DeliveryEvent]] = defaultdict(list)
     for event in deliveries:
-        if event.campaign_id:
-            key = ("campaign", event.campaign_id, event.recipient.casefold())
+        if event.campaign_id and event.campaign_run_id:
+            key = ("campaign", event.campaign_id, event.campaign_run_id, event.recipient.casefold())
         else:
-            key = ("queue", event.queue_id, event.recipient.casefold())
+            key = ("queue", event.queue_id, "", event.recipient.casefold())
         groups[key].append(event)
 
-    app_failures: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    app_failures: dict[tuple[str, str, str], list[dict]] = defaultdict(list)
     for event in campaign_events:
         if event.get("event") == "smtp_submission_failed":
-            key = (str(event.get("campaign_id", "")), str(event.get("recipient", "")).casefold())
+            key = (
+                str(event.get("campaign_id", "")),
+                str(event.get("campaign_run_id", "")),
+                str(event.get("recipient", "")).casefold(),
+            )
             app_failures[key].append(event)
 
     rows = []
@@ -255,7 +316,7 @@ def delivery_groups(deliveries: list[DeliveryEvent], campaign_events: list[dict]
         attempt_trace = " -> ".join(
             f"{index}:{event.status}/{event.dsn or '-'}" for index, event in enumerate(events, start=1)
         )
-        failure_key = (last.campaign_id, last.recipient.casefold())
+        failure_key = (last.campaign_id, last.campaign_run_id, last.recipient.casefold())
         failures = app_failures.get(failure_key, [])
         campaign_id = last.campaign_id or (str(failures[-1].get("campaign_id", "")) if failures else "")
         rows.append(
@@ -275,6 +336,7 @@ def delivery_groups(deliveries: list[DeliveryEvent], campaign_events: list[dict]
                 "accepted_on_attempt": accepted or "",
                 "attempt_trace": attempt_trace,
                 "campaign_id": campaign_id,
+                "campaign_run_id": last.campaign_run_id or (str(failures[-1].get("campaign_run_id", "")) if failures else ""),
                 "campaign_name": last.campaign_name or (str(failures[-1].get("campaign_name", "")) if failures else ""),
                 "contact_id": last.contact_id or (str(failures[-1].get("contact_id", "")) if failures else ""),
                 "message_id": last.message_id,
@@ -283,9 +345,12 @@ def delivery_groups(deliveries: list[DeliveryEvent], campaign_events: list[dict]
             }
         )
 
-    known_failure_keys = {(row["campaign_id"], row["recipient"].casefold()) for row in rows if row["campaign_id"]}
-    for (campaign_id, recipient_key), failures in app_failures.items():
-        if not failures or (campaign_id, recipient_key) in known_failure_keys:
+    known_failure_keys = {
+        (row["campaign_id"], row["campaign_run_id"], row["recipient"].casefold())
+        for row in rows if row["campaign_id"]
+    }
+    for (campaign_id, campaign_run_id, recipient_key), failures in app_failures.items():
+        if not failures or (campaign_id, campaign_run_id, recipient_key) in known_failure_keys:
             continue
         failure = failures[-1]
         error = str(failure.get("error", "Błąd przekazania do SMTP"))
@@ -307,6 +372,7 @@ def delivery_groups(deliveries: list[DeliveryEvent], campaign_events: list[dict]
                 "accepted_on_attempt": "",
                 "attempt_trace": "",
                 "campaign_id": campaign_id,
+                "campaign_run_id": campaign_run_id,
                 "campaign_name": str(failure.get("campaign_name", "")),
                 "contact_id": str(failure.get("contact_id", "")),
                 "message_id": "",
@@ -481,7 +547,15 @@ def write_csv(path: Path, rows: list[dict]) -> None:
             )
 
 
-def write_report(path: Path, log_dirs: list[Path], files: list[Path], deliveries: list[DeliveryEvent], rows: list[dict], events: list[dict]) -> None:
+def write_report(
+    path: Path,
+    log_dirs: list[Path],
+    files: list[Path],
+    deliveries: list[DeliveryEvent],
+    rows: list[dict],
+    events: list[dict],
+    selection_scope: str = "",
+) -> None:
     status_counts = Counter(row["status"] for row in rows)
     event_counts = Counter(event.status for event in deliveries)
     reasons = Counter(row["reason"] for row in rows if row["status"] != "sent")
@@ -495,7 +569,8 @@ def write_report(path: Path, log_dirs: list[Path], files: list[Path], deliveries
     lines = [
         "# Raport analizy wysyłki", "",
         f"- Wygenerowano: {datetime.now().astimezone().isoformat(timespec='seconds')}",
-        f"- Katalogi logów: {', '.join(f'`{directory}`' for directory in log_dirs)}", f"- Plików wejściowych: {len(files)}",
+        f"- Źródła logów: {', '.join(f'`{directory}`' for directory in log_dirs)}", f"- Plików wejściowych: {len(files)}",
+        *([f"- Zakres wyboru: {selection_scope}"] if selection_scope else []),
         f"- Zakres zdarzeń Postfix: {min(timestamps).isoformat(sep=' ') if timestamps else 'brak'} - {max(timestamps).isoformat(sep=' ') if timestamps else 'brak'}",
         f"- Końcowych wpisów SMTP: {len(deliveries)}; rekordów odbiorca/kampania: {len(rows)}", "",
         "## Wynik końcowy na adres/kampanię", "", "| Status | Liczba |", "|---|---:|",
@@ -561,7 +636,7 @@ def write_report(path: Path, log_dirs: list[Path], files: list[Path], deliveries
         lines.append("Nie znaleziono zdarzeń `[CAMPAIGN_EVENT]`. Dane kampanii będą dostępne dla logów zapisanych po wdrożeniu nowego logowania aplikacji.")
     lines.extend(
         ["", "## Interpretacja", "",
-         "`sent` oznacza, że zdalny serwer SMTP przyjął wiadomość, nie potwierdza dostarczenia do skrzynki odbiorczej. Numer próby jest liczony z kolejnych końcowych wpisów Postfixa dla tej samej kolejki i odbiorcy; dla znanych kampanii grupowanie łączy ten sam kontakt w obrębie kampanii. Zdarzenia aplikacji są łączone z kolejką przez `Message-ID`, a nie na podstawie przybliżonego czasu.", "",
+         "`sent` oznacza, że zdalny serwer SMTP przyjął wiadomość, nie potwierdza dostarczenia do skrzynki odbiorczej. Numer próby jest liczony z kolejnych końcowych wpisów Postfixa dla tej samej kolejki i odbiorcy. Filtry `--started-*` używają zdarzeń startu kampanii, jeśli są zapisane; bez nich wybierają wiadomości według czasu pierwszej próby SMTP i zachowują ich kolejne ponowienia. Zdarzenia aplikacji są łączone z kolejką przez `Message-ID`, a nie na podstawie przybliżonego czasu.", "",
          "Przypisanie do kampanii jest puste dla historycznych wpisów, których `Message-ID` nie występuje w logu aplikacji. Skrypt nie zgaduje kampanii na podstawie samego sąsiedztwa czasowego.", ""]
     )
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -572,29 +647,56 @@ def build_parser() -> argparse.ArgumentParser:
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description="Tworzy raport wysyłki z logów Postfixa i aplikacji mailingowej.")
     parser.add_argument("--log-dir", type=Path, default=root / "log", help="Katalog wejściowy z logami (domyślnie ./log).")
+    parser.add_argument("--log-file", type=Path, help="Pojedynczy plik logu, np. ./mail.log.")
     parser.add_argument("--app-log-dir", type=Path, default=root / "backend" / "logs", help="Dodatkowy katalog logów aplikacji/PM2.")
     parser.add_argument("--output-dir", type=Path, default=root / "reports", help="Katalog wyjściowy (domyślnie ./reports).")
     parser.add_argument("--year", type=int, default=datetime.now().year, help="Rok wpisów syslog bez roku (domyślnie bieżący).")
     parser.add_argument("--since", type=date.fromisoformat, help="Uwzględnij zdarzenia od daty YYYY-MM-DD.")
     parser.add_argument("--until", type=date.fromisoformat, help="Uwzględnij zdarzenia do daty YYYY-MM-DD włącznie.")
+    parser.add_argument("--started-since", type=parse_datetime_argument, help="Wybierz kampanie rozpoczęte od YYYY-MM-DDTHH:MM:SS.")
+    parser.add_argument("--started-until", type=parse_datetime_argument, help="Wybierz kampanie rozpoczęte do YYYY-MM-DDTHH:MM:SS.")
     return parser
+
+
+def parse_datetime_argument(value: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("Użyj formatu YYYY-MM-DDTHH:MM:SS.") from error
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if not args.log_dir.is_dir():
+    if args.started_since and args.started_until and args.started_since > args.started_until:
+        print("--started-since nie może być późniejsze niż --started-until.", file=sys.stderr)
+        return 2
+    if (args.started_since or args.started_until) and (args.since or args.until):
+        print("Nie łącz filtrów startu kampanii (--started-*) z filtrami dat wpisów (--since/--until).", file=sys.stderr)
+        return 2
+    if args.log_file and not args.log_file.is_file():
+        print(f"Plik logu nie istnieje: {args.log_file}", file=sys.stderr)
+        return 2
+    if not args.log_file and not args.log_dir.is_dir():
         print(f"Katalog logów nie istnieje: {args.log_dir}", file=sys.stderr)
         return 2
-    log_dirs = [args.log_dir]
-    if args.app_log_dir.is_dir() and args.app_log_dir.resolve() != args.log_dir.resolve():
+    log_dirs = [args.log_file] if args.log_file else [args.log_dir]
+    if args.app_log_dir.is_dir() and args.app_log_dir.resolve() not in {path.resolve() for path in log_dirs}:
         log_dirs.append(args.app_log_dir)
-    files = sorted({path for directory in log_dirs for path in log_files(directory)})
+    files = sorted({
+        path
+        for source in log_dirs
+        for path in ([source] if source.is_file() else log_files(source))
+    })
     if not files:
-        print(f"Brak plików w katalogu: {args.log_dir}", file=sys.stderr)
+        print("Brak plików wejściowych.", file=sys.stderr)
         return 2
 
     deliveries, _, campaign_events = parse_log_files(files, args.year)
-    if args.since:
+    if args.started_since or args.started_until:
+        deliveries, campaign_events = filter_campaign_runs(
+            deliveries, campaign_events, args.started_since, args.started_until
+        )
+    elif args.since:
         lower = datetime.combine(args.since, datetime.min.time())
         deliveries = [event for event in deliveries if event.timestamp >= lower]
         campaign_events = [event for event in campaign_events if (parse_iso_timestamp(str(event.get("timestamp", ""))) or datetime.min).date() >= args.since]
@@ -605,11 +707,32 @@ def main(argv: list[str] | None = None) -> int:
 
     rows = delivery_groups(deliveries, campaign_events)
     date_tokens = [event.timestamp.date().isoformat() for event in deliveries]
-    suffix = f"{min(date_tokens)}_{max(date_tokens)}" if date_tokens else "brak-zdarzen"
+    if date_tokens:
+        suffix = f"{min(date_tokens)}_{max(date_tokens)}"
+    elif args.started_since or args.started_until:
+        lower = args.started_since.date().isoformat() if args.started_since else "od-poczatku"
+        upper = args.started_until.date().isoformat() if args.started_until else "bez-konca"
+        suffix = f"{lower}_{upper}"
+    elif args.since or args.until:
+        lower = args.since.isoformat() if args.since else "od-poczatku"
+        upper = args.until.isoformat() if args.until else "bez-konca"
+        suffix = f"{lower}_{upper}"
+    else:
+        suffix = "brak-zdarzen"
     csv_path = args.output_dir / f"mail-delivery-{suffix}.csv"
     report_path = args.output_dir / f"mail-delivery-report-{suffix}.md"
     write_csv(csv_path, rows)
-    write_report(report_path, log_dirs, files, deliveries, rows, campaign_events)
+    if args.started_since or args.started_until:
+        selection_scope = (
+            f"start kampanii (lub pierwsza próba SMTP bez znaczników kampanii) od "
+            f"{args.started_since.isoformat(sep=' ') if args.started_since else 'początku'} "
+            f"do {args.started_until.isoformat(sep=' ') if args.started_until else 'teraz'}"
+        )
+    elif args.since or args.until:
+        selection_scope = f"daty zdarzeń od {args.since or 'początku'} do {args.until or 'teraz'}"
+    else:
+        selection_scope = "wszystkie dostępne zdarzenia"
+    write_report(report_path, log_dirs, files, deliveries, rows, campaign_events, selection_scope)
     print(f"CSV: {csv_path}")
     print(f"Raport: {report_path}")
     print(f"Zdarzenia SMTP: {len(deliveries)}; rekordy odbiorca/kampania: {len(rows)}")

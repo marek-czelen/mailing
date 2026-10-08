@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto';
 
 // Interwał na podstawie zmiennej środowiskowej
 let interval = EnvironmentConfig.get('MAILING_TASK_INTERVAL', 600000); // domyślnie 10 minut
+let isSending = false;
 
 const logCampaignEvent = (event, data) => {
     console.log(`[CAMPAIGN_EVENT] ${JSON.stringify({
@@ -24,13 +25,20 @@ const logCampaignEvent = (event, data) => {
  */
 class MailingTask {
     static async sendMails() {
+        if (isSending) return;
+
+        isSending = true;
+        let activeCampaign = null;
+        let campaignTransporter = null;
+        let campaignCompleted = false;
+
         try {
             if (EnvironmentConfig.isDevelopment()) {
                 console.log('📧 Rozpoczęcie wysyłania maili:', new Date().toISOString());
             }
 
             // Pobierz aktywne kampanie razem z danymi klienta
-            const activeCampaign = await MarketingCampanies.findOne({
+            activeCampaign = await MarketingCampanies.findOne({
                 where: {
                     active: true,
                     sent: false,
@@ -66,6 +74,7 @@ class MailingTask {
             // Pobierz listę adresów dla klienta
             const recipientWhere = {
                 active: 1,
+                deliveryStatus: { [Op.ne]: 'undeliverable' },
                 customerId: activeCampaign.customerId,
                 databaseId: activeCampaign.databaseId,
                 unsubscribesDate: null
@@ -108,22 +117,28 @@ class MailingTask {
             // Konfiguracja TLS
             const ignoreTLS = !smtpSecure;
             const rejectUnauthorized = !smtpAllowSelfSigned; // Nie weryfikuj jeśli self-signed dozwolone
+            const smtp = {
+                host: smtpHost,
+                port: smtpPort,
+                secure: smtpSecure,
+                ignoreTLS: ignoreTLS,
+                tls: { rejectUnauthorized },
+                auth: { user: smtpUser, pass: smtpPass }
+            };
 
             console.log(`📤 [MailingTask] Kampania ${activeCampaign.id}: SMTP ${smtpHost}:${smtpPort} user=${smtpUser} secure=${smtpSecure} allowSelfSigned=${smtpAllowSelfSigned}`);
+            campaignTransporter = Mail.createTransporter({
+                ...smtp,
+                pool: true,
+                maxConnections: 1,
+                maxMessages: 1000
+            });
 
             for (const address of mailAddresses) {
                 try {
                     const result = await Mail.sendEmail({
-                        smtp: {
-                            host: smtpHost,
-                            port: smtpPort,
-                            secure: smtpSecure,
-                            ignoreTLS: ignoreTLS,
-                            tls: {
-                                rejectUnauthorized: rejectUnauthorized
-                            },
-                            auth: { user: smtpUser, pass: smtpPass }
-                        },
+                        smtp,
+                        transporter: campaignTransporter,
                         from: `${activeCampaign.senderName}<${activeCampaign.senderEmail}>`,
                         to: address.mailAddress,
                             subject: activeCampaign.subject,
@@ -209,10 +224,20 @@ class MailingTask {
                 failed_count: failedCount
             });
             activeCampaign.sent = true;
+            activeCampaign.sendingInProgress = false;
             await activeCampaign.save();
+            campaignCompleted = true;
             console.log(`Kampania ${activeCampaign.name} (klient ${customer.id}): wysyłka zakończona`);
         } catch (error) {
             console.error('Błąd podczas wysyłania maili:', error && error.message ? error.message : error);
+        } finally {
+            if (campaignTransporter) campaignTransporter.close();
+            if (activeCampaign && !campaignCompleted) {
+                await activeCampaign.update({ sendingInProgress: false }).catch(error => {
+                    console.error('Błąd resetowania statusu kampanii:', error?.message || error);
+                });
+            }
+            isSending = false;
         }
     }
 

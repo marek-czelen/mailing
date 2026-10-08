@@ -40,15 +40,4 @@ export const sequelize = new Sequelize(
   }
 );
 
-// Test połączenia z bazą danych
-if (EnvironmentConfig.isDevelopment()) {
-  sequelize.authenticate()
-    .then(() => {
-      console.log('✓ Połączenie z bazą danych nawiązane pomyślnie');
-    })
-    .catch(err => {
-      console.error('❌ Błąd połączenia z bazą danych:', err.message);
-    });
-}
-
 export default sequelize;

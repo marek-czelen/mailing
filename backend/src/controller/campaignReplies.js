@@ -4,6 +4,34 @@ import MarketingCampanies from '../models/marketingCampanies.model.js';
 import MailAddress from '../models/mailAddress.model.js';
 import { Admin } from '../include/admin.js';
 import { Op } from 'sequelize';
+import CheckMailboxTask from '../tasks/checkMailbox.js';
+
+export async function receiveCampaignMailbox(req, res) {
+    try {
+        const { campaignId } = req.params;
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, 'Unauthorized.'));
+        }
+
+        const campaign = await MarketingCampanies.findOne({
+            where: { id: campaignId, customerId: userData.customerId }
+        });
+
+        if (!campaign) {
+            return res.status(404).send(new Response(null, false, 'Campaign not found.'));
+        }
+        if (!campaign.sent) {
+            return res.status(400).send(new Response(null, false, 'Można sprawdzać skrzynkę tylko dla wysłanej kampanii.'));
+        }
+
+        const result = await CheckMailboxTask.checkCampaignMailbox(campaign, { maxMessages: 100 });
+        return res.send(new Response(result, true, 'Campaign mailbox checked successfully.'));
+    } catch (error) {
+        console.error('[receiveCampaignMailbox] Error:', error);
+        return res.status(502).send(new Response(null, false, error.message || 'Nie udało się sprawdzić skrzynki IMAP.'));
+    }
+}
 
 /**
  * GET /mailing/campaigns/:campaignId/replies
@@ -375,6 +403,148 @@ export async function getCampaignBounces(req, res) {
     }
 }
 
+export async function getCampaignBounceContacts(req, res) {
+    try {
+        const { campaignId } = req.params;
+        const { page = 1, limit = 50, search = '', status = 'all', sortBy = 'bounceCount', sortOrder = 'desc' } = req.query;
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, 'Unauthorized.'));
+        }
+
+        const campaign = await MarketingCampanies.findOne({
+            where: { id: campaignId, customerId: userData.customerId },
+            attributes: ['id', 'customerId', 'databaseId']
+        });
+        if (!campaign) {
+            return res.status(404).send(new Response(null, false, 'Campaign not found.'));
+        }
+
+        const baseWhere = {
+            customerId: campaign.customerId,
+            databaseId: campaign.databaseId,
+            bounceCount: { [Op.gt]: 0 }
+        };
+        const where = { ...baseWhere };
+        const trimmedSearch = String(search || '').trim();
+        if (trimmedSearch) {
+            where[Op.or] = [
+                { mailAddress: { [Op.like]: `%${trimmedSearch}%` } },
+                { bounceReason: { [Op.like]: `%${trimmedSearch}%` } }
+            ];
+        }
+        if (status === 'active') where.active = 1;
+        if (status === 'inactive') where.active = 0;
+
+        const pageNum = Math.max(1, Number.parseInt(page, 10) || 1);
+        const limitNum = Math.min(200, Math.max(1, Number.parseInt(limit, 10) || 50));
+        const sortFields = {
+            email: 'mailAddress',
+            bounceCount: 'bounceCount',
+            bounceDate: 'bounceDate',
+            status: 'active',
+            deliveryStatus: 'deliveryStatus'
+        };
+        const sortKey = Object.prototype.hasOwnProperty.call(sortFields, sortBy) ? sortBy : 'bounceCount';
+        const sortField = sortFields[sortKey];
+        const sortDirection = String(sortOrder).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+        const order = sortKey === 'status'
+            ? [[MailAddress.sequelize.literal('CASE WHEN unsubscribes_date IS NOT NULL THEN 2 WHEN active = 1 THEN 0 ELSE 1 END'), sortDirection], ['id', 'ASC']]
+            : [[sortField, sortDirection], ['id', 'ASC']];
+        const { count, rows } = await MailAddress.findAndCountAll({
+            where,
+            attributes: ['id', 'mailAddress', 'active', 'unsubscribesDate', 'bounceCount', 'bounceDate', 'bounceReason', 'deliveryStatus'],
+            order,
+            limit: limitNum,
+            offset: (pageNum - 1) * limitNum
+        });
+
+        const [activeCount, inactiveCount] = await Promise.all([
+            MailAddress.count({ where: { ...baseWhere, active: 1 } }),
+            MailAddress.count({ where: { ...baseWhere, active: 0 } })
+        ]);
+
+        return res.send(new Response({
+            contacts: rows.map(contact => ({
+                id: contact.id,
+                email: contact.mailAddress,
+                active: Boolean(contact.active),
+                unsubscribed: Boolean(contact.unsubscribesDate),
+                bounceCount: contact.bounceCount || 0,
+                bounceDate: contact.bounceDate,
+                bounceReason: contact.bounceReason,
+                deliveryStatus: contact.deliveryStatus
+            })),
+            pagination: {
+                total: count,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(count / limitNum)
+            },
+            summary: { total: activeCount + inactiveCount, active: activeCount, inactive: inactiveCount }
+        }, true, 'Campaign bounce contacts retrieved successfully.'));
+    } catch (error) {
+        console.error('[getCampaignBounceContacts] Error:', error);
+        return res.status(500).send(new Response(null, false, `Failed to fetch campaign bounce contacts. ${error.message}`));
+    }
+}
+
+export async function updateCampaignBounceContacts(req, res) {
+    try {
+        const { campaignId } = req.params;
+        const { contactIds, action } = req.body || {};
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, 'Unauthorized.'));
+        }
+        if (!Array.isArray(contactIds) || contactIds.length === 0 || contactIds.length > 500 ||
+            !contactIds.every(id => Number.isInteger(Number(id)) && Number(id) > 0)) {
+            return res.status(400).send(new Response(null, false, 'Provide between 1 and 500 valid contact IDs.'));
+        }
+        if (!['deactivate', 'restore'].includes(action)) {
+            return res.status(400).send(new Response(null, false, 'Action must be deactivate or restore.'));
+        }
+
+        const campaign = await MarketingCampanies.findOne({
+            where: { id: campaignId, customerId: userData.customerId },
+            attributes: ['id', 'customerId', 'databaseId']
+        });
+        if (!campaign) {
+            return res.status(404).send(new Response(null, false, 'Campaign not found.'));
+        }
+
+        const ids = [...new Set(contactIds.map(Number))];
+        const baseWhere = {
+            id: { [Op.in]: ids },
+            customerId: campaign.customerId,
+            databaseId: campaign.databaseId,
+            bounceCount: { [Op.gt]: 0 }
+        };
+        let skippedUnsubscribedCount = 0;
+        let updateWhere = baseWhere;
+        let updateData = { active: 0 };
+
+        if (action === 'restore') {
+            skippedUnsubscribedCount = await MailAddress.count({
+                where: { ...baseWhere, unsubscribesDate: { [Op.ne]: null } }
+            });
+            updateWhere = { ...baseWhere, unsubscribesDate: null };
+            updateData = { active: 1, deliveryStatus: 'unknown' };
+        }
+
+        const [updatedCount] = await MailAddress.update(updateData, { where: updateWhere });
+        return res.send(new Response({
+            action,
+            requestedCount: ids.length,
+            updatedCount,
+            skippedUnsubscribedCount
+        }, true, 'Campaign bounce contacts updated successfully.'));
+    } catch (error) {
+        console.error('[updateCampaignBounceContacts] Error:', error);
+        return res.status(500).send(new Response(null, false, `Failed to update campaign bounce contacts. ${error.message}`));
+    }
+}
+
 /**
  * GET /mailing/replies/:replyId
  * 
@@ -580,7 +750,7 @@ export async function getReplyFullContent(req, res) {
 
                 await client.connect();
                 await client.mailboxOpen(campaign.replyMailboxFolder || 'INBOX');
-                const msg = await client.fetchOne(reply.imapUid, { uid: true, source: true });
+                const msg = await client.fetchOne(reply.imapUid, { source: true }, { uid: true });
                 await client.logout();
 
                 if (msg?.source) {

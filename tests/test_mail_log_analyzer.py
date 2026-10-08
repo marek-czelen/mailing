@@ -8,6 +8,7 @@ from tools.analyze_mail_logs import (
     DeliveryEvent,
     deferred_summary_by_domain,
     delivery_groups,
+    filter_campaign_runs,
     parse_log_files,
     rejection_summary_by_domain,
 )
@@ -82,6 +83,116 @@ class MailLogAnalyzerTests(unittest.TestCase):
         self.assertEqual(rows[0]["campaign_name"], "Jesień 2026")
         self.assertEqual(rows[0]["contact_id"], "42")
         self.assertEqual(rows[0]["message_id"], "campaign-1@example.test")
+
+    def test_started_run_filter_keeps_delivery_events_after_midnight(self):
+        started_run = {
+            "event": "campaign_started",
+            "timestamp": "2026-10-08T23:30:00.000Z",
+            "campaign_id": "33",
+            "campaign_run_id": "night-run",
+        }
+        finished_run = {
+            "event": "campaign_finished",
+            "timestamp": "2026-10-09T01:15:00.000Z",
+            "campaign_id": "33",
+            "campaign_run_id": "night-run",
+        }
+        other_run = {
+            "event": "campaign_started",
+            "timestamp": "2026-10-09T02:00:00.000Z",
+            "campaign_id": "33",
+            "campaign_run_id": "other-run",
+        }
+        deliveries = [
+            DeliveryEvent(
+                timestamp=datetime(2026, 10, 9, 1),
+                queue_id="Q123",
+                recipient="person@example.test",
+                status="sent",
+                dsn="2.0.0",
+                relay="mx.example.test:25",
+                delay="1",
+                response="250 accepted",
+                raw_line="test line",
+                source="test.log",
+                campaign_id="33",
+                campaign_run_id="night-run",
+            ),
+            DeliveryEvent(
+                timestamp=datetime(2026, 10, 9, 2, 1),
+                queue_id="Q124",
+                recipient="other@example.test",
+                status="sent",
+                dsn="2.0.0",
+                relay="mx.example.test:25",
+                delay="1",
+                response="250 accepted",
+                raw_line="test line",
+                source="test.log",
+                campaign_id="33",
+                campaign_run_id="other-run",
+            ),
+        ]
+
+        selected_deliveries, selected_events = filter_campaign_runs(
+            deliveries,
+            [started_run, finished_run, other_run],
+            datetime(2026, 10, 8, 23),
+            datetime(2026, 10, 9, 0),
+        )
+
+        self.assertEqual([event.campaign_run_id for event in selected_deliveries], ["night-run"])
+        self.assertEqual([event["event"] for event in selected_events], ["campaign_started", "campaign_finished"])
+
+    def test_started_window_without_campaign_markers_keeps_later_retries(self):
+        deliveries = [
+            DeliveryEvent(
+                timestamp=datetime(2026, 10, 8, 23, 30),
+                queue_id="Q123",
+                recipient="person@example.test",
+                status="deferred",
+                dsn="4.4.1",
+                relay="none",
+                delay="1",
+                response="timeout",
+                raw_line="first attempt",
+                source="mail.log",
+            ),
+            DeliveryEvent(
+                timestamp=datetime(2026, 10, 9, 1),
+                queue_id="Q123",
+                recipient="person@example.test",
+                status="sent",
+                dsn="2.0.0",
+                relay="mx.example.test:25",
+                delay="90",
+                response="250 accepted",
+                raw_line="retry",
+                source="mail.log",
+            ),
+            DeliveryEvent(
+                timestamp=datetime(2026, 10, 9, 2),
+                queue_id="Q124",
+                recipient="other@example.test",
+                status="sent",
+                dsn="2.0.0",
+                relay="mx.example.test:25",
+                delay="1",
+                response="250 accepted",
+                raw_line="outside window",
+                source="mail.log",
+            ),
+        ]
+
+        selected_deliveries, selected_events = filter_campaign_runs(
+            deliveries,
+            [],
+            datetime(2026, 10, 8, 23),
+            datetime(2026, 10, 9, 0),
+        )
+
+        self.assertEqual([event.raw_line for event in selected_deliveries], ["first attempt", "retry"])
+        self.assertEqual(selected_events, [])
 
     def test_summarizes_bounced_recipient_domains_without_counting_deferred(self):
         rows = [

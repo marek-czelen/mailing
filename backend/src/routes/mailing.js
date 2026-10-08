@@ -29,7 +29,7 @@ import {
 } from '../controller/mailing.js';
 
 import { sendEmail } from '../controller/mailProcessing.js';
-import { getCampaignReplies, getCampaignBounces, getReplyById, getCampaignRepliesStats, getReplyFullContent } from '../controller/campaignReplies.js';
+import { getCampaignReplies, getCampaignBounces, getCampaignBounceContacts, updateCampaignBounceContacts, getReplyById, getCampaignRepliesStats, getReplyFullContent, receiveCampaignMailbox } from '../controller/campaignReplies.js';
 import { testSmtpConnection, testImapConnection } from '../controller/connectionTest.js';
 
 const router = express.Router();
@@ -114,6 +114,11 @@ router.get('/campaigns/:campaignId/replies', getCampaignReplies);
 
 // Pobierz bounce messages do kampanii (tylko bounce)
 router.get('/campaigns/:campaignId/bounces', getCampaignBounces);
+router.get('/campaigns/:campaignId/bounce-contacts', getCampaignBounceContacts);
+router.patch('/campaigns/:campaignId/bounce-contacts', updateCampaignBounceContacts);
+
+// Ręcznie pobierz i przeanalizuj wiadomości ze skrzynki kampanii
+router.post('/campaigns/:campaignId/check-mailbox', receiveCampaignMailbox);
 
 // Pobierz statystyki odpowiedzi kampanii
 router.get('/campaigns/:campaignId/replies/stats', getCampaignRepliesStats);

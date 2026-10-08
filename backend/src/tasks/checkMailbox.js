@@ -51,57 +51,14 @@ class CheckMailboxTask {
 
             for (const campaign of campaigns) {
                 try {
-                    const {
-                        replyMailboxHost: host,
-                        replyMailboxPort: port,
-                        replyMailboxUser: user,
-                        replyMailboxPass: pass,
-                        replyMailboxProtocol: protocol,
-                        replyMailboxFolder: folder,
-                        replyMailboxTls: tls,
-                        replyMailboxAllowSelfSigned: allowSelfSigned
-                    } = campaign;
-
-                    if (!host || !user || !pass) {
-                        console.warn(`⚠️ [CheckMailboxTask] Kampania ${campaign.id} nie ma pełnej konfiguracji skrzynki (host/user/pass) - pomijam.`);
-                        continue;
-                    }
+                    const result = await CheckMailboxTask.checkCampaignMailbox(campaign);
                     if (DEBUG_MAILBOX) {
-                        console.log(`🔧 [CheckMailboxTask] Kampania ${campaign.id} proto=${(protocol || 'IMAP').toUpperCase()} host=${host} port=${port} folder=${folder} tls=${tls} allowSelfSigned=${allowSelfSigned}`);
-                    }
-
-                    let fetchedReplies = [];
-                    const fetchTimeout = EnvironmentConfig.get('CHECK_MAILBOX_FETCH_TIMEOUT', 120000);
-
-                    // Tylko IMAP jest wspierany
-                    const proto = (protocol || 'IMAP').toUpperCase();
-                    if (proto !== 'IMAP') {
-                        console.warn(`⚠️ [CheckMailboxTask] Kampania ${campaign.id}: Protokół ${proto} nie jest wspierany. Obsługujemy wyłącznie IMAP.`);
-                        continue;
-                    }
-
-                    try {
-                        fetchedReplies = await Promise.race([
-                            CheckMailboxTask.fetchImapMessages({ host, port, user, pass, folder, tls, allowSelfSigned }),
-                            new Promise((_, reject) => setTimeout(() => reject(new Error('IMAP fetch timeout')), fetchTimeout))
-                        ]);
-                    } catch (fetchErr) {
-                        console.error(`❌ [CheckMailboxTask] Błąd pobierania dla kampanii ${campaign.id}: ${fetchErr?.message || fetchErr}`);
-                        if (DEBUG_MAILBOX && fetchErr?.stack) console.error(fetchErr.stack);
-                        continue; // Pomijamy tę kampanię i przechodzimy do następnej
-                    }
-
-                    if (DEBUG_MAILBOX) {
-                        console.log(`🔧 [CheckMailboxTask] Kampania ${campaign.id} proto=${(protocol || 'IMAP').toUpperCase()} host=${host} port=${port} tls=${tls} allowSelfSigned=${allowSelfSigned} fetchedReplies.length=${fetchedReplies.length}`);
-                    }
-
-                    if (fetchedReplies.length) {
-                        await CheckMailboxTask.processReplies(campaign, fetchedReplies);
-                        if (DEBUG_MAILBOX) {
+                        console.log(`🔧 [CheckMailboxTask] Kampania ${campaign.id} fetchedReplies.length=${result.fetchedCount}`);
+                        if (result.fetchedCount) {
                             console.log(`✅ [CheckMailboxTask] Finished processing replies for campaign ${campaign.id}`);
+                        } else {
+                            console.log(`📥 [CheckMailboxTask] Kampania ${campaign.id} (${campaign.name}) - brak nowych wiadomości.`);
                         }
-                    } else if (DEBUG_MAILBOX) {
-                        console.log(`📥 [CheckMailboxTask] Kampania ${campaign.id} (${campaign.name}) - brak nowych wiadomości.`);
                     }
                 } catch (innerErr) {
                     console.error(`❌ [CheckMailboxTask] Błąd podczas sprawdzania kampanii ${campaign.id}:`, innerErr?.message || innerErr);
@@ -114,6 +71,58 @@ class CheckMailboxTask {
         }
     }
 
+    static async checkCampaignMailbox(campaign, { maxMessages = 10 } = {}) {
+        const {
+            replyMailboxHost: host,
+            replyMailboxPort: port,
+            replyMailboxUser: user,
+            replyMailboxPass: pass,
+            replyMailboxProtocol: protocol,
+            replyMailboxFolder: folder,
+            replyMailboxTls: tls,
+            replyMailboxAllowSelfSigned: allowSelfSigned
+        } = campaign;
+
+        if (!host || !user || !pass) {
+            throw new Error('Kampania nie ma pełnej konfiguracji skrzynki IMAP (host/login/hasło).');
+        }
+
+        const proto = (protocol || 'IMAP').toUpperCase();
+        if (proto !== 'IMAP') {
+            throw new Error(`Protokół ${proto} nie jest wspierany. Obsługujemy wyłącznie IMAP.`);
+        }
+
+        if (DEBUG_MAILBOX) {
+            console.log(`🔧 [CheckMailboxTask] Kampania ${campaign.id} proto=${proto} host=${host} port=${port} folder=${folder} tls=${tls} allowSelfSigned=${allowSelfSigned}`);
+        }
+
+        const fetchTimeout = EnvironmentConfig.get('CHECK_MAILBOX_FETCH_TIMEOUT', 120000);
+        const { messages: fetchedReplies, mailboxMessageCount, unseenMessageCount } = await Promise.race([
+            CheckMailboxTask.fetchImapMessages({ host, port, user, pass, folder, maxMessages, tls, allowSelfSigned }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('IMAP fetch timeout')), fetchTimeout))
+        ]);
+        const result = await CheckMailboxTask.processReplies(campaign, fetchedReplies);
+
+        if (result.errorCount === 0 && fetchedReplies.length) {
+            try {
+                await CheckMailboxTask.markImapMessagesSeen(
+                    { host, port, user, pass, folder, tls, allowSelfSigned },
+                    fetchedReplies.map(reply => reply.uid)
+                );
+            } catch (error) {
+                console.error(`❌ [CheckMailboxTask] Nie udało się oznaczyć wiadomości IMAP jako przeczytanych; zostaną ponowione:`, error?.message || error);
+                throw new Error(`Nie udało się oznaczyć pobranych wiadomości jako przeczytanych: ${error?.message || error}`);
+            }
+        }
+
+        return {
+            mailboxMessageCount,
+            unseenMessageCount,
+            fetchedCount: fetchedReplies.length,
+            ...result
+        };
+    }
+
     /**
      * Przetwarzanie odpowiedzi: deduplikacja, mapowanie kontaktów, zapis do bazy.
      * - Deduplikacja po reply_hash (nawet jeśli brak message_id).
@@ -122,7 +131,9 @@ class CheckMailboxTask {
      * - Obsługa wielu odpowiedzi z tego samego adresu (każda zapisywana osobno).
      */
     static async processReplies(campaign, replies) {
-        if (!replies.length) return;
+        if (!replies.length) {
+            return { savedCount: 0, duplicateCount: 0, errorCount: 0 };
+        }
 
         let saved = 0, duplicates = 0, errors = 0;
 
@@ -196,7 +207,7 @@ class CheckMailboxTask {
                         });
 
                         await client.connect();
-                        await client.mailboxOpen('INBOX');
+                        await client.mailboxOpen(campaign.replyMailboxFolder || 'INBOX');
                         
                         const originalMessageId = await CheckMailboxTask.extractOriginalMessageIdFromBounce(client, uid);
                         
@@ -267,7 +278,7 @@ class CheckMailboxTask {
                             });
 
                             await client.connect();
-                            await client.mailboxOpen('INBOX');
+                            await client.mailboxOpen(campaign.replyMailboxFolder || 'INBOX');
                             
                             bounceRecipientEmail = await CheckMailboxTask.extractRecipientFromBounceContent(client, uid);
                             
@@ -375,6 +386,7 @@ class CheckMailboxTask {
                             if (bounceInfo.bounceType === 'hard') {
                                 await mailAddressRecord.update({
                                     active: 0,
+                                    deliveryStatus: 'undeliverable',
                                     bounceDate: new Date(),
                                     bounceReason: bounceInfo.bounceReason,
                                     bounceCount: newBounceCount
@@ -432,6 +444,7 @@ class CheckMailboxTask {
         }
 
         console.log(`📊 [ProcessReply] Kampania ${campaign.id}: zapisano=${saved}, duplikaty=${duplicates}, błędy=${errors}, łącznie=${replies.length}`);
+        return { savedCount: saved, duplicateCount: duplicates, errorCount: errors };
     }
 
     static async fetchImapMessages({ host, port, user, pass, folder = 'INBOX', maxMessages = 10, tls = null, allowSelfSigned = false }) {
@@ -450,6 +463,8 @@ class CheckMailboxTask {
             logger: false
         });
         const results = [];
+        let mailboxMessageCount = 0;
+        let unseenMessageCount = 0;
         try {
             const start = Date.now();
             if (DEBUG_MAILBOX) console.log(`➡️ [IMAP] Connecting secure=${secure} allowSelfSigned=${allowSelfSigned}`);
@@ -457,13 +472,15 @@ class CheckMailboxTask {
             if (DEBUG_MAILBOX) console.log(`✅ [IMAP] Connected in ${Date.now() - start}ms`);
             await client.mailboxOpen(folder);
             if (DEBUG_MAILBOX) console.log(`📂 [IMAP] Opened mailbox ${folder}`);
+            mailboxMessageCount = client.mailbox.exists || 0;
             const uids = await client.search({ seen: false }, { uid: true });
+            unseenMessageCount = uids.length;
             if (DEBUG_MAILBOX) console.log(`🔎 [IMAP] Found UNSEEN count=${uids.length}`);
             const slice = uids.slice(-maxMessages);
             for (const uid of slice) {
                 // fetchOne akceptuje UID jeśli przekażemy { uid: true }
                 // Pobieramy dodatkowo headers do wykrywania bounce
-                const msg = await client.fetchOne(uid, { uid: true, envelope: true, internalDate: true, headers: true });
+                const msg = await client.fetchOne(uid, { envelope: true, internalDate: true, headers: true }, { uid: true });
                 const fromAddress = (msg?.envelope?.from && msg.envelope.from[0] && (msg.envelope.from[0].address || msg.envelope.from[0].addr)) || null;
                 
                 // Parsuj nagłówki do obiektu (msg.headers jest Map lub obiektem)
@@ -502,17 +519,42 @@ class CheckMailboxTask {
                 });
                 if (DEBUG_MAILBOX) console.log(`✉️ [IMAP] uid=${uid} from=${fromAddress} subj='${msg?.envelope?.subject || ''}'`);
             }
-            if (slice.length) {
-                await client.messageFlagsAdd(slice, ['\\Seen'], { uid: true });
-                if (DEBUG_MAILBOX) console.log(`👁️ [IMAP] Marked ${slice.length} msgs as Seen`);
-            }
         } catch (err) {
             console.error('❌ [CheckMailboxTask] IMAP fetch error:', err?.message || err);
             if (DEBUG_MAILBOX && err?.stack) console.error(err.stack);
+            throw err;
         } finally {
             try { await client.logout(); } catch { }
         }
-        return results;
+        return {
+            messages: results,
+            mailboxMessageCount,
+            unseenMessageCount
+        };
+    }
+
+    static async markImapMessagesSeen({ host, port, user, pass, folder = 'INBOX', tls = null, allowSelfSigned = false }, uids) {
+        if (!uids.length) return;
+
+        const secure = tls !== null ? !!tls : (port === 993);
+        const tlsOptions = allowSelfSigned ? { rejectUnauthorized: false } : {};
+        const client = new ImapFlow({
+            host,
+            port,
+            secure,
+            tls: tlsOptions,
+            auth: { user, pass },
+            logger: false
+        });
+
+        try {
+            await client.connect();
+            await client.mailboxOpen(folder);
+            await client.messageFlagsAdd(uids, ['\\Seen'], { uid: true });
+            if (DEBUG_MAILBOX) console.log(`👁️ [IMAP] Marked ${uids.length} msgs as Seen`);
+        } finally {
+            try { await client.logout(); } catch { }
+        }
     }
 
     // POP3 usunięty – obsługujemy wyłącznie IMAP
@@ -732,7 +774,7 @@ class CheckMailboxTask {
             if (DEBUG_MAILBOX) console.log(`  [extractOriginalMessageId] Fetching full message UID=${uid}`);
             
             // Pobierz pełną wiadomość
-            const message = await client.fetchOne(uid, { source: true });
+            const message = await client.fetchOne(uid, { source: true }, { uid: true });
             if (!message || !message.source) {
                 if (DEBUG_MAILBOX) console.log(`  [extractOriginalMessageId] No source for UID=${uid}`);
                 return null;
@@ -794,7 +836,7 @@ class CheckMailboxTask {
             if (DEBUG_MAILBOX) console.log(`  [extractRecipientFromBounceContent] Fetching full message UID=${uid}`);
             
             // Pobierz pełną wiadomość
-            const message = await client.fetchOne(uid, { source: true });
+            const message = await client.fetchOne(uid, { source: true }, { uid: true });
             if (!message || !message.source) {
                 if (DEBUG_MAILBOX) console.log(`  [extractRecipientFromBounceContent] No source for UID=${uid}`);
                 return null;

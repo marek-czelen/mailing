@@ -176,6 +176,12 @@ export class Mail {
       secure: smtpConfig.secure !== undefined ? smtpConfig.secure : (smtpConfig.port === 465),
     };
 
+    if (smtpConfig.pool) {
+      config.pool = true;
+      config.maxConnections = smtpConfig.maxConnections || 5;
+      config.maxMessages = smtpConfig.maxMessages || 100;
+    }
+
     // Dodaj autentykację jeśli podana
     if (smtpConfig.auth) {
       config.auth = smtpConfig.auth;
@@ -245,7 +251,8 @@ export class Mail {
         attachments = [],
         headers = {},
         campaignId = null,
-        mailAddressId = null
+        mailAddressId = null,
+        transporter: suppliedTransporter = null
       } = options;
 
       if (!smtp || !from || !to || !subject) {
@@ -253,7 +260,7 @@ export class Mail {
       }
 
       // Utwórz transporter
-      const transporter = Mail.createTransporter(smtp);
+      const transporter = suppliedTransporter || Mail.createTransporter(smtp);
 
       // Przetwórz placeholdery w treści
       const processedHtml = html ? Mail.processPlaceholders(html, placeholders) : undefined;

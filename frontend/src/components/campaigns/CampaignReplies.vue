@@ -80,6 +80,7 @@
       item-value="id"
       class="replies-table"
       @update:options="onUpdateOptions"
+      @click:row="onReplyRowClick"
     >
       <!-- From Column -->
       <template v-slot:item.fromEmail="{ item }">
@@ -128,7 +129,7 @@
             icon
             size="small"
             variant="text"
-            @click="viewReply(item)"
+            @click.stop="viewReply(item)"
           >
             <v-icon>mdi-eye</v-icon>
           </v-btn>
@@ -334,6 +335,10 @@ function onUpdateOptions(newOptions) {
   if (changed) {
     fetchReplies()
   }
+}
+
+function onReplyRowClick(_event, { item }) {
+  viewReply(item)
 }
 
 async function viewReply(reply) {

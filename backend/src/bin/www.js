@@ -9,6 +9,8 @@ import '../config/environment.config.js';
 
 import app from "../app.js"
 import EnvironmentConfig from '../config/environment.config.js';
+import sequelize from '../include/db.js';
+import MailingTask from '../tasks/mailingTask.js';
 import http from "http"
 
 /**
@@ -29,9 +31,9 @@ var server = http.createServer(app);
  * Listen on provided port, on all network interfaces.
  */
 
-server.listen(port, host);
 server.on('error', onError);
 server.on('listening', onListening);
+startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
@@ -83,6 +85,8 @@ function onError(error) {
     ? 'Pipe ' + port
     : 'Port ' + port;
 
+  console.error(`❌ Start aplikacji nie powiódł się (${bind}): ${error.message}`);
+
   // handle specific listen errors with friendly messages
   switch (error.code) {
     case 'EACCES':
@@ -110,8 +114,25 @@ function onListening() {
   
   console.log(`🚀 Serwer nasłuchuje na ${bind}`);
   console.log(`🌍 Środowisko: ${EnvironmentConfig.get('NODE_ENV')}`);
+  console.log('✅ Start aplikacji zakończony pomyślnie');
+
+  MailingTask.run();
   
   if (EnvironmentConfig.isDevelopment()) {
     console.log(`📱 URL: http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
+  }
+}
+
+async function startServer() {
+  console.log('🔎 Sprawdzanie połączenia z bazą danych...');
+
+  try {
+    await sequelize.authenticate();
+    console.log('✅ Baza danych: połączenie działa');
+    server.listen(port, host);
+  } catch (error) {
+    console.error(`❌ Baza danych: brak połączenia (${error.message})`);
+    console.error('❌ Start aplikacji przerwany');
+    process.exitCode = 1;
   }
 }

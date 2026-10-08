@@ -85,6 +85,12 @@ const MailAddress = sequelize.define('mail_addresses', {
         field: "bounce_count",
         defaultValue: 0
     },
+    deliveryStatus:{
+        type: DataTypes.ENUM('unknown', 'undeliverable'),
+        allowNull: false,
+        defaultValue: 'unknown',
+        field: "delivery_status"
+    },
     databaseId:{
       type: DataTypes.INTEGER,
       field: "database_id",

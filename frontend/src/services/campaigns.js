@@ -319,6 +319,32 @@ export class Campaigns {
     return response.data.data;
   }
 
+  static async getCampaignBounceContacts(campaignId, params = {}) {
+    const queryParams = new URLSearchParams({
+      page: params.page || 1,
+      limit: params.limit || 50,
+      search: params.search || '',
+      status: params.status || 'all',
+      sortBy: params.sortBy || 'bounceCount',
+      sortOrder: params.sortOrder || 'desc'
+    });
+    const response = await axios.get(`/mailing/campaigns/${campaignId}/bounce-contacts?${queryParams}`);
+    return response.data.data;
+  }
+
+  static async updateCampaignBounceContacts(campaignId, contactIds, action) {
+    const response = await axios.patch(`/mailing/campaigns/${campaignId}/bounce-contacts`, {
+      contactIds,
+      action
+    });
+    return response.data.data;
+  }
+
+  static async checkCampaignMailbox(campaignId) {
+    const response = await axios.post(`/mailing/campaigns/${campaignId}/check-mailbox`, {});
+    return response.data.data;
+  }
+
   // ============= MAIL CONFIGURATION TESTING =============
 
   /**

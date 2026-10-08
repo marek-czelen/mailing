@@ -164,6 +164,30 @@
             </v-tab>
           </v-tabs>
 
+          <div v-if="activeTab === 'replies' || activeTab === 'bounces'" class="d-flex justify-end px-4 pt-3">
+            <v-btn
+              color="primary"
+              variant="outlined"
+              :loading="receivingMailbox"
+              :disabled="!isCampaignSent(selectedCampaign)"
+              @click="receiveCampaignMailbox"
+            >
+              <v-icon start>mdi-inbox-arrow-down</v-icon>
+              {{ t('campaigns.receiveMailbox') }}
+            </v-btn>
+          </div>
+          <div v-if="receivingMailbox && mailboxProgress.total > 0" class="px-4 pt-3">
+            <div class="text-body-2 mb-2">
+              {{ t('campaigns.mailboxScanProgress', mailboxProgress) }}
+            </div>
+            <v-progress-linear
+              :model-value="mailboxProgressPercent"
+              color="primary"
+              height="8"
+              rounded
+            />
+          </div>
+
           <v-card-text>
             <v-window v-model="activeTab">
               <!-- Content Tab -->
@@ -225,12 +249,12 @@
 
               <!-- Replies Tab -->
               <v-window-item value="replies">
-                <CampaignReplies :campaign="selectedCampaign" />
+                <CampaignReplies :key="campaignRefreshToken" :campaign="selectedCampaign" />
               </v-window-item>
 
               <!-- Bounces Tab -->
               <v-window-item value="bounces">
-                <CampaignBounces :campaign="selectedCampaign" />
+                <CampaignBounces :key="campaignRefreshToken" :campaign="selectedCampaign" />
               </v-window-item>
 
               <!-- Scheduling Tab -->
@@ -487,6 +511,9 @@ const searchQuery = ref('')
 const campaignArchiveFilter = ref('active')
 const statusFilter = ref('')
 const activeTab = ref('content')
+const campaignRefreshToken = ref(0)
+const receivingMailbox = ref(false)
+const mailboxProgress = ref({ total: 0, processed: 0, remaining: 0 })
 const showCampaignDialog = ref(false)
 const scheduleDialog = ref(false)
 const deleteDialog = ref(false)
@@ -567,12 +594,83 @@ const minDateTime = computed(() => {
   return now.toISOString().slice(0, 16)
 })
 
+const mailboxProgressPercent = computed(() => mailboxProgress.value.total
+  ? Math.round((mailboxProgress.value.processed / mailboxProgress.value.total) * 100)
+  : 0)
+
 // Methods
 function showNotification(message, color = 'success') {
   snackbar.value = {
     show: true,
     message,
     color
+  }
+}
+
+async function receiveCampaignMailbox() {
+  if (!selectedCampaign.value?.id || receivingMailbox.value) return
+
+  receivingMailbox.value = true
+  mailboxProgress.value = { total: 0, processed: 0, remaining: 0 }
+  try {
+    let batch = await Campaigns.checkCampaignMailbox(selectedCampaign.value.id)
+    const totalUnread = Math.max(0, Number(batch.unseenMessageCount ?? batch.fetchedCount) || 0)
+    const result = {
+      mailboxMessageCount: batch.mailboxMessageCount || 0,
+      unseenMessageCount: totalUnread,
+      fetchedCount: 0,
+      savedCount: 0,
+      duplicateCount: 0,
+      errorCount: 0
+    }
+    mailboxProgress.value = { total: totalUnread, processed: 0, remaining: totalUnread }
+
+    while (true) {
+      const fetched = Number(batch.fetchedCount) || 0
+      result.fetchedCount += fetched
+      result.savedCount += Number(batch.savedCount) || 0
+      result.duplicateCount += Number(batch.duplicateCount) || 0
+      result.errorCount += Number(batch.errorCount) || 0
+      result.mailboxMessageCount = Number(batch.mailboxMessageCount ?? result.mailboxMessageCount) || 0
+
+      if (batch.errorCount) {
+        result.unseenMessageCount = Number(batch.unseenMessageCount ?? mailboxProgress.value.remaining) || 0
+        mailboxProgress.value = {
+          ...mailboxProgress.value,
+          remaining: result.unseenMessageCount
+        }
+        break
+      }
+
+      const remaining = Math.max(0, (Number(batch.unseenMessageCount) || 0) - fetched)
+      result.unseenMessageCount = remaining
+      mailboxProgress.value = {
+        total: totalUnread,
+        processed: Math.min(totalUnread, Math.max(0, totalUnread - remaining)),
+        remaining
+      }
+
+      if (!fetched || !remaining) break
+      batch = await Campaigns.checkCampaignMailbox(selectedCampaign.value.id)
+    }
+
+    campaignRefreshToken.value += 1
+
+    if (result.fetchedCount === 0) {
+      showNotification(t('campaigns.mailboxScanEmpty', {
+        mailboxMessageCount: result.mailboxMessageCount,
+        unseenMessageCount: result.unseenMessageCount
+      }), 'info')
+      return
+    }
+
+    const message = t('campaigns.mailboxScanSuccess', result)
+    showNotification(message, result.errorCount ? 'warning' : 'success')
+  } catch (error) {
+    const detail = error.response?.data?.response?.message || error.message
+    showNotification(t('campaigns.mailboxScanError', { error: detail }), 'error')
+  } finally {
+    receivingMailbox.value = false
   }
 }
 
