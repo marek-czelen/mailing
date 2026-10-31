@@ -15,6 +15,7 @@ import Sequelize from 'sequelize';
 import Mail from '../include/mail.js';
 import { generateContactTags } from '../include/contactTags.js';
 import { Admin } from '../include/admin.js';
+import { recordMailAddressHistory } from '../include/mailAddressHistory.js';
 import MarketingCampaniesMailingResult from '../models/marketingCampaniesMailing.model.js';
 import { generateText, getDefaultProvider, listModels as fetchAiModels } from '../services/ai.service.js';
 
@@ -2198,8 +2199,27 @@ export async function contactUpdate(req, res) {
             return res.send(new Response(null, false, "No fields to update provided."));
         }
 
-        // Wykonaj aktualizację
-        await existingContact.update(updateData);
+        const changes = Object.entries(updateData).map(([fieldName, newValue]) => ({
+            fieldName,
+            oldValue: existingContact[fieldName],
+            newValue
+        }));
+        const transaction = await MailAddress.sequelize.transaction();
+        try {
+            await existingContact.update(updateData, { transaction });
+            await recordMailAddressHistory({
+                mailAddressId: existingContact.id,
+                customerId: existingContact.customerId,
+                action: 'contact_updated',
+                changes,
+                changedBy: userData.email,
+                transaction
+            });
+            await transaction.commit();
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
 
         // Pobierz zaktualizowany kontakt z relacjami
         const updatedContact = await MailAddress.findOne({

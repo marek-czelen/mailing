@@ -29,7 +29,7 @@ import {
 } from '../controller/mailing.js';
 
 import { sendEmail } from '../controller/mailProcessing.js';
-import { getCampaignReplies, getCampaignBounces, getCampaignBounceContacts, updateCampaignBounceContacts, getReplyById, getCampaignRepliesStats, getReplyFullContent, receiveCampaignMailbox } from '../controller/campaignReplies.js';
+import { getCampaignReplies, getCampaignBounces, getCampaignBounceContacts, updateCampaignBounceContacts, getReplyById, getCampaignRepliesStats, getReplyFullContent, receiveCampaignMailbox, updateReplyContactEmail, unsubscribeReplyContact, getReplyContactHistory, markReplyHandled } from '../controller/campaignReplies.js';
 import { testSmtpConnection, testImapConnection } from '../controller/connectionTest.js';
 
 const router = express.Router();
@@ -125,6 +125,10 @@ router.get('/campaigns/:campaignId/replies/stats', getCampaignRepliesStats);
 
 // Pobierz szczegóły pojedynczej odpowiedzi
 router.get('/replies/:replyId', getReplyById);
+router.post('/replies/:replyId/handled', markReplyHandled);
+router.patch('/replies/:replyId/contact-email', updateReplyContactEmail);
+router.post('/replies/:replyId/unsubscribe', unsubscribeReplyContact);
+router.get('/replies/:replyId/contact-history', getReplyContactHistory);
 
 // Pobierz pełną treść odpowiedzi (oznacza jako odczytaną)
 router.get('/replies/:replyId/full', getReplyFullContent);

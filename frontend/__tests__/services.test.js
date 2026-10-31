@@ -72,6 +72,23 @@ describe('Account Service', () => {
 
 // ======================== CAMPAIGNS SERVICE ========================
 describe('Campaigns Service', () => {
+  test('getCampaignReplies powinien przesłać filtr obsłużenia do API', async () => {
+    vi.clearAllMocks()
+    axios.get.mockResolvedValueOnce({
+      data: {
+        data: {
+          replies: [],
+          pagination: { total: 0, page: 1, totalPages: 1 },
+          summary: {}
+        }
+      }
+    })
+
+    await Campaigns.getCampaignReplies(12, { handled: false })
+
+    expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('handled=false'))
+  })
+
   test('getList powinien pobrać listę kampanii', async () => {
     const mockList = [{ id: 1, name: 'Test' }]
     axios.get.mockResolvedValueOnce({ data: { data: mockList, success: true } })

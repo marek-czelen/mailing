@@ -69,6 +69,15 @@
         hide-details
         style="max-width: 200px;"
       />
+      <v-select
+        v-model="handledFilter"
+        :items="handledOptions"
+        :label="t('campaigns.reply.handlingFilter')"
+        variant="outlined"
+        density="comfortable"
+        hide-details
+        style="max-width: 220px;"
+      />
     </div>
 
     <!-- Replies Table -->
@@ -108,6 +117,12 @@
         <div class="date-cell">
           {{ formatDateTime(item.receivedAt) }}
         </div>
+      </template>
+
+      <template v-slot:item.isHandled="{ item }">
+        <v-chip size="small" :color="item.isHandled ? 'success' : 'warning'" variant="tonal">
+          {{ item.isHandled ? t('campaigns.reply.handled') : t('campaigns.reply.unhandled') }}
+        </v-chip>
       </template>
 
       <!-- Miasto Column -->
@@ -159,13 +174,76 @@
             <div class="detail-item" v-if="selectedReply.mailAddress">
               <span class="label">{{ t('campaigns.reply.contact') }}:</span>
               <div class="contact-details">
-                <div><strong>{{ t('campaigns.reply.email') }}:</strong> {{ selectedReply.mailAddress.email }}</div>
+                <v-text-field
+                  v-model="contactEmailDraft"
+                  :label="t('campaigns.reply.email')"
+                  type="email"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  class="contact-email-input"
+                  :disabled="savingContact"
+                />
+                <v-btn
+                  size="small"
+                  variant="outlined"
+                  prepend-icon="mdi-content-save-outline"
+                  :loading="savingContact"
+                  :disabled="savingContact || contactEmailDraft.trim() === selectedReply.mailAddress.email"
+                  @click="saveContactEmail"
+                >
+                  {{ t('campaigns.reply.saveEmail') }}
+                </v-btn>
+                <div class="contact-status-row">
+                  <v-chip size="small" :color="selectedReply.mailAddress.unsubscribed ? 'error' : selectedReply.mailAddress.active ? 'success' : 'warning'" variant="tonal">
+                    {{ selectedReply.mailAddress.unsubscribed ? t('campaigns.reply.unsubscribed') : selectedReply.mailAddress.active ? t('campaigns.reply.active') : t('campaigns.reply.inactive') }}
+                  </v-chip>
+                  <v-btn
+                    v-if="!selectedReply.mailAddress.unsubscribed"
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                    prepend-icon="mdi-email-off-outline"
+                    :loading="savingContact"
+                    :disabled="savingContact"
+                    @click="unsubscribeContact"
+                  >
+                    {{ t('campaigns.reply.unsubscribe') }}
+                  </v-btn>
+                </div>
                 <div v-if="selectedReply.mailAddress.miasto">
                   <strong>{{ t('campaigns.reply.city') }}:</strong> {{ selectedReply.mailAddress.miasto }}
                 </div>
                 <div v-if="selectedReply.mailAddress.rodzaj">
                   <strong>{{ t('campaigns.reply.type') }}:</strong> {{ selectedReply.mailAddress.rodzaj }}
                 </div>
+              </div>
+            </div>
+            <v-alert v-if="contactActionMessage" :type="contactActionError ? 'error' : 'success'" density="compact" variant="tonal">
+              {{ contactActionMessage }}
+            </v-alert>
+            <div class="detail-item" v-if="selectedReply.mailAddress">
+              <span class="label">{{ t('campaigns.reply.historyTitle') }}:</span>
+              <div class="contact-history">
+                <v-progress-linear v-if="loadingHistory" indeterminate color="primary" />
+                <div v-else-if="!contactHistory.length" class="text-medium-emphasis">
+                  {{ t('campaigns.reply.historyEmpty') }}
+                </div>
+                <v-list v-else density="compact" class="history-list">
+                  <v-list-item v-for="entry in contactHistory" :key="entry.id" class="history-item">
+                    <v-list-item-title>
+                      {{ t(`campaigns.reply.historyFields.${entry.fieldName}`, entry.fieldName) }}
+                      <v-chip size="x-small" variant="tonal" class="ml-2">
+                        {{ t(`campaigns.reply.historyActions.${entry.action}`, entry.action) }}
+                      </v-chip>
+                    </v-list-item-title>
+                    <v-list-item-subtitle>
+                      {{ entry.oldValue || '—' }} -> {{ entry.newValue || '—' }}
+                      · {{ formatDateTime(entry.createdAt) }}
+                      <span v-if="entry.changedBy"> · {{ entry.changedBy }}</span>
+                    </v-list-item-subtitle>
+                  </v-list-item>
+                </v-list>
               </div>
             </div>
             <div class="detail-item">
@@ -188,6 +266,26 @@
               <span v-if="selectedReply.readAt" class="ml-2 text-caption">
                 ({{ t('campaigns.reply.readAt') }}: {{ formatDateTime(selectedReply.readAt) }})
               </span>
+            </div>
+            <div class="detail-item">
+              <span class="label">{{ t('campaigns.reply.handlingStatus') }}:</span>
+              <div class="handling-status-row">
+                <v-chip size="small" :color="selectedReply.isHandled ? 'success' : 'warning'" variant="tonal">
+                  {{ selectedReply.isHandled ? t('campaigns.reply.handled') : t('campaigns.reply.unhandled') }}
+                </v-chip>
+                <v-btn
+                  v-if="!selectedReply.isHandled"
+                  size="small"
+                  color="success"
+                  variant="outlined"
+                  prepend-icon="mdi-check-circle-outline"
+                  :loading="handlingReply"
+                  :disabled="handlingReply"
+                  @click="markHandled"
+                >
+                  {{ t('campaigns.reply.markHandled') }}
+                </v-btn>
+              </div>
             </div>
             <v-divider class="my-4" />
             <div class="reply-body">
@@ -237,17 +335,27 @@ const stats = ref({
 })
 const searchQuery = ref('')
 const statusFilter = ref(null)
+const handledFilter = ref(null)
 const options = ref({ page: 1, itemsPerPage: 50, sortBy: [{ key: 'receivedAt', order: 'desc' }] })
 const showReplyDialog = ref(false)
 const selectedReply = ref(null)
+const contactEmailDraft = ref('')
+const contactHistory = ref([])
+const loadingHistory = ref(false)
+const savingContact = ref(false)
+const handlingReply = ref(false)
+const contactActionMessage = ref('')
+const contactActionError = ref(false)
 let searchDebounce = null
 let fetchInProgress = false
+let fetchPending = false
 
 // Table headers
 const headers = computed(() => ([
   { title: t('campaigns.reply.headers.from'), key: 'fromEmail', sortable: true },
   { title: t('campaigns.reply.headers.subject'), key: 'subject', sortable: true },
   { title: t('campaigns.reply.headers.receivedAt'), key: 'receivedAt', sortable: true },
+  { title: t('campaigns.reply.headers.handling'), key: 'isHandled', sortable: false },
   { title: t('campaigns.reply.headers.city'), key: 'miasto', sortable: false },
   { title: t('campaigns.reply.headers.type'), key: 'rodzaj', sortable: false },
   { title: t('campaigns.reply.headers.actions'), key: 'actions', sortable: false, width: 120 }
@@ -260,6 +368,12 @@ const statusOptions = computed(() => ([
   { title: t('campaigns.reply.statusUnidentified'), value: false }
 ]))
 
+const handledOptions = computed(() => ([
+  { title: t('campaigns.reply.handlingAll'), value: null },
+  { title: t('campaigns.reply.unhandled'), value: false },
+  { title: t('campaigns.reply.handled'), value: true }
+]))
+
 // Computed
 const replyRate = computed(() => {
   if (!stats.value.replyRate) return '0.0'
@@ -268,7 +382,11 @@ const replyRate = computed(() => {
 
 // Methods
 async function fetchReplies() {
-  if (fetchInProgress || !props.campaign?.id) return
+  if (!props.campaign?.id) return
+  if (fetchInProgress) {
+    fetchPending = true
+    return
+  }
   fetchInProgress = true
   
   try {
@@ -276,7 +394,8 @@ async function fetchReplies() {
     const params = {
       page: options.value.page,
       limit: options.value.itemsPerPage || 50,
-      search: searchQuery.value || ''
+      search: searchQuery.value || '',
+      handled: handledFilter.value
     }
     
     // Sortowanie
@@ -311,6 +430,10 @@ async function fetchReplies() {
   } finally {
     loading.value = false
     fetchInProgress = false
+    if (fetchPending) {
+      fetchPending = false
+      fetchReplies()
+    }
   }
 }
 
@@ -346,10 +469,108 @@ async function viewReply(reply) {
     // Pobierz pełne szczegóły odpowiedzi
     const fullReply = await Campaigns.getReplyById(reply.id)
     selectedReply.value = fullReply
+    contactEmailDraft.value = fullReply.mailAddress?.email || ''
+    contactHistory.value = []
+    contactActionMessage.value = ''
     showReplyDialog.value = true
+    if (fullReply.mailAddress) await fetchContactHistory(fullReply.id)
   } catch (e) {
     console.error('Błąd pobierania szczegółów odpowiedzi:', e)
   }
+}
+
+async function fetchContactHistory(replyId) {
+  loadingHistory.value = true
+  try {
+    contactHistory.value = await Campaigns.getReplyContactHistory(replyId)
+  } catch (e) {
+    contactHistory.value = []
+    showContactActionError(e)
+  } finally {
+    loadingHistory.value = false
+  }
+}
+
+async function saveContactEmail() {
+  if (!selectedReply.value?.mailAddress || savingContact.value) return
+  savingContact.value = true
+  contactActionMessage.value = ''
+  try {
+    const result = await Campaigns.updateReplyContactEmail(selectedReply.value.id, contactEmailDraft.value)
+    selectedReply.value.mailAddress.email = result.contact.email
+    selectedReply.value.isHandled = result.isHandled
+    syncHandledReplyInList(selectedReply.value.id)
+    contactEmailDraft.value = result.contact.email
+    contactActionError.value = false
+    contactActionMessage.value = t('campaigns.reply.emailUpdated')
+    await fetchReplies()
+    await fetchContactHistory(selectedReply.value.id)
+  } catch (e) {
+    showContactActionError(e)
+  } finally {
+    savingContact.value = false
+  }
+}
+
+async function unsubscribeContact() {
+  if (!selectedReply.value?.mailAddress || savingContact.value) return
+  if (!window.confirm(t('campaigns.reply.confirmUnsubscribe'))) return
+  savingContact.value = true
+  contactActionMessage.value = ''
+  try {
+    const result = await Campaigns.unsubscribeReplyContact(selectedReply.value.id)
+    selectedReply.value.mailAddress.unsubscribed = true
+    selectedReply.value.mailAddress.active = 0
+    selectedReply.value.isHandled = result.isHandled
+    syncHandledReplyInList(selectedReply.value.id)
+    contactEmailDraft.value = selectedReply.value.mailAddress.email
+    contactActionError.value = false
+    contactActionMessage.value = t('campaigns.reply.contactUnsubscribed')
+    await fetchReplies()
+    await fetchContactHistory(selectedReply.value.id)
+  } catch (e) {
+    showContactActionError(e)
+  } finally {
+    savingContact.value = false
+  }
+}
+
+async function markHandled() {
+  if (!selectedReply.value || handlingReply.value || selectedReply.value.isHandled) return
+  handlingReply.value = true
+  contactActionMessage.value = ''
+  try {
+    const result = await Campaigns.markReplyHandled(selectedReply.value.id)
+    selectedReply.value.isHandled = result.isHandled
+    syncHandledReplyInList(selectedReply.value.id)
+    contactActionError.value = false
+    contactActionMessage.value = t('campaigns.reply.handledSuccess')
+    await fetchReplies()
+  } catch (e) {
+    showContactActionError(e)
+  } finally {
+    handlingReply.value = false
+  }
+}
+
+function syncHandledReplyInList(replyId) {
+  const index = replies.value.findIndex(reply => reply.id === replyId)
+  if (index === -1) return
+
+  if (handledFilter.value === false) {
+    replies.value.splice(index, 1)
+    totalReplies.value = Math.max(0, totalReplies.value - 1)
+    const pageSize = options.value.itemsPerPage || 50
+    options.value.page = Math.max(1, Math.min(options.value.page, Math.ceil(totalReplies.value / pageSize) || 1))
+    return
+  }
+
+  replies.value[index].isHandled = true
+}
+
+function showContactActionError(error) {
+  contactActionError.value = true
+  contactActionMessage.value = error.response?.data?.response?.message || error.response?.data?.message || error.message || t('campaigns.reply.contactActionError')
 }
 
 function formatDateTime(date) {
@@ -367,6 +588,15 @@ watch(() => props.campaign?.id, () => {
 watch(statusFilter, () => {
   options.value.page = 1
   fetchReplies()
+})
+
+watch(handledFilter, () => {
+  options.value.page = 1
+  fetchReplies()
+})
+
+watch(showReplyDialog, (isOpen, wasOpen) => {
+  if (wasOpen && !isOpen) fetchReplies()
 })
 
 watch(searchQuery, () => {
@@ -424,6 +654,13 @@ onMounted(() => {
 .date-cell {
   color: #666;
   font-size: 0.9rem;
+}
+
+.handling-status-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .action-buttons {
@@ -508,6 +745,31 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: 100%;
+}
+
+.contact-email-input {
+  max-width: 420px;
+}
+
+.contact-status-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.contact-history {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-list {
+  padding: 0;
+}
+
+.history-item {
+  padding-inline: 0;
 }
 
 .no-content {

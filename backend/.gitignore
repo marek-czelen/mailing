@@ -123,3 +123,6 @@ build/Release
 
 # PM2 logs
 .pm2/
+
+# Report files
+reports/*

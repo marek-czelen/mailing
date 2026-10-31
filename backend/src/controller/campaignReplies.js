@@ -2,7 +2,9 @@ import { Response } from '../include/response.js';
 import CampaignReply from '../models/campaignReply.model.js';
 import MarketingCampanies from '../models/marketingCampanies.model.js';
 import MailAddress from '../models/mailAddress.model.js';
+import MailAddressHistory from '../models/mailAddressHistory.model.js';
 import { Admin } from '../include/admin.js';
+import { recordMailAddressHistory } from '../include/mailAddressHistory.js';
 import { Op } from 'sequelize';
 import CheckMailboxTask from '../tasks/checkMailbox.js';
 
@@ -70,6 +72,7 @@ export async function getCampaignReplies(req, res) {
             sortOrder = 'desc',
             search = '',
             hasContact = null,
+            handled = null,
             dateFrom = null,
             dateTo = null
         } = req.query;
@@ -117,6 +120,12 @@ export async function getCampaignReplies(req, res) {
             whereClause.mailAddressId = { [Op.ne]: null };
         } else if (hasContact === 'false') {
             whereClause.mailAddressId = null;
+        }
+
+        if (handled === 'true') {
+            whereClause.isHandled = 1;
+        } else if (handled === 'false') {
+            whereClause.isHandled = 0;
         }
 
         // Filtr po dacie
@@ -175,6 +184,7 @@ export async function getCampaignReplies(req, res) {
                 fromEmail: reply.fromEmail,
                 subject: reply.subject,
                 receivedAt: reply.receivedAt,
+                isHandled: Boolean(reply.isHandled),
                 hasContact: !!reply.mailAddressId,
                 mailAddress: reply.MailAddress ? {
                     id: reply.MailAddress.id,
@@ -592,7 +602,7 @@ export async function getReplyById(req, res) {
                 {
                     model: MailAddress,
                     as: 'MailAddress',
-                    attributes: ['id', 'mailAddress', 'miasto', 'rodzaj', 'phone', 'active', 'unsubscribesDate'],
+                    attributes: ['id', 'mailAddress', 'miasto', 'rodzaj', 'phone', 'active', 'unsubscribesDate', 'bounceDate', 'bounceCount'],
                     required: false
                 }
             ]
@@ -647,6 +657,229 @@ export async function getReplyById(req, res) {
     } catch (error) {
         console.error('[getReplyById] Error:', error);
         res.status(500).send(new Response(null, false, `Failed to fetch reply details. ${error.message}`));
+    }
+}
+
+async function findReplyContact(replyId, customerId) {
+    const reply = await CampaignReply.findOne({
+        where: { id: replyId, isBounce: false },
+        include: [
+            {
+                model: MarketingCampanies,
+                as: 'Campaign',
+                attributes: ['id', 'customerId'],
+                required: true
+            },
+            {
+                model: MailAddress,
+                as: 'MailAddress',
+                attributes: ['id', 'mailAddress', 'databaseId', 'customerId', 'active', 'unsubscribesDate'],
+                required: true
+            }
+        ]
+    });
+
+    if (!reply || reply.Campaign.customerId !== customerId || reply.MailAddress.customerId !== customerId) {
+        return null;
+    }
+    return reply;
+}
+
+export async function markReplyHandled(req, res) {
+    try {
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, 'Unauthorized.'));
+        }
+
+        const reply = await CampaignReply.findOne({
+            where: {
+                id: req.params.replyId,
+                isBounce: { [Op.or]: [0, null] }
+            },
+            include: [{
+                model: MarketingCampanies,
+                as: 'Campaign',
+                attributes: ['id', 'customerId'],
+                required: true
+            }]
+        });
+        if (!reply || reply.Campaign.customerId !== userData.customerId) {
+            return res.status(404).send(new Response(null, false, 'Odpowiedź nie istnieje.'));
+        }
+
+        if (!reply.isHandled) await reply.update({ isHandled: true });
+        res.send(new Response({ id: reply.id, isHandled: true }, true, 'Odpowiedź została oznaczona jako obsłużona.'));
+    } catch (error) {
+        console.error('[markReplyHandled] Error:', error);
+        res.status(500).send(new Response(null, false, `Nie udało się oznaczyć odpowiedzi. ${error.message}`));
+    }
+}
+
+export async function updateReplyContactEmail(req, res) {
+    try {
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, 'Unauthorized.'));
+        }
+
+        const email = typeof req.body.email === 'string' ? req.body.email.trim() : '';
+        if (email.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).send(new Response(null, false, 'Podaj prawidłowy adres email.'));
+        }
+
+        const reply = await findReplyContact(req.params.replyId, userData.customerId);
+        if (!reply) {
+            return res.status(404).send(new Response(null, false, 'Odpowiedź lub kontakt nie istnieje.'));
+        }
+
+        const contact = reply.MailAddress;
+        if (contact.mailAddress === email) {
+            return res.send(new Response({ contact: { id: contact.id, email: contact.mailAddress } }, true, 'Adres email bez zmian.'));
+        }
+
+        const duplicate = await MailAddress.findOne({
+            where: {
+                id: { [Op.ne]: contact.id },
+                customerId: contact.customerId,
+                databaseId: contact.databaseId,
+                mailAddress: email
+            }
+        });
+        if (duplicate) {
+            return res.status(409).send(new Response(null, false, 'Ten adres email już istnieje w tej bazie kontaktów.'));
+        }
+
+        const oldEmail = contact.mailAddress;
+        const transaction = await MailAddress.sequelize.transaction();
+        try {
+            await contact.update({ mailAddress: email }, { transaction });
+            await recordMailAddressHistory({
+                mailAddressId: contact.id,
+                customerId: contact.customerId,
+                campaignId: reply.campaignId,
+                replyId: reply.id,
+                action: 'email_changed',
+                changes: [{ fieldName: 'mailAddress', oldValue: oldEmail, newValue: email }],
+                changedBy: userData.email,
+                transaction
+            });
+            await reply.update({ isHandled: true }, { transaction });
+            await transaction.commit();
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
+
+        res.send(new Response({
+            contact: {
+                id: contact.id,
+                email: contact.mailAddress,
+                active: contact.active,
+                unsubscribed: Boolean(contact.unsubscribesDate)
+            },
+            isHandled: true
+        }, true, 'Adres email został zmieniony.'));
+    } catch (error) {
+        console.error('[updateReplyContactEmail] Error:', error);
+        res.status(500).send(new Response(null, false, `Nie udało się zmienić adresu email. ${error.message}`));
+    }
+}
+
+export async function unsubscribeReplyContact(req, res) {
+    try {
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, 'Unauthorized.'));
+        }
+
+        const reply = await findReplyContact(req.params.replyId, userData.customerId);
+        if (!reply) {
+            return res.status(404).send(new Response(null, false, 'Odpowiedź lub kontakt nie istnieje.'));
+        }
+
+        const contact = reply.MailAddress;
+        const transaction = await MailAddress.sequelize.transaction();
+        let updatedCount = 0;
+        const unsubscribeDate = new Date();
+        try {
+            const contacts = await MailAddress.findAll({
+                where: {
+                    mailAddress: contact.mailAddress,
+                    customerId: contact.customerId,
+                    unsubscribesDate: null
+                },
+                transaction,
+                lock: transaction.LOCK.UPDATE
+            });
+
+            for (const duplicate of contacts) {
+                const oldActive = duplicate.active;
+                await duplicate.update({ unsubscribesDate: unsubscribeDate, active: 0 }, { transaction });
+                await recordMailAddressHistory({
+                    mailAddressId: duplicate.id,
+                    customerId: duplicate.customerId,
+                    campaignId: reply.campaignId,
+                    replyId: reply.id,
+                    action: 'unsubscribed',
+                    changes: [
+                        { fieldName: 'unsubscribesDate', oldValue: null, newValue: unsubscribeDate },
+                        { fieldName: 'active', oldValue: oldActive, newValue: 0 }
+                    ],
+                    changedBy: userData.email,
+                    transaction
+                });
+                updatedCount += 1;
+            }
+            await reply.update({ isHandled: true }, { transaction });
+            await transaction.commit();
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
+
+        res.send(new Response({
+            contact: {
+                id: contact.id,
+                email: contact.mailAddress,
+                active: 0,
+                unsubscribed: true,
+                unsubscribesDate: unsubscribeDate
+            },
+            updatedCount,
+            isHandled: true
+        }, true, 'Odbiorca został wypisany z mailingów.'));
+    } catch (error) {
+        console.error('[unsubscribeReplyContact] Error:', error);
+        res.status(500).send(new Response(null, false, `Nie udało się wypisać odbiorcy. ${error.message}`));
+    }
+}
+
+export async function getReplyContactHistory(req, res) {
+    try {
+        const userData = await Admin.getCurrentUserData(req.headers.authorization);
+        if (!userData) {
+            return res.status(403).send(new Response(null, false, 'Unauthorized.'));
+        }
+
+        const reply = await findReplyContact(req.params.replyId, userData.customerId);
+        if (!reply) {
+            return res.status(404).send(new Response(null, false, 'Odpowiedź lub kontakt nie istnieje.'));
+        }
+
+        const history = await MailAddressHistory.findAll({
+            where: {
+                mailAddressId: reply.MailAddress.id,
+                customerId: userData.customerId
+            },
+            order: [['createdAt', 'DESC'], ['id', 'DESC']],
+            limit: 100
+        });
+
+        res.send(new Response({ history }, true, 'Historia kontaktu została pobrana.'));
+    } catch (error) {
+        console.error('[getReplyContactHistory] Error:', error);
+        res.status(500).send(new Response(null, false, `Nie udało się pobrać historii kontaktu. ${error.message}`));
     }
 }
 
@@ -707,7 +940,7 @@ export async function getReplyFullContent(req, res) {
                 {
                     model: MailAddress,
                     as: 'MailAddress',
-                    attributes: ['id', 'mailAddress', 'miasto', 'rodzaj'],
+                    attributes: ['id', 'mailAddress', 'miasto', 'rodzaj', 'active', 'unsubscribesDate'],
                     required: false
                 }
             ]
@@ -831,6 +1064,7 @@ export async function getReplyFullContent(req, res) {
                 bodyFullParsedHtml: parsedHtml, // oczyszczone, kompletne HTML gotowe do osadzenia
                 isRead: reply.isRead,
                 readAt: reply.readAt,
+                isHandled: Boolean(reply.isHandled),
                 wasUnread,
                 campaign: {
                     id: reply.Campaign.id,
@@ -841,7 +1075,10 @@ export async function getReplyFullContent(req, res) {
                     id: reply.MailAddress.id,
                     email: reply.MailAddress.mailAddress,
                     miasto: reply.MailAddress.miasto,
-                    rodzaj: reply.MailAddress.rodzaj
+                    rodzaj: reply.MailAddress.rodzaj,
+                    active: reply.MailAddress.active,
+                    unsubscribed: Boolean(reply.MailAddress.unsubscribesDate),
+                    unsubscribesDate: reply.MailAddress.unsubscribesDate
                 } : null
             }
         };

@@ -73,6 +73,12 @@ const CampaignReply = sequelize.define('campaign_replies', {
         defaultValue: 0,
         field: 'is_read'
     },
+    isHandled: {
+        type: DataTypes.TINYINT,
+        allowNull: false,
+        defaultValue: 0,
+        field: 'is_handled'
+    },
     readAt: {
         type: DataTypes.DATE,
         allowNull: true,

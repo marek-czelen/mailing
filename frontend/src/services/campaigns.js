@@ -132,6 +132,9 @@ export class Campaigns {
     if (params.hasContact !== null && params.hasContact !== undefined) {
       queryParams.append('hasContact', params.hasContact);
     }
+    if (params.handled !== null && params.handled !== undefined) {
+      queryParams.append('handled', params.handled);
+    }
     if (params.dateFrom) {
       queryParams.append('dateFrom', params.dateFrom);
     }
@@ -215,6 +218,9 @@ export class Campaigns {
     if (params.hasContact !== null && params.hasContact !== undefined) {
       queryParams.append('hasContact', params.hasContact);
     }
+    if (params.handled !== null && params.handled !== undefined) {
+      queryParams.append('handled', params.handled);
+    }
     if (params.dateFrom) {
       queryParams.append('dateFrom', params.dateFrom);
     }
@@ -251,6 +257,26 @@ export class Campaigns {
   static async getReplyById(replyId) {
     const response = await axios.get(`/mailing/replies/${replyId}/full`);
     return response.data.data.reply;
+  }
+
+  static async markReplyHandled(replyId) {
+    const response = await axios.post(`/mailing/replies/${replyId}/handled`);
+    return response.data.data;
+  }
+
+  static async updateReplyContactEmail(replyId, email) {
+    const response = await axios.patch(`/mailing/replies/${replyId}/contact-email`, { email });
+    return response.data.data;
+  }
+
+  static async unsubscribeReplyContact(replyId) {
+    const response = await axios.post(`/mailing/replies/${replyId}/unsubscribe`);
+    return response.data.data;
+  }
+
+  static async getReplyContactHistory(replyId) {
+    const response = await axios.get(`/mailing/replies/${replyId}/contact-history`);
+    return response.data.data.history || [];
   }
 
   /**
