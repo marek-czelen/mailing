@@ -2,38 +2,16 @@
   <div class="dashboard-container">
     <header class="page-header">
       <div class="header-copy">
-        <div class="eyebrow"><span class="live-dot"></span> Workspace / Growth</div>
-        <h1>Wysyłka ma tempo.</h1>
-        <p>Dobry poranek, zespole. Oto najważniejsze sygnały z ostatnich 30 dni.</p>
+        <div class="eyebrow"><span class="live-dot"></span> Centrum pracy / Mailing</div>
+        <h1>Przegląd kampanii</h1>
+        <p>Kampanie, bazy odbiorców i bieżący stan wysyłek.</p>
       </div>
 
       <div class="header-actions">
-        <button class="button button-quiet" type="button" title="Odśwież dane" @click="refreshDashboard">
+        <button class="button button-quiet" type="button" title="Odśwież dane" :disabled="isLoading" @click="refreshDashboard">
           <v-icon icon="mdi-refresh" size="18" :class="{ 'spin': isLoading }" />
           <span>Odśwież</span>
         </button>
-
-        <v-menu location="bottom end">
-          <template #activator="{ props }">
-            <button class="button button-quiet" type="button" v-bind="props">
-              <v-icon icon="mdi-tune-variant" size="18" />
-              <span>Stan widoku</span>
-              <v-icon icon="mdi-chevron-down" size="16" />
-            </button>
-          </template>
-          <v-list class="state-menu" density="compact">
-            <v-list-subheader>Podgląd stanów</v-list-subheader>
-            <v-list-item
-              v-for="option in stateOptions"
-              :key="option.value"
-              :active="dashboardState === option.value"
-              @click="setState(option.value)"
-            >
-              <template #prepend><v-icon :icon="option.icon" size="18" /></template>
-              <v-list-item-title>{{ option.label }}</v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-menu>
 
         <button class="button button-primary" type="button" @click="goTo('/campaigns')">
           <v-icon icon="mdi-plus" size="18" />
@@ -59,20 +37,19 @@
             <button v-if="dashboardState === 'error'" class="button button-primary" type="button" @click="retryDashboard">
               <v-icon icon="mdi-refresh" size="18" /> Spróbuj ponownie
             </button>
-            <button v-else-if="dashboardState === 'forbidden'" class="button button-primary" type="button" @click="goTo('/dashboard')">
-              <v-icon icon="mdi-arrow-left" size="18" /> Wróć do dashboardu
-            </button>
             <button v-else class="button button-primary" type="button" @click="goTo('/campaigns')">
               <v-icon icon="mdi-plus" size="18" /> Utwórz kampanię
             </button>
-            <button class="button button-quiet" type="button" @click="setState('ready')">Pokaż dane demo</button>
           </div>
         </div>
       </section>
 
       <template v-else>
-        <div v-if="dashboardState === 'success'" class="success-banner" role="status">
-          <v-icon icon="mdi-check-circle" size="20" /> Dane zostały odświeżone przed chwilą.
+        <div v-if="partialError" class="notice-banner" role="status">
+          <v-icon icon="mdi-alert-outline" size="20" /> {{ partialError }}
+        </div>
+        <div v-else-if="lastUpdated" class="success-banner" role="status">
+          <v-icon icon="mdi-check-circle" size="20" /> Dane pobrano: {{ formatDateTime(lastUpdated) }}
         </div>
 
         <section class="metric-grid" aria-label="Najważniejsze metryki">
@@ -83,11 +60,7 @@
             </div>
             <strong>{{ metric.value }}</strong>
             <div class="metric-footer">
-              <span class="trend" :class="metric.trend >= 0 ? 'trend-up' : 'trend-down'">
-                <v-icon :icon="metric.trend >= 0 ? 'mdi-arrow-top-right' : 'mdi-arrow-bottom-right'" size="15" />
-                {{ Math.abs(metric.trend) }}%
-              </span>
-              <span>vs. poprzedni okres</span>
+              <span class="metric-detail">{{ metric.detail }}</span>
             </div>
           </article>
         </section>
@@ -96,45 +69,44 @@
           <article class="panel performance-panel">
             <div class="panel-heading">
               <div>
-                <div class="eyebrow">Aktywność</div>
-                <h2>Wysyłki i zaangażowanie</h2>
+                <div class="eyebrow">Ostatnie 7 dni</div>
+                <h2>Wysłane kampanie</h2>
               </div>
-              <button class="icon-button" type="button" title="Więcej opcji"><v-icon icon="mdi-dots-horizontal" size="21" /></button>
+              <button class="icon-button" type="button" title="Otwórz kampanie" @click="goTo('/campaigns')"><v-icon icon="mdi-arrow-top-right" size="19" /></button>
             </div>
 
             <div class="chart-legend">
-              <span><i class="legend-mark legend-sent"></i> Wysłane</span>
-              <span><i class="legend-mark legend-opened"></i> Otwarte</span>
-              <strong>48 290 <small>wiadomości</small></strong>
+              <span><i class="legend-mark legend-sent"></i> Kampanie</span>
+              <strong>{{ formatNumber(chartTotal) }} <small>wysłanych</small></strong>
             </div>
 
-            <div class="activity-chart" aria-label="Wykres aktywności wysyłek">
-              <div class="chart-axis"><span>5k</span><span>4k</span><span>3k</span><span>2k</span><span>1k</span><span>0</span></div>
+            <div v-if="hasChartData" class="activity-chart" aria-label="Liczba wysłanych kampanii w ostatnich siedmiu dniach">
               <div class="chart-body">
                 <div class="chart-guides"><i v-for="line in 6" :key="line"></i></div>
                 <div class="chart-columns">
-                  <div v-for="day in chartDays" :key="day.label" class="chart-column">
-                    <div class="bar-pair"><span class="bar bar-sent" :style="{ height: `${day.sent}%` }"></span><span class="bar bar-opened" :style="{ height: `${day.opened}%` }"></span></div>
+                  <div v-for="day in chartDays" :key="day.key" class="chart-column">
+                    <div class="bar-pair"><span v-if="day.sent" class="bar bar-sent" :style="{ height: `${day.height}%` }"></span></div>
                     <small>{{ day.label }}</small>
                   </div>
                 </div>
               </div>
             </div>
+            <div v-else class="panel-empty">Brak wysłanych kampanii w ostatnich 7 dniach.</div>
           </article>
 
           <article class="panel health-panel">
             <div class="panel-heading">
-              <div><div class="eyebrow">Dostarczalność</div><h2>Kondycja kanału</h2></div>
-              <span class="health-badge"><i></i> Stabilna</span>
+              <div><div class="eyebrow">Status</div><h2>Kampanie według stanu</h2></div>
+              <span class="health-badge">{{ formatNumber(activeCampaigns.length) }} kamp.</span>
             </div>
-            <div class="health-score"><strong>98,7<span>%</span></strong><span>reputacja wysyłki</span></div>
+            <div class="health-score"><strong>{{ formatNumber(activeCampaigns.length) }}</strong><span>niearchiwizowanych kampanii</span></div>
             <div class="progress-list">
-              <div v-for="item in healthMetrics" :key="item.label" class="progress-row">
-                <div><span>{{ item.label }}</span><strong>{{ item.value }}%</strong></div>
-                <div class="progress-track"><span :style="{ width: `${item.value}%` }" :class="`progress-${item.tone}`"></span></div>
+              <div v-for="item in campaignStatusMetrics" :key="item.label" class="progress-row">
+                <div><span>{{ item.label }}</span><strong>{{ formatNumber(item.count) }}</strong></div>
+                <div class="progress-track"><span :style="{ width: `${item.percent}%` }" :class="`progress-${item.tone}`"></span></div>
               </div>
             </div>
-            <div class="health-note"><v-icon icon="mdi-shield-check-outline" size="18" /> Wszystkie systemy działają poprawnie.</div>
+            <div class="health-note"><v-icon icon="mdi-information-outline" size="18" /> Statusy wynikają z ustawień kampanii.</div>
           </article>
         </section>
 
@@ -146,14 +118,15 @@
 
           <div class="campaign-table-wrap">
             <table class="campaign-table">
-              <thead><tr><th>Kampania</th><th>Odbiorcy</th><th>Otwarcia</th><th>Data</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th>Kampania</th><th>Baza odbiorców</th><th>Wysłano / termin</th><th>Status</th><th></th></tr></thead>
               <tbody>
-                <tr v-for="campaign in campaigns" :key="campaign.name">
-                  <td><div class="campaign-name"><span class="campaign-mark" :class="`mark-${campaign.tone}`"></span><div><strong>{{ campaign.name }}</strong><small>{{ campaign.type }}</small></div></div></td>
-                  <td>{{ campaign.recipients }}</td><td><strong>{{ campaign.openRate }}</strong></td><td>{{ campaign.date }}</td>
+                <tr v-for="campaign in recentCampaigns" :key="campaign.id">
+                  <td><div class="campaign-name"><span class="campaign-mark" :class="`mark-${campaign.tone}`"></span><div><strong>{{ campaign.name }}</strong><small>{{ campaign.subject || 'Bez tematu' }}</small></div></div></td>
+                  <td>{{ campaign.databaseName }}</td><td>{{ campaign.dateLabel }}</td>
                   <td><span class="status-pill" :class="`status-${campaign.statusTone}`"><i></i>{{ campaign.status }}</span></td>
                   <td><button class="icon-button" type="button" title="Otwórz kampanię" @click="goTo('/campaigns')"><v-icon icon="mdi-arrow-top-right" size="18" /></button></td>
                 </tr>
+                <tr v-if="!recentCampaigns.length"><td colspan="5" class="table-empty">Brak kampanii do wyświetlenia.</td></tr>
               </tbody>
             </table>
           </div>
@@ -161,9 +134,10 @@
 
         <section class="bottom-grid">
           <article class="panel activity-panel">
-            <div class="panel-heading"><div><div class="eyebrow">Dziennik</div><h2>Ostatnia aktywność</h2></div><button class="icon-button" type="button" title="Więcej opcji"><v-icon icon="mdi-dots-horizontal" size="21" /></button></div>
+            <div class="panel-heading"><div><div class="eyebrow">Odbiorcy</div><h2>Bazy z największą liczbą rekordów</h2></div><button class="icon-button" type="button" title="Otwórz bazy" @click="goTo('/databases')"><v-icon icon="mdi-arrow-top-right" size="19" /></button></div>
             <div class="activity-list">
-              <div v-for="entry in activity" :key="entry.title" class="activity-item"><span class="activity-icon" :class="`activity-${entry.tone}`"><v-icon :icon="entry.icon" size="17" /></span><div><strong>{{ entry.title }}</strong><small>{{ entry.time }}</small></div><v-icon icon="mdi-chevron-right" size="18" class="activity-arrow" /></div>
+              <div v-for="database in databaseHighlights" :key="database.id" class="activity-item"><span class="activity-icon activity-blue"><v-icon icon="mdi-database-outline" size="17" /></span><div><strong>{{ database.name }}</strong><small>{{ formatNumber(database.contactsCount) }} rekordów kontaktów</small></div><v-icon icon="mdi-chevron-right" size="18" class="activity-arrow" /></div>
+              <div v-if="!databaseHighlights.length" class="panel-empty">Brak baz odbiorców.</div>
             </div>
           </article>
 
@@ -180,49 +154,189 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Campaigns } from '../services/campaigns'
+import { Databases } from '../services/databases'
 
 const router = useRouter()
-const dashboardState = ref('ready')
-
-const stateOptions = [
-  { value: 'ready', label: 'Dane gotowe', icon: 'mdi-check-circle-outline' }, { value: 'loading', label: 'Ładowanie', icon: 'mdi-loading' },
-  { value: 'empty', label: 'Pusty stan', icon: 'mdi-inbox-outline' }, { value: 'error', label: 'Błąd połączenia', icon: 'mdi-alert-circle-outline' },
-  { value: 'forbidden', label: 'Brak uprawnień', icon: 'mdi-lock-outline' }, { value: 'success', label: 'Sukces', icon: 'mdi-check-decagram-outline' }
-]
-
-const metrics = [
-  { label: 'Wysłane wiadomości', value: '48 290', trend: 12.4, icon: 'mdi-send-outline', tone: 'coral' }, { label: 'Średni open rate', value: '42,8%', trend: 5.8, icon: 'mdi-email-open-outline', tone: 'blue' },
-  { label: 'Średni click rate', value: '8,4%', trend: -1.2, icon: 'mdi-cursor-default-click-outline', tone: 'amber' }, { label: 'Aktywne kontakty', value: '12 640', trend: 18.1, icon: 'mdi-account-multiple-outline', tone: 'green' }
-]
-const chartDays = [
-  { label: 'Pon', sent: 56, opened: 35 }, { label: 'Wt', sent: 72, opened: 48 }, { label: 'Śr', sent: 61, opened: 42 }, { label: 'Czw', sent: 88, opened: 57 },
-  { label: 'Pt', sent: 69, opened: 47 }, { label: 'Sob', sent: 38, opened: 24 }, { label: 'Nd', sent: 48, opened: 31 }
-]
-const healthMetrics = [
-  { label: 'Dostarczalność', value: 99.2, tone: 'green' }, { label: 'Otwarcia', value: 86, tone: 'blue' }, { label: 'Brak odbić', value: 97.8, tone: 'coral' }
-]
-const campaigns = [
-  { name: 'Letnia premiera / segment VIP', type: 'Newsletter', recipients: '4 820', openRate: '51,2%', date: 'Dzisiaj, 09:42', status: 'Wysłana', statusTone: 'success', tone: 'coral' }, { name: 'Raport trendów Q2', type: 'Automatyzacja', recipients: '2 190', openRate: '44,8%', date: 'Wczoraj, 16:10', status: 'Wysłana', statusTone: 'success', tone: 'blue' },
-  { name: 'Onboarding nowych klientów', type: 'Seria powitalna', recipients: '—', openRate: '—', date: 'Jutro, 08:00', status: 'Zaplanowana', statusTone: 'scheduled', tone: 'amber' }, { name: 'Weekendowy wybór redakcji', type: 'Newsletter', recipients: '3 640', openRate: '—', date: 'Szkic zapisany', status: 'Szkic', statusTone: 'draft', tone: 'green' }
-]
-const activity = [
-  { title: 'Kampania została wysłana', time: 'Letnia premiera · 8 min temu', icon: 'mdi-send-check-outline', tone: 'coral' }, { title: 'Zaimportowano kontakty', time: 'Baza „Newsletter PL” · 42 min temu', icon: 'mdi-account-plus-outline', tone: 'blue' }, { title: 'Zaktualizowano szablon', time: 'Onboarding 2026 · 2 godz. temu', icon: 'mdi-file-edit-outline', tone: 'green' }
-]
+const dashboardState = ref('loading')
+const campaigns = ref([])
+const databases = ref([])
+const campaignsAvailable = ref(false)
+const databasesAvailable = ref(false)
+const partialError = ref('')
+const lastUpdated = ref(null)
 
 const isLoading = computed(() => dashboardState.value === 'loading')
-const isBlockingState = computed(() => ['empty', 'error', 'forbidden'].includes(dashboardState.value))
+const isBlockingState = computed(() => ['empty', 'error'].includes(dashboardState.value))
 const stateCopy = computed(() => ({
-  empty: { eyebrow: 'Brak danych', title: 'Jeszcze nic tu nie ma.', description: 'Utwórz pierwszą kampanię, aby zobaczyć wyniki i aktywność zespołu.', icon: 'mdi-inbox-outline' },
-  error: { eyebrow: 'Nie udało się pobrać danych', title: 'Połączenie wymaga uwagi.', description: 'Serwer nie odpowiedział poprawnie. Dane demonstracyjne pozostają dostępne po ponowieniu próby.', icon: 'mdi-cloud-alert-outline' },
-  forbidden: { eyebrow: 'Dostęp ograniczony', title: 'Nie masz dostępu do tego widoku.', description: 'Poproś administratora workspace o rolę analityka lub menedżera kampanii.', icon: 'mdi-lock-outline' }
+  empty: { eyebrow: 'Brak danych', title: 'Zacznij od kampanii lub bazy odbiorców.', description: 'Po dodaniu danych zobaczysz tu aktualny stan wysyłek i kontaktów.', icon: 'mdi-inbox-outline' },
+  error: { eyebrow: 'Nie udało się pobrać danych', title: 'Dashboard jest chwilowo niedostępny.', description: 'Sprawdź połączenie z serwerem i spróbuj ponownie.', icon: 'mdi-cloud-alert-outline' }
 }[dashboardState.value] || { eyebrow: '', title: '', description: '', icon: 'mdi-information-outline' }))
 
+const activeCampaigns = computed(() => campaigns.value.filter(campaign => !campaign.archivedAt))
+const sentCampaigns = computed(() => activeCampaigns.value.filter(campaign => isTrue(campaign.sent)))
+const scheduledCampaigns = computed(() => activeCampaigns.value.filter(campaign => (
+  !isTrue(campaign.sent) && !isTrue(campaign.sendingInProgress) && isFuture(campaign.dateStart)
+)))
+const sendingCampaigns = computed(() => activeCampaigns.value.filter(campaign => isTrue(campaign.sendingInProgress)))
+const draftCampaigns = computed(() => activeCampaigns.value.length - sentCampaigns.value.length - scheduledCampaigns.value.length - sendingCampaigns.value.length)
+const totalContactRecords = computed(() => databases.value.reduce((sum, database) => sum + toCount(database.contactsCount), 0))
+
+const metrics = computed(() => ([
+  {
+    label: 'Kampanie',
+    value: campaignsAvailable.value ? formatNumber(activeCampaigns.value.length) : '—',
+    detail: 'niearchiwizowane',
+    icon: 'mdi-email-multiple-outline',
+    tone: 'coral'
+  },
+  {
+    label: 'Wysłane',
+    value: campaignsAvailable.value ? formatNumber(sentCampaigns.value.length) : '—',
+    detail: 'kampanie z potwierdzoną wysyłką',
+    icon: 'mdi-send-check-outline',
+    tone: 'green'
+  },
+  {
+    label: 'Zaplanowane',
+    value: campaignsAvailable.value ? formatNumber(scheduledCampaigns.value.length) : '—',
+    detail: 'z terminem w przyszłości',
+    icon: 'mdi-calendar-clock-outline',
+    tone: 'amber'
+  },
+  {
+    label: 'Rekordy kontaktów',
+    value: databasesAvailable.value ? formatNumber(totalContactRecords.value) : '—',
+    detail: databasesAvailable.value ? `w ${formatNumber(databases.value.length)} bazach` : 'dane baz niedostępne',
+    icon: 'mdi-account-multiple-outline',
+    tone: 'blue'
+  }
+]))
+
+const campaignStatusMetrics = computed(() => {
+  const total = activeCampaigns.value.length
+  return [
+    { label: 'Wysłane', count: Math.max(0, sentCampaigns.value.length - sendingCampaigns.value.length), tone: 'green' },
+    { label: 'Wysyłka w toku', count: sendingCampaigns.value.length, tone: 'coral' },
+    { label: 'Zaplanowane', count: scheduledCampaigns.value.length, tone: 'blue' },
+    { label: 'Szkice i pozostałe', count: Math.max(0, draftCampaigns.value), tone: 'amber' }
+  ].map(item => ({ ...item, percent: total ? Math.round((item.count / total) * 100) : 0 }))
+})
+
+const chartDays = computed(() => {
+  const days = []
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const date = new Date(today)
+    date.setDate(today.getDate() - offset)
+    days.push({
+      key: dateKey(date),
+      label: date.toLocaleDateString('pl-PL', { weekday: 'short' }).replace('.', ''),
+      sent: 0
+    })
+  }
+
+  const daysByKey = new Map(days.map(day => [day.key, day]))
+  for (const campaign of sentCampaigns.value) {
+    if (!campaign.sentAt) continue
+    const day = daysByKey.get(dateKey(campaign.sentAt))
+    if (day) day.sent += 1
+  }
+
+  const maximum = Math.max(1, ...days.map(day => day.sent))
+  return days.map(day => ({ ...day, height: day.sent ? Math.max(8, Math.round((day.sent / maximum) * 100)) : 0 }))
+})
+
+const chartTotal = computed(() => chartDays.value.reduce((sum, day) => sum + day.sent, 0))
+const hasChartData = computed(() => campaignsAvailable.value && chartTotal.value > 0)
+
+const recentCampaigns = computed(() => activeCampaigns.value
+  .slice()
+  .sort((left, right) => campaignTimestamp(right) - campaignTimestamp(left) || toCount(right.id) - toCount(left.id))
+  .slice(0, 5)
+  .map(campaign => {
+    const status = getCampaignStatus(campaign)
+    const database = databases.value.find(item => item.id === campaign.databaseId)
+    return {
+      ...campaign,
+      databaseName: database?.name || 'Nieznana baza',
+      dateLabel: formatDateTime(campaign.sentAt || campaign.dateStart),
+      status: status.label,
+      statusTone: status.tone,
+      tone: status.tone === 'success' ? 'green' : status.tone === 'scheduled' ? 'blue' : status.tone === 'progress' ? 'coral' : 'amber'
+    }
+  }))
+
+const databaseHighlights = computed(() => databases.value
+  .slice()
+  .sort((left, right) => toCount(right.contactsCount) - toCount(left.contactsCount))
+  .slice(0, 5))
+
+const partialErrorMessage = 'Nie udało się pobrać wszystkich danych. Niedostępne wartości oznaczono kreską.'
+
 function goTo(path) { router.push(path) }
-function setState(nextState) { dashboardState.value = nextState }
-function refreshDashboard() { dashboardState.value = 'loading'; window.setTimeout(() => { dashboardState.value = 'success' }, 900) }
+function isTrue(value) { return value === true || value === 1 || value === '1' || value === 'true' }
+function toCount(value) {
+  const count = Number(value)
+  return Number.isFinite(count) ? count : 0
+}
+function formatNumber(value) { return new Intl.NumberFormat('pl-PL').format(toCount(value)) }
+function dateKey(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+function formatDateTime(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('pl-PL')
+}
+function isFuture(value) {
+  if (!value) return false
+  const date = new Date(value)
+  return !Number.isNaN(date.getTime()) && date.getTime() > Date.now()
+}
+function campaignTimestamp(campaign) {
+  const timestamp = new Date(campaign.sentAt || campaign.dateStart || 0).getTime()
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+function getCampaignStatus(campaign) {
+  if (isTrue(campaign.sendingInProgress)) return { label: 'Wysyłka w toku', tone: 'progress' }
+  if (isTrue(campaign.sent)) return { label: 'Wysłana', tone: 'success' }
+  if (isFuture(campaign.dateStart)) return { label: 'Zaplanowana', tone: 'scheduled' }
+  return { label: 'Szkic', tone: 'draft' }
+}
+
+async function refreshDashboard() {
+  dashboardState.value = 'loading'
+  partialError.value = ''
+  const [campaignResult, databaseResult] = await Promise.allSettled([
+    Campaigns.getList(),
+    Databases.getList()
+  ])
+
+  campaignsAvailable.value = campaignResult.status === 'fulfilled' && Array.isArray(campaignResult.value)
+  databasesAvailable.value = databaseResult.status === 'fulfilled' && Array.isArray(databaseResult.value)
+  campaigns.value = campaignsAvailable.value ? campaignResult.value : []
+  databases.value = databasesAvailable.value ? databaseResult.value : []
+
+  if (!campaignsAvailable.value && !databasesAvailable.value) {
+    dashboardState.value = 'error'
+    return
+  }
+
+  if (!campaignsAvailable.value || !databasesAvailable.value) partialError.value = partialErrorMessage
+  const hasData = activeCampaigns.value.length > 0 || databases.value.length > 0
+  dashboardState.value = hasData || partialError.value ? 'ready' : 'empty'
+  lastUpdated.value = new Date()
+}
+
 function retryDashboard() { refreshDashboard() }
+
+onMounted(refreshDashboard)
 </script>
 
 <style scoped>
