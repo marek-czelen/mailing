@@ -3,23 +3,16 @@
     <template #left-panel>
       <v-card class="campaign-list-card">
         <v-card-title class="card-header">
-          <div class="header-content">
-            <div class="header-info">
-              <h3>{{ t('campaigns.title') }}</h3>
-              <span class="campaign-count">{{ filteredCampaigns.length }} {{ t('campaigns.campaignsCount') }}</span>
-            </div>
-              <v-btn color="primary" class="add-btn" @click="openCreateDialog">
-              <v-icon left>mdi-plus</v-icon>
-              {{ t('campaigns.newCampaign') }}
-            </v-btn>
-          </div>
-        </v-card-title>
-
-        <v-card-text class="pa-0 campaign-list-content">
-          <!-- Search & Filters -->
-          <div class="search-section">
-            <v-text-field v-model="searchQuery" :placeholder="t('campaigns.searchPlaceholder')" prepend-inner-icon="mdi-magnify"
-              variant="outlined" density="comfortable" hide-details />
+          <div class="header-main-row">
+            <v-text-field
+              v-model="searchQuery"
+              :placeholder="t('campaigns.searchPlaceholder')"
+              prepend-inner-icon="mdi-magnify"
+              variant="outlined"
+              density="compact"
+              hide-details
+              class="campaign-search"
+            />
             <v-btn-toggle
               v-model="campaignArchiveFilter"
               class="archive-toggle"
@@ -27,29 +20,24 @@
               density="compact"
               divided
               mandatory
+              :aria-label="t('campaigns.title')"
               @update:model-value="selectedCampaign = null"
             >
-              <v-btn value="active">
-                <v-icon start>mdi-email-outline</v-icon>
-                {{ t('campaigns.activeCampaigns') }}
+              <v-btn value="active" :aria-label="t('campaigns.activeCampaigns')" :title="t('campaigns.activeCampaigns')">
+                <v-icon>mdi-email-outline</v-icon>
               </v-btn>
-              <v-btn value="archived">
-                <v-icon start>mdi-archive-outline</v-icon>
-                {{ t('campaigns.archivedCampaigns') }}
+              <v-btn value="archived" :aria-label="t('campaigns.archivedCampaigns')" :title="t('campaigns.archivedCampaigns')">
+                <v-icon>mdi-archive-outline</v-icon>
               </v-btn>
             </v-btn-toggle>
-            <div class="filter-chips">
-              <v-chip
-                disabled 
-                v-for="status in statusFilters" :key="status.value"
-                :variant="statusFilter === status.value ? 'elevated' : 'outlined'"
-                :color="statusFilter === status.value ? 'primary' : 'default'" size="small"
-                @click="statusFilter = statusFilter === status.value ? '' : status.value">
-                {{ status.title }}
-              </v-chip>
-            </div>
+            <v-btn color="primary" class="add-btn" size="small" @click="openCreateDialog">
+              <v-icon start>mdi-plus</v-icon>
+              {{ t('campaigns.newCampaign') }}
+            </v-btn>
           </div>
+        </v-card-title>
 
+        <v-card-text class="pa-0 campaign-list-content">
           <!-- Campaign List -->
           <div class="campaign-list">
             <div v-if="filteredCampaigns.length === 0" class="campaign-empty-state">
@@ -65,14 +53,36 @@
               <div class="campaign-info">
                 <h4 class="campaign-name">{{ campaign.name }}</h4>
                 <div class="campaign-meta">
-                  <span class="recipients-count">
-                    {{ campaign.subject || '' }}
+                  <span class="campaign-subject">{{ campaign.subject || '' }}</span>
+                  <span class="campaign-date" :title="campaign.sentAt ? `${t('campaigns.sentAt')}: ${formatDateTime(campaign.sentAt)}` : ''">
+                    <v-icon v-if="campaign.sentAt" size="14">mdi-email-check</v-icon>
+                    {{ formatDate(campaign.sentAt || campaign.dateStart) }}
                   </span>
-                  <span class="campaign-date">{{ formatDate(campaign.dateStart) }}</span>
-                  <span v-if="campaign.sentAt" class="campaign-date">
-                    <v-icon size="14">mdi-email-check</v-icon>
-                    {{ t('campaigns.sentAt') }}: {{ formatDateTime(campaign.sentAt) }}
+                </div>
+                <div class="campaign-audience">
+                  <span class="audience-count">
+                    <v-icon size="14">mdi-account-group</v-icon>
+                    <strong>{{ formatRecipientCount(campaign.recipientsCount) }}</strong>
+                    {{ t('campaigns.recipientsShort') }}
                   </span>
+                  <span
+                    v-if="getCampaignRecipientTags(campaign).length"
+                    class="audience-tags"
+                    :title="getCampaignRecipientTags(campaign).join(', ')"
+                  >
+                    <v-chip
+                      v-for="tag in visibleRecipientTags(campaign)"
+                      :key="tag"
+                      size="x-small"
+                      variant="tonal"
+                      color="secondary"
+                      class="recipient-tag"
+                    >{{ tag }}</v-chip>
+                    <span v-if="hiddenRecipientTagCount(campaign)" class="more-tags">
+                      +{{ hiddenRecipientTagCount(campaign) }}
+                    </span>
+                  </span>
+                  <span v-else class="all-recipient-tags">{{ t('campaigns.allActiveRecipients') }}</span>
                 </div>
               </div>
               <div class="campaign-actions">
@@ -140,34 +150,37 @@
       <div v-else-if="selectedCampaign" class="campaign-details">
 
         <!-- Tabs Section -->
-        <v-card class="details-card">
-          <v-tabs v-model="activeTab" bg-color="transparent">
-            <v-tab value="content">
-              <v-icon left>mdi-email</v-icon>
-              {{ t('campaigns.tabs.content') }}
-            </v-tab>
-            <v-tab value="recipients">
-              <v-icon left>mdi-account-multiple</v-icon>
-              {{ t('campaigns.tabs.recipients') }}
-            </v-tab>
-            <v-tab value="replies">
-              <v-icon left>mdi-reply</v-icon>
-              {{ t('campaigns.tabs.replies') }}
-            </v-tab>
-            <v-tab value="bounces">
-              <v-icon left>mdi-email-alert</v-icon>
-              {{ t('campaigns.tabs.bounces') }}
-            </v-tab>
-            <v-tab value="scheduling" v-if="false">
-              <v-icon left>mdi-calendar-clock</v-icon>
-              {{ t('campaigns.tabs.scheduling') }}
-            </v-tab>
-          </v-tabs>
+        <section class="campaign-details-shell">
+          <div class="campaign-tabbar">
+            <v-tabs v-model="activeTab" bg-color="transparent" density="compact" height="44" class="campaign-tabs">
+              <v-tab value="content">
+                <v-icon left>mdi-email</v-icon>
+                {{ t('campaigns.tabs.content') }}
+              </v-tab>
+              <v-tab value="recipients">
+                <v-icon left>mdi-account-multiple</v-icon>
+                {{ t('campaigns.tabs.recipients') }}
+              </v-tab>
+              <v-tab value="replies">
+                <v-icon left>mdi-reply</v-icon>
+                {{ t('campaigns.tabs.replies') }}
+              </v-tab>
+              <v-tab value="bounces">
+                <v-icon left>mdi-email-alert</v-icon>
+                {{ t('campaigns.tabs.bounces') }}
+              </v-tab>
+              <v-tab value="scheduling" v-if="false">
+                <v-icon left>mdi-calendar-clock</v-icon>
+                {{ t('campaigns.tabs.scheduling') }}
+              </v-tab>
+            </v-tabs>
 
-          <div v-if="activeTab === 'replies' || activeTab === 'bounces'" class="d-flex justify-end px-4 pt-3">
             <v-btn
+              v-if="activeTab === 'replies' || activeTab === 'bounces'"
               color="primary"
               variant="outlined"
+              size="small"
+              class="mailbox-button"
               :loading="receivingMailbox"
               :disabled="!isCampaignSent(selectedCampaign)"
               @click="receiveCampaignMailbox"
@@ -176,7 +189,7 @@
               {{ t('campaigns.receiveMailbox') }}
             </v-btn>
           </div>
-          <div v-if="receivingMailbox && mailboxProgress.total > 0" class="px-4 pt-3">
+          <div v-if="receivingMailbox && mailboxProgress.total > 0" class="mailbox-progress">
             <div class="text-body-2 mb-2">
               {{ t('campaigns.mailboxScanProgress', mailboxProgress) }}
             </div>
@@ -188,7 +201,7 @@
             />
           </div>
 
-          <v-card-text>
+          <div class="details-body">
             <v-window v-model="activeTab">
               <!-- Content Tab -->
               <v-window-item value="content">
@@ -340,8 +353,8 @@
                 </div>
               </v-window-item>
             </v-window>
-          </v-card-text>
-        </v-card>
+          </div>
+        </section>
       </div>
 
       <!-- Empty State -->
@@ -422,15 +435,10 @@
             {{ t('campaigns.htmlSource') }}
           </v-btn>
         </v-btn-toggle>
-
         <div v-if="htmlEditorMode === 'visual'" class="editor-container">
-          <QuillEditor
+          <CampaignHtmlEditor
             :key="editorKey"
-            v-model:content="htmlEditorContent"
-            content-type="html"
-            theme="snow"
-            :toolbar="quillToolbar"
-            :placeholder="t('campaigns.htmlHint')"
+            v-model="htmlEditorContent"
           />
         </div>
         <v-textarea
@@ -458,7 +466,7 @@
         color="primary"
         variant="elevated"
         @click="saveHtmlContent"
-        :loading="loading"
+        :loading="savingHtmlContent"
       >
         Zapisz
       </v-btn>
@@ -480,7 +488,7 @@
 
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import CampaignContent from '../components/campaigns/CampaignContent.vue'
@@ -496,11 +504,11 @@ import { Databases } from '../services/databases.js'
 import StatCard from '../components/StatCard.vue'
 import PageContent from '../components/PageContent.vue'
 import StatGrid from '../components/StatGrid.vue'
-import { QuillEditor } from '@vueup/vue-quill'
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import GeneralDialog from '../components/GeneralDialog.vue'
 
-const { t } = useI18n()
+const CampaignHtmlEditor = defineAsyncComponent(() => import('../components/campaigns/CampaignHtmlEditor.vue'))
+
+const { t, locale } = useI18n()
 const router = useRouter()
 const route = useRoute()
 
@@ -509,7 +517,6 @@ const campaigns = ref([])
 const selectedCampaign = ref(null)
 const searchQuery = ref('')
 const campaignArchiveFilter = ref('active')
-const statusFilter = ref('')
 const activeTab = ref('content')
 const campaignRefreshToken = ref(0)
 const receivingMailbox = ref(false)
@@ -525,6 +532,7 @@ const testEmail = ref('')
 const loadingCampaignDetails = ref(false)
 const showAiEmailDialog = ref(false)
 const showHtmlEditor = ref(false)
+const savingHtmlContent = ref(false)
 const htmlEditorContent = ref('<p>Wprowadź treść kampanii...</p>')
 const htmlEditorMode = ref('visual')
 const editorKey = ref(0)
@@ -538,33 +546,11 @@ const emailRules = [
   v => /.+@.+\..+/.test(v) || 'Email musi być poprawny'
 ]
 
-const quillToolbar = [
-  [{ 'header': [1, 2, 3, false] }],
-  [{ 'size': ['small', false, 'large', 'huge'] }],
-  ['bold', 'italic', 'underline', 'strike'],
-  [{ 'color': [] }, { 'background': [] }],
-  [{ 'script': 'sub' }, { 'script': 'super' }],
-  [{ 'align': [] }],
-  [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-  [{ 'indent': '-1' }, { 'indent': '+1' }],
-  ['blockquote', 'code-block'],
-  ['link', 'image'],
-  ['clean']
-]
 
 
 
 
 
-
-
-// Status filters
-const statusFilters = [
-  { title: 'Szkice', value: 'draft' },
-  { title: 'Zaplanowane', value: 'scheduled' },
-  { title: 'Wysłane', value: 'sent' },
-  { title: 'Aktywne', value: 'active' }
-]
 
 // Computed
 const filteredCampaigns = computed(() => {
@@ -578,11 +564,6 @@ const filteredCampaigns = computed(() => {
       campaign.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       campaign.subject?.toLowerCase().includes(searchQuery.value.toLowerCase())
     )
-  }
-
-  // Filter by status
-  if (statusFilter.value) {
-    filtered = filtered.filter(campaign => campaign.status === statusFilter.value)
   }
 
   return filtered
@@ -865,6 +846,7 @@ async function editHtmlContent() {
     
     // Wyciągnij treść <body> lub użyj całej zawartości, jeśli nie ma <body>
     htmlEditorContent.value = selectedCampaign.value.htmlContent || '<p>Wprowadź treść kampanii...</p>'
+    htmlEditorMode.value = 'visual'
     
     // Zwiększ klucz edytora, aby wymusić ponowne renderowanie
     editorKey.value++
@@ -895,8 +877,9 @@ function handleAiGenerationDataSaved(updatedCampaign) {
 }
 
 async function saveHtmlContent() {
-  if (!selectedCampaign.value || isCampaignSent(selectedCampaign.value)) return
+  if (!selectedCampaign.value || isCampaignSent(selectedCampaign.value) || savingHtmlContent.value) return
 
+  savingHtmlContent.value = true
   try {
 
     const htmlContent = htmlEditorContent.value
@@ -922,6 +905,8 @@ async function saveHtmlContent() {
   } catch (error) {
     console.error('Błąd zapisywania treści HTML:', error)
     showNotification('Nie udało się zapisać treści kampanii', 'error')
+  } finally {
+    savingHtmlContent.value = false
   }
 }
 
@@ -1094,6 +1079,22 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString('pl-PL')
 }
 
+function getCampaignRecipientTags(campaign) {
+  return Array.isArray(campaign.recipientTags) ? campaign.recipientTags : []
+}
+
+function visibleRecipientTags(campaign) {
+  return getCampaignRecipientTags(campaign).slice(0, 2)
+}
+
+function hiddenRecipientTagCount(campaign) {
+  return Math.max(0, getCampaignRecipientTags(campaign).length - 2)
+}
+
+function formatRecipientCount(count) {
+  return new Intl.NumberFormat(locale.value).format(Number(count) || 0)
+}
+
 // Watch for selected campaign changes to sync scheduledDateTime
 watch(() => selectedCampaign.value?.dateStart, (newScheduledAt) => {
   if (newScheduledAt) {
@@ -1194,31 +1195,32 @@ async function sendTest() {
   color: #1a1a2e !important;
   border-bottom: 1px solid #e0e0e0 !important;
   border-radius: 8px 8px 0 0 !important;
-  padding: 10px 14px !important;
+  padding: 8px 12px !important;
 }
 
-.header-content {
-  display: flex;
-  justify-content: space-between;
+.header-main-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
+  gap: 4px;
   width: 100%;
 }
 
-.header-info h3 {
-  margin: 0;
-  font-weight: 600;
-}
-
-.campaign-count {
-  font-size: 0.9rem;
-  opacity: 0.8;
+.campaign-search {
+  width: 100%;
+  min-width: 0;
 }
 
 .add-btn {
+  height: 32px !important;
+  padding-inline: 5px !important;
   background: #6366f1 !important;
   color: #ffffff !important;
   border: none !important;
   box-shadow: 0 1px 2px rgba(99, 102, 241, 0.3) !important;
+  font-size: 0.66rem !important;
+  text-transform: none !important;
+  white-space: nowrap;
 }
 
 .campaign-list-content {
@@ -1228,34 +1230,22 @@ async function sendTest() {
   overflow: hidden;
 }
 
-.search-section {
-  padding: 10px 12px;
-  border-bottom: 1px solid #eee;
-  flex-shrink: 0;
-}
-
 .archive-toggle {
   display: flex;
-  width: 100%;
-  margin-top: 8px;
+  width: auto;
 }
 
 .archive-toggle .v-btn {
-  flex: 1;
+  width: 28px;
+  height: 32px;
   min-width: 0;
+  padding: 0;
 }
 
 .campaign-empty-state {
   padding: 24px 12px;
   color: #777;
   text-align: center;
-}
-
-.filter-chips {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 8px;
 }
 
 .campaign-list {
@@ -1286,8 +1276,8 @@ async function sendTest() {
 
 .campaign-item {
   display: flex;
-  align-items: center;
-  padding: 10px 12px;
+  align-items: flex-start;
+  padding: 6px 10px;
   border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1303,9 +1293,10 @@ async function sendTest() {
 }
 
 .campaign-icon {
-  margin-right: 10px;
-  width: 34px;
-  height: 34px;
+  margin: 1px 8px 0 0;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1321,15 +1312,95 @@ async function sendTest() {
 .campaign-name {
   font-weight: 600;
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .campaign-meta {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 1px;
+  min-width: 0;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: #718096;
+}
+
+.campaign-subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.campaign-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.campaign-audience {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  min-width: 0;
+  min-height: 20px;
   margin-top: 2px;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  color: #52606d;
+}
+
+.audience-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.audience-count strong {
+  color: #263238;
+  font-weight: 700;
+}
+
+.audience-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.recipient-tag {
+  max-width: 110px;
+  height: 18px !important;
+  margin: 0 !important;
+  font-size: 0.66rem !important;
+}
+
+.recipient-tag :deep(.v-chip__content) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.more-tags {
+  flex: 0 0 auto;
+  color: #52606d;
+  font-weight: 600;
+}
+
+.all-recipient-tags {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #718096;
 }
 
@@ -1360,6 +1431,59 @@ async function sendTest() {
 }
 
 /* Details Card */
+.campaign-details-shell {
+  min-height: 100%;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.campaign-tabs {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 1px solid #e7e9ed;
+}
+
+.campaign-tabbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+  border-bottom: 1px solid #e7e9ed;
+}
+
+.campaign-tabbar .campaign-tabs {
+  border-bottom: 0;
+}
+
+.campaign-tabs :deep(.v-tab) {
+  min-width: 0;
+  padding-inline: 12px;
+  font-size: 0.78rem;
+  text-transform: none;
+}
+
+.details-body {
+  padding: 12px;
+}
+
+.mailbox-button {
+  flex: 0 0 auto;
+  margin: 0 4px;
+  min-height: 32px;
+  padding-inline: 8px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.mailbox-progress {
+  padding: 8px 12px 0;
+}
+
+.mailbox-progress .text-body-2 {
+  margin-bottom: 6px !important;
+}
+
 .details-card {
   border-radius: 8px !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
@@ -1378,38 +1502,9 @@ async function sendTest() {
   border: 1px solid #e0e0e0;
 }
 
-.loading-content {
-  text-align: center;
-}
-
-.loading-content h3 {
-  font-size: 1.2rem;
-  margin: 16px 0 8px 0;
-  color: #333;
-}
-
-.loading-content p {
-  color: #666;
-  margin: 0;
-}
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
+.editor-container {
+  min-height: 520px;
   background: #ffffff;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-}
-
-.empty-icon {
-  margin-bottom: 24px;
-}
-
-.empty-state h3 {
-  font-size: 1.5rem;
-  margin-bottom: 8px;
-  color: #333;
 }
 
 .empty-state p {
@@ -1476,6 +1571,22 @@ async function sendTest() {
 .detail-item .value {
   flex: 1;
   color: #333;
+}
+
+@media (max-width: 760px) {
+  .campaign-tabbar {
+    flex-wrap: wrap;
+    padding: 0 8px 6px;
+  }
+
+  .campaign-tabbar .campaign-tabs {
+    flex: 1 1 100%;
+    overflow-x: auto;
+  }
+
+  .mailbox-button {
+    margin-left: auto;
+  }
 }
 
 .segments {
@@ -1550,14 +1661,14 @@ async function sendTest() {
   min-height: 500px;
 }
 
-/* QuillEditor Custom Styles */
-.editor-container :deep(.ql-toolbar) {
-  border-top: none;
-  border-left: none;
-  border-right: none;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f8f9fa;
-  padding: 12px;
+.email-html-preview {
+  height: min(68vh, 720px);
+  min-height: 360px;
+  overflow: auto;
+  padding: 16px;
+  background: #edf0f3;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
 }
 
 .editor-container :deep(.ql-container) {
@@ -1582,60 +1693,9 @@ async function sendTest() {
   font-family: monospace;
 }
 
-.editor-container :deep(.ql-editor h1) {
-  font-size: 2em;
-  margin: 0.67em 0;
-  font-weight: bold;
-  color: #2c3e50;
-}
-
-.editor-container :deep(.ql-editor h2) {
-  font-size: 1.5em;
-  margin: 0.75em 0;
-  font-weight: bold;
-  color: #34495e;
-}
-
-.editor-container :deep(.ql-editor h3) {
-  font-size: 1.17em;
-  margin: 0.83em 0;
-  font-weight: bold;
-  color: #34495e;
-}
-
-.editor-container :deep(.ql-editor p) {
+.html-table-note {
   margin-bottom: 12px;
-}
-
-.editor-container :deep(.ql-editor ul),
-.editor-container :deep(.ql-editor ol) {
-  margin: 12px 0;
-  padding-left: 2em;
-}
-
-.editor-container :deep(.ql-editor li) {
-  margin: 4px 0;
-}
-
-.editor-container :deep(.ql-editor img) {
-  max-width: 100%;
-  height: auto;
-}
-
-.editor-container :deep(.ql-editor a) {
-  color: #1976d2;
-  text-decoration: none;
-}
-
-.editor-container :deep(.ql-editor a:hover) {
-  text-decoration: underline;
-}
-
-.editor-container :deep(.ql-editor blockquote) {
-  border-left: 4px solid #ccc;
-  margin: 16px 0;
-  padding-left: 16px;
-  color: #666;
+  font-size: 0.82rem;
 }
 
 /* Responsive */
@@ -1661,8 +1721,8 @@ async function sendTest() {
     max-width: calc(100vw - 20px) !important;
   }
 
-  .editor-container :deep(.ql-toolbar) {
-    flex-wrap: wrap;
+  .editor-container {
+    min-height: 420px;
   }
 }
 </style>

@@ -8,31 +8,23 @@
       <div class="header-buttons">
         <v-btn
           color="primary"
+          variant="elevated"
+          size="small"
+          :disabled="sendingInProgress || campaignIsSent"
+          @click="emit('edit-content')"
+        >
+          <v-icon start>mdi-pencil</v-icon>
+          {{ t('campaigns.editMailContent') }}
+        </v-btn>
+        <v-btn
+          color="secondary"
           variant="outlined"
+          size="small"
           :disabled="sendingInProgress || campaignIsSent"
           @click="emit('create-ai-email')"
         >
           <v-icon start>mdi-robot</v-icon>
           {{ t('campaigns.aiEmailCreate') }}
-        </v-btn>
-        <v-btn 
-          disabled
-          color="primary" 
-          variant="outlined"
-          :disabled="sendingInProgress || campaignIsSent"
-          @click="emit('edit-template')"
-        >
-          <v-icon left>mdi-pencil</v-icon>
-          {{ t('campaigns.useTemplate') }}
-        </v-btn>
-        <v-btn 
-          color="secondary" 
-          variant="outlined"
-          :disabled="sendingInProgress || campaignIsSent"
-          @click="emit('edit-content')"
-        >
-          <v-icon left>mdi-code-tags</v-icon>
-          {{ t('campaigns.useHtml') }}
         </v-btn>
       </div>
     </div>
@@ -68,7 +60,7 @@
                   <iframe
                     :srcdoc="campaign.htmlContent"
                     frameborder="0"
-                    style="width: 100%; height: 600px; border: none;"
+                    style="width: 100%; height: clamp(320px, 52vh, 480px); border: none;"
                   ></iframe>
                </div>
               </div>
@@ -463,47 +455,56 @@ function onRodoSwitchChange() {
 .content-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .header-info h3 {
-  margin: 0 0 8px 0;
-  font-size: 1.3rem;
+  margin: 0 0 3px 0;
+  font-size: 1.05rem;
   font-weight: 600;
 }
 
 .header-info p {
   margin: 0;
   color: #666;
+  font-size: 0.82rem;
 }
 
 .header-buttons {
   display: flex;
-  gap: 12px;
+  gap: 6px;
   flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.header-buttons :deep(.v-btn) {
+  min-height: 32px;
+  padding-inline: 9px;
+  font-size: 0.75rem;
 }
 
 .content-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1.5fr) minmax(220px, 0.85fr);
+  align-items: start;
+  gap: 12px;
 }
 
 .preview-card,
 .details-card {
-  border-radius: 12px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid #e0e0e0 !important;
+  background: #ffffff !important;
 }
 
 .card-title {
   background: linear-gradient(135deg, rgba(32, 41, 80, 0.05) 0%, rgba(81, 91, 173, 0.05) 100%);
   font-weight: 600 !important;
   font-size: 1rem !important;
-  padding: 16px 20px !important;
+  padding: 10px 12px !important;
   display: flex !important;
   align-items: center !important;
   gap: 8px !important;
@@ -512,10 +513,10 @@ function onRodoSwitchChange() {
 /* Email Preview */
 .email-header {
   background: #f8f9fa;
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 0.9rem;
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 0.82rem;
 }
 
 .email-header > div {
@@ -527,21 +528,20 @@ function onRodoSwitchChange() {
 }
 
 .email-preview {
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
   overflow: hidden;
-  margin-bottom: 16px;
 }
 
 .preview-frame {
   background: white;
-  min-height: 400px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
 .template-preview {
-  padding: 24px;
+  padding: 8px;
   flex: 1;
 }
 
@@ -637,7 +637,7 @@ function onRodoSwitchChange() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 28px 16px;
   text-align: center;
   color: #666;
 }
@@ -657,9 +657,9 @@ function onRodoSwitchChange() {
 
 /* Details Card */
 .detail-section {
-  margin-top: 16px;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
   border-bottom: 1px solid #f0f0f0;
 }
 
@@ -669,7 +669,7 @@ function onRodoSwitchChange() {
 }
 
 .detail-section h4 {
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
   font-weight: 600;
   color: #333;
 }
@@ -733,12 +733,12 @@ function onRodoSwitchChange() {
 
 .content-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
-  margin-top: 16px;
+  margin-top: 10px;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 840px) {
   .content-grid {
     grid-template-columns: 1fr;
   }
@@ -747,8 +747,12 @@ function onRodoSwitchChange() {
 @media (max-width: 768px) {
   .content-header {
     flex-direction: column;
-    gap: 16px;
+    gap: 10px;
     align-items: stretch;
+  }
+
+  .header-buttons {
+    justify-content: flex-start;
   }
   
   .product-grid {

@@ -1,62 +1,54 @@
 <template>
   <div class="campaign-bounces-container">
     <!-- Stats Cards -->
-    <v-row class="mb-4">
-      <v-col cols="12" sm="6" md="3">
+    <div class="stats-summary">
         <v-card class="stat-card">
-          <v-card-text>
+          <v-card-text class="pa-2">
             <div class="d-flex align-center justify-space-between">
               <div>
                 <div class="text-caption text-medium-emphasis">{{ t('campaigns.allBounces') }}</div>
-                <div class="text-h5 font-weight-bold">{{ stats.totalBounces }}</div>
+                <div class="text-subtitle-1 font-weight-bold">{{ stats.totalBounces }}</div>
               </div>
-              <v-icon size="40" color="error">mdi-email-alert</v-icon>
+              <v-icon size="26" color="error">mdi-email-alert</v-icon>
             </div>
           </v-card-text>
         </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
         <v-card class="stat-card">
-          <v-card-text>
+          <v-card-text class="pa-2">
             <div class="d-flex align-center justify-space-between">
               <div>
                 <div class="text-caption text-medium-emphasis">{{ t('campaigns.hardBounces') }}</div>
-                <div class="text-h5 font-weight-bold">{{ stats.hardBounces }}</div>
+                <div class="text-subtitle-1 font-weight-bold">{{ stats.hardBounces }}</div>
               </div>
-              <v-icon size="40" color="error">mdi-close-circle</v-icon>
+              <v-icon size="26" color="error">mdi-close-circle</v-icon>
             </div>
           </v-card-text>
         </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
         <v-card class="stat-card">
-          <v-card-text>
+          <v-card-text class="pa-2">
             <div class="d-flex align-center justify-space-between">
               <div>
                 <div class="text-caption text-medium-emphasis">{{ t('campaigns.softBounces') }}</div>
-                <div class="text-h5 font-weight-bold">{{ stats.softBounces }}</div>
+                <div class="text-subtitle-1 font-weight-bold">{{ stats.softBounces }}</div>
               </div>
-              <v-icon size="40" color="warning">mdi-alert-circle</v-icon>
+              <v-icon size="26" color="warning">mdi-alert-circle</v-icon>
             </div>
           </v-card-text>
         </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
         <v-card class="stat-card">
-          <v-card-text>
+          <v-card-text class="pa-2">
             <div class="d-flex align-center justify-space-between">
               <div>
                 <div class="text-caption text-medium-emphasis">{{ t('campaigns.bounceRate') }}</div>
-                <div class="text-h5 font-weight-bold">{{ bounceRate }}%</div>
+                <div class="text-subtitle-1 font-weight-bold">{{ bounceRate }}%</div>
               </div>
-              <v-icon size="40" color="info">mdi-chart-line</v-icon>
+              <v-icon size="26" color="info">mdi-chart-line</v-icon>
             </div>
           </v-card-text>
         </v-card>
-      </v-col>
-    </v-row>
+    </div>
 
-    <v-tabs v-model="bounceViewTab" color="primary" class="mb-4">
+    <v-tabs v-model="bounceViewTab" color="primary" density="compact" height="36" class="bounce-tabs mb-2">
       <v-tab value="events">{{ t('campaigns.bounce.eventsTab') }}</v-tab>
       <v-tab value="contacts">{{ t('campaigns.bounce.contactsTab') }}</v-tab>
     </v-tabs>
@@ -64,30 +56,26 @@
     <v-window v-model="bounceViewTab">
       <v-window-item value="events">
     <!-- Filters -->
-    <v-card class="mb-4">
-      <v-card-text>
-        <div class="filters-section">
+    <div class="filters-section bounce-filters mb-3">
           <v-text-field
             v-model="searchQuery"
             :placeholder="t('campaigns.searchByEmail')"
             prepend-inner-icon="mdi-magnify"
             variant="outlined"
-            density="comfortable"
+            density="compact"
             hide-details
             clearable
-            style="max-width: 400px;"
+            class="bounce-search"
           />
           <v-select
             v-model="bounceTypeFilter"
             :items="bounceTypeOptions"
             variant="outlined"
-            density="comfortable"
+            density="compact"
             hide-details
-            style="max-width: 200px;"
+            class="bounce-type-filter"
           />
-        </div>
-      </v-card-text>
-    </v-card>
+    </div>
 
     <!-- Bounces Table -->
     <v-data-table-server
@@ -95,6 +83,7 @@
       :items="bounces"
       :items-length="totalBounces"
       :loading="loading"
+      density="compact"
       class="bounces-table"
       @update:options="onUpdateOptions"
     >
@@ -199,7 +188,7 @@
         :placeholder="t('campaigns.bounce.searchContacts')"
         prepend-inner-icon="mdi-magnify"
         variant="outlined"
-        density="comfortable"
+        density="compact"
         hide-details
         clearable
         class="contact-search"
@@ -209,7 +198,7 @@
         :items="bounceContactStatusOptions"
         :label="t('campaigns.bounce.contactStatus')"
         variant="outlined"
-        density="comfortable"
+        density="compact"
         hide-details
         class="contact-status-filter"
       />
@@ -226,6 +215,7 @@
       :items-length="bounceContactTotal"
       :items-per-page="bounceContactOptions.itemsPerPage"
       :loading="loadingBounceContacts || bounceContactActionLoading"
+      density="compact"
       item-value="id"
       show-select
       class="bounce-contacts-table"
@@ -532,26 +522,51 @@ onMounted(() => {
   width: 100%;
 }
 
+.stats-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 .stat-card {
-  border-radius: 12px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  height: 100%;
+  border: 1px solid #e2e5e9 !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
 }
 
 .filters-section {
-  display: flex;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 200px);
+  gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
+}
+
+.filters-section :deep(.v-input) {
+  min-width: 0;
 }
 
 .bounce-contacts-heading,
-.bounce-contact-actions,
-.contact-filters {
+.bounce-contact-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
+}
+
+.contact-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);
+  gap: 8px;
+  margin-block: 10px;
+}
+
+.bounce-contact-actions :deep(.v-btn) {
+  min-height: 32px;
+  padding-inline: 8px;
+  font-size: 0.76rem;
 }
 
 .contact-search {
@@ -563,13 +578,14 @@ onMounted(() => {
 }
 
 .bounce-contacts-table {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .bounces-table {
-  border-radius: 12px !important;
+  border: 1px solid #e2e5e9;
+  border-radius: 6px !important;
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: none !important;
 }
 
 .email-cell .email {
@@ -591,7 +607,7 @@ onMounted(() => {
 
 .no-data {
   text-align: center;
-  padding: 40px;
+  padding: 24px;
 }
 
 .no-data p {
@@ -601,15 +617,17 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .filters-section {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
   }
 
   .bounce-contacts-heading,
   .bounce-contact-actions,
   .contact-filters {
     align-items: stretch;
-    flex-direction: column;
+  }
+
+  .contact-filters {
+    grid-template-columns: 1fr;
   }
 
   .contact-search,
@@ -618,8 +636,5 @@ onMounted(() => {
     width: 100%;
   }
   
-  .filters-section > * {
-    max-width: 100% !important;
-  }
 }
 </style>

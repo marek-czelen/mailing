@@ -364,8 +364,11 @@ export default {
       this.generatedOutput = '';
       
       try {
-        const content = await AiService.generateContent(this.generatePrompt, {
-          tone: this.selectedTone
+        const prompt = `Napisz treść do pojedynczego bloku tekstowego wiadomości e-mail. Jeśli opis jest krótki, potraktuj go jako temat i przygotuj neutralną treść na jego podstawie. Nie dopisuj niepodanych faktów, cen, warunków ani obietnic.\n\nOpis:\n${this.generatePrompt.trim()}`;
+        const content = await AiService.generateContent(prompt, {
+          tone: this.selectedTone,
+          outputFormat: 'text',
+          maxTokens: 300
         });
         this.generatedOutput = content;
         this.$emit('use-content', content);

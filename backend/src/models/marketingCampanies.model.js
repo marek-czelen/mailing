@@ -112,7 +112,23 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
     recipientTags: {
       type: DataTypes.JSON,
       allowNull: true,
-      field: "recipient_tags"
+      field: "recipient_tags",
+      get() {
+        const value = this.getDataValue('recipientTags');
+        if (Array.isArray(value)) return value;
+        if (typeof value === 'string') {
+          try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        }
+        return [];
+      },
+      set(value) {
+        this.setDataValue('recipientTags', Array.isArray(value) ? value : []);
+      }
     },
     sent:{
       type: DataTypes.BOOLEAN,

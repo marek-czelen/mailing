@@ -18,6 +18,7 @@ import { Admin } from '../include/admin.js';
 import { recordMailAddressHistory } from '../include/mailAddressHistory.js';
 import MarketingCampaniesMailingResult from '../models/marketingCampaniesMailing.model.js';
 import { generateText, getDefaultProvider, listModels as fetchAiModels } from '../services/ai.service.js';
+import { buildCampaignRecipientWhere } from '../services/campaignRecipients.js';
 
 async function getLatestSendDates(campaignIds) {
     if (campaignIds.length === 0) return new Map();
@@ -51,8 +52,24 @@ export async function getCampaignsList(req, res) {
             attributes: { exclude: ['htmlContent', 'textContent', 'suggestions'] }
         });
         const latestSendDates = await getLatestSendDates(campaigns.map(campaign => campaign.id));
+        const recipientCountPromises = new Map();
+        const audienceKeysByCampaignId = new Map();
+        for (const campaign of campaigns) {
+            const recipientTags = Array.isArray(campaign.recipientTags) ? campaign.recipientTags : [];
+            const audienceKey = JSON.stringify([campaign.databaseId, [...recipientTags].sort()]);
+            audienceKeysByCampaignId.set(campaign.id, audienceKey);
+            if (!recipientCountPromises.has(audienceKey)) {
+                recipientCountPromises.set(audienceKey, MailAddress.count({
+                    where: buildCampaignRecipientWhere(campaign)
+                }));
+            }
+        }
+        const recipientCounts = new Map(await Promise.all(
+            [...recipientCountPromises].map(async ([audienceKey, countPromise]) => [audienceKey, await countPromise])
+        ));
         const campaignsWithSendDates = campaigns.map(campaign => ({
             ...campaign.toJSON(),
+            recipientsCount: recipientCounts.get(audienceKeysByCampaignId.get(campaign.id)) || 0,
             sentAt: latestSendDates.get(campaign.id) || null
         }));
         res.status(200).send(new Response(campaignsWithSendDates, true, "Data received successfully."));
@@ -1784,22 +1801,13 @@ export async function getDatabaseRecipientTags(req, res) {
             }
         }
 
-        const eligibleWhere = {
-            databaseId: database.id,
-            customerId: userData.customerId,
-            active: 1,
-            unsubscribesDate: null
-        };
-        if (selectedTags.length > 0) {
-            eligibleWhere[Op.or] = selectedTags.map(tag =>
-                Sequelize.where(
-                    Sequelize.fn('JSON_CONTAINS', Sequelize.col('tags'), JSON.stringify(tag)),
-                    1
-                )
-            );
-        }
-
-        const eligibleCount = await MailAddress.count({ where: eligibleWhere });
+        const eligibleCount = await MailAddress.count({
+            where: buildCampaignRecipientWhere({
+                customerId: userData.customerId,
+                databaseId: database.id,
+                recipientTags: selectedTags
+            })
+        });
         const result = {
             tags: [...availableTags].sort((left, right) => left.localeCompare(right, 'pl')),
             eligibleCount

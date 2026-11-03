@@ -31,7 +31,8 @@
         fontFamily: (block.content.fontFamily || 'Arial, sans-serif') + ' !important',
         textAlign: block.style.textAlign,
         margin: 0,
-        lineHeight: '1.5'
+        lineHeight: '1.5',
+        whiteSpace: 'pre-line'
       }"
     >
       {{ block.content.text }}

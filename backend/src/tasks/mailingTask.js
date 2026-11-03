@@ -3,10 +3,11 @@ import MarketingCampanies from '../models/marketingCampanies.model.js';
 import MailAddress from '../models/mailAddress.model.js';
 import Customers from '../models/customers.model.js';
 import Mail from '../include/mail.js';
-import Sequelize, { Op } from 'sequelize';
+import { Op } from 'sequelize';
 import MarketingCampaniesMailingResult from '../models/marketingCampaniesMailing.model.js';
 import EnvironmentConfig from '../config/environment.config.js';
 import { randomUUID } from 'node:crypto';
+import { buildCampaignRecipientWhere } from '../services/campaignRecipients.js';
 
 // Interwał na podstawie zmiennej środowiskowej
 let interval = EnvironmentConfig.get('MAILING_TASK_INTERVAL', 600000); // domyślnie 10 minut
@@ -72,25 +73,7 @@ class MailingTask {
             await activeCampaign.update({ sendingInProgress: true });
 
             // Pobierz listę adresów dla klienta
-            const recipientWhere = {
-                active: 1,
-                deliveryStatus: { [Op.ne]: 'undeliverable' },
-                customerId: activeCampaign.customerId,
-                databaseId: activeCampaign.databaseId,
-                unsubscribesDate: null
-            };
-            const recipientTags = Array.isArray(activeCampaign.recipientTags)
-                ? activeCampaign.recipientTags
-                : [];
-            if (recipientTags.length > 0) {
-                recipientWhere[Op.or] = recipientTags.map(tag =>
-                    Sequelize.where(
-                        Sequelize.fn('JSON_CONTAINS', Sequelize.col('tags'), JSON.stringify(tag)),
-                        1
-                    )
-                );
-            }
-
+            const recipientWhere = buildCampaignRecipientWhere(activeCampaign);
             const mailAddresses = await MailAddress.findAll({ where: recipientWhere });
 
             console.log(`Kampania ${activeCampaign.name} (klient ${customer.id}): znaleziono ${mailAddresses.length} adresów do wysyłki`);

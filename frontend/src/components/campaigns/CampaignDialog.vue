@@ -723,7 +723,10 @@ async function save() {
     }
     
     // Emit success event with result from API
-    emit('save', result || campaignData)
+    emit('save', {
+      ...(result || campaignData),
+      recipientsCount: eligibleRecipientCount.value
+    })
     
     // Close dialog on success
     close()

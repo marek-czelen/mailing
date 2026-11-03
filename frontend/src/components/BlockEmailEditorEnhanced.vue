@@ -24,18 +24,21 @@
         
         <!-- ============ PANEL LEWY: BLOKI + SZABLONY + PLACEHOLDERY ============ -->
         <v-col cols="auto" class="left-panel">
-          <v-card class="pa-2 h-100 d-flex flex-column" style="border-radius: 0;">
+          <v-card class="editor-side-card pa-3 h-100 d-flex flex-column">
             
             <!-- Zakładki panelu lewego -->
-            <v-tabs v-model="leftPanelTab" density="compact" class="mb-2">
-              <v-tab value="blocks">
-                <v-icon size="small">mdi-view-grid</v-icon>
+            <v-tabs v-model="leftPanelTab" direction="vertical" align-tabs="start" density="compact" class="editor-panel-tabs left-panel-tabs mb-3">
+              <v-tab value="blocks" :aria-label="$t('editor.blocks')">
+                <v-icon size="small" class="mr-2">mdi-view-grid</v-icon>
+                {{ $t('editor.blocks') }}
               </v-tab>
-              <v-tab value="placeholders">
-                <v-icon size="small">mdi-code-braces</v-icon>
+              <v-tab value="placeholders" :aria-label="$t('editor.placeholderTab')">
+                <v-icon size="small" class="mr-2">mdi-code-braces</v-icon>
+                {{ $t('editor.placeholderTab') }}
               </v-tab>
-              <v-tab value="templates">
-                <v-icon size="small">mdi-file-document-multiple</v-icon>
+              <v-tab value="templates" :aria-label="$t('editor.myTemplates')">
+                <v-icon size="small" class="mr-2">mdi-file-document-multiple</v-icon>
+                {{ $t('editor.myTemplates') }}
               </v-tab>
             </v-tabs>
 
@@ -123,15 +126,15 @@
 
         <!-- ============ PANEL ŚRODKOWY: CANVAS + PODGLĄD ============ -->
         <v-col class="center-panel pa-0">
-          <v-card class="h-100 d-flex flex-column" style="border-radius: 0;">
+          <v-card class="editor-workspace h-100 d-flex flex-column">
             
             <!-- Górny pasek narzędzi -->
-            <div class="editor-toolbar px-3 py-1 d-flex align-center flex-wrap gap-2">
+            <div class="editor-toolbar px-4 py-2 d-flex align-center flex-wrap gap-2">
               <!-- Undo/Redo -->
-              <v-btn icon size="x-small" variant="text" @click="undo" :disabled="!canUndo" :title="$t('editor.undo') + ' (Ctrl+Z)'">
+              <v-btn icon size="small" variant="text" @click="undo" :disabled="!canUndo" :title="$t('editor.undo') + ' (Ctrl+Z)'">
                 <v-icon>mdi-undo</v-icon>
               </v-btn>
-              <v-btn icon size="x-small" variant="text" @click="redo" :disabled="!canRedo" :title="$t('editor.redo') + ' (Ctrl+Y)'">
+              <v-btn icon size="small" variant="text" @click="redo" :disabled="!canRedo" :title="$t('editor.redo') + ' (Ctrl+Y)'">
                 <v-icon>mdi-redo</v-icon>
               </v-btn>
               
@@ -139,10 +142,10 @@
 
               <!-- Tryb canvas -->
               <v-btn-toggle v-model="canvasMode" mandatory density="compact">
-                <v-btn value="desktop" size="x-small" title="Desktop (600px)">
+                <v-btn value="desktop" size="small" :title="$t('editor.desktop') + ' (600px)'">
                   <v-icon size="small">mdi-monitor</v-icon>
                 </v-btn>
-                <v-btn value="mobile" size="x-small" title="Mobile (375px)">
+                <v-btn value="mobile" size="small" :title="$t('editor.mobile') + ' (375px)'">
                   <v-icon size="small">mdi-cellphone</v-icon>
                 </v-btn>
               </v-btn-toggle>
@@ -162,13 +165,24 @@
               <v-divider vertical class="mx-1"></v-divider>
 
               <!-- Akcje -->
-              <v-btn size="x-small" variant="text" @click="openPreview" :title="$t('editor.previewHtml')">
+              <v-btn size="small" variant="text" @click="openPreview" :title="$t('editor.previewHtml')">
                 <v-icon left size="small">mdi-eye</v-icon>
                 {{ $t('editor.preview') }}
               </v-btn>
-              <v-btn size="x-small" variant="text" color="error" @click="clearAll" :title="$t('editor.clearAll')">
+              <v-btn size="small" variant="text" color="error" @click="clearAll" :title="$t('editor.clearAll')">
                 <v-icon left size="small">mdi-delete</v-icon>
                 {{ $t('editor.clear') }}
+              </v-btn>
+              <v-btn
+                icon
+                size="small"
+                variant="text"
+                :title="$t('editor.livePreview')"
+                :aria-label="$t('editor.livePreview')"
+                :aria-pressed="showLivePreview"
+                @click="toggleLivePreview"
+              >
+                <v-icon>{{ showLivePreview ? 'mdi-dock-right' : 'mdi-page-layout-sidebar-right' }}</v-icon>
               </v-btn>
 
               <v-spacer></v-spacer>
@@ -179,7 +193,7 @@
               <!-- Eksport do kampanii -->
               <v-btn
                 v-if="isCampaignEditMode"
-                size="x-small"
+                size="small"
                 color="success"
                 variant="elevated"
                 @click="exportContentToCampaign"
@@ -196,7 +210,7 @@
             <div class="canvas-area flex-1-1 d-flex" style="min-height: 0;">
               
               <!-- CANVAS -->
-              <div class="canvas-wrapper flex-1-1 overflow-y-auto pa-3" style="background: #e8eaed;">
+              <div class="canvas-wrapper flex-1-1 overflow-y-auto pa-4">
                 <div
                   :class="['email-canvas', canvasMode === 'mobile' ? 'mobile-canvas' : 'desktop-canvas']"
                   @drop="onCanvasDrop"
@@ -320,7 +334,7 @@
               </div>
 
               <!-- LIVE PREVIEW (prawa strona canvasu) -->
-              <div v-if="showLivePreview" class="live-preview-panel overflow-y-auto pa-3" style="background: #f0f0f0; max-width: 350px; min-width: 280px;">
+              <div v-if="showLivePreview" class="live-preview-panel overflow-y-auto pa-3">
                 <div class="d-flex align-center mb-2">
                   <h6 class="text-caption font-weight-bold">{{ $t('editor.livePreview') }}</h6>
                   <v-spacer></v-spacer>
@@ -340,15 +354,17 @@
 
         <!-- ============ PANEL PRAWY: WŁAŚCIWOŚCI + AI ASYSTENT ============ -->
         <v-col cols="auto" class="right-panel" :class="{ 'mobile-properties-open': showMobileProperties }">
-          <v-card class="pa-2 h-100 d-flex flex-column" style="border-radius: 0;">
+          <v-card class="editor-side-card pa-3 h-100 d-flex flex-column">
             
             <!-- Zakładki panelu prawego -->
-            <v-tabs v-model="rightPanelTab" density="compact" class="mb-2">
-              <v-tab value="properties">
-                <v-icon size="small">mdi-cog</v-icon>
+            <v-tabs v-model="rightPanelTab" density="compact" height="44" class="editor-panel-tabs right-panel-tabs mb-3">
+              <v-tab value="properties" :aria-label="$t('editor.properties')">
+                <v-icon size="small" class="mr-1">mdi-cog</v-icon>
+                {{ $t('editor.properties') }}
               </v-tab>
-              <v-tab value="ai">
-                <v-icon size="small" color="purple">mdi-robot</v-icon>
+              <v-tab value="ai" :aria-label="$t('editor.aiAssistant')">
+                <v-icon size="small" class="mr-1">mdi-robot</v-icon>
+                {{ $t('editor.aiAssistant') }}
               </v-tab>
             </v-tabs>
             <v-btn
@@ -676,7 +692,7 @@ export default {
       // === TRYBY ===
       canvasMode: 'desktop',
       previewMode: 'desktop',
-      showLivePreview: true,
+      showLivePreview: false,
 
       // === PANELE (zakładki) ===
       leftPanelTab: 'blocks',
@@ -1153,7 +1169,7 @@ export default {
           return `
             <div class="mobile-padding" style="padding:0 20px;${divStyle}">
               <p class="mobile-text" style="font-size:${c.fontSize || 16}px;color:${c.color || '#333'};font-weight:${c.fontWeight || 'normal'};font-style:${c.fontStyle || 'normal'};font-family:${c.fontFamily || 'Arial,sans-serif'};margin:0;line-height:1.6;">
-                ${this.escapeHtml(c.text || '')}
+                ${this.escapeHtml(c.text || '').replace(/\r?\n/g, '<br>')}
               </p>
             </div>`;
 
@@ -1354,16 +1370,40 @@ export default {
 
     onUseGeneratedContent(content) {
       if (!content) return;
+      const textContent = this.normalizeAiText(content);
+      if (!textContent) return;
       // Spróbuj dodać jako nowy blok tekstowy lub zastąpić zaznaczony
       if (this.selectedBlock && this.selectedBlock.type === 'text') {
-        this.selectedBlock.content.text = content;
+        this.selectedBlock.content.text = textContent;
         this.commitChange();
       } else {
         const block = this.createBlock('text');
-        block.content.text = content;
+        block.content.text = textContent;
         this.emailBlocks.push(block);
         this.selectBlock(block.id);
       }
+    },
+
+    normalizeAiText(content) {
+      const source = String(content ?? '')
+        .trim()
+        .replace(/^```(?:html|text)?\s*/i, '')
+        .replace(/\s*```$/, '');
+      if (!/<\/?[a-z][\s\S]*>/i.test(source)) return source;
+
+      const parsed = new DOMParser().parseFromString(source, 'text/html');
+      parsed.querySelectorAll('script, style, head, title').forEach(element => element.remove());
+      parsed.querySelectorAll('br').forEach(element => element.replaceWith(parsed.createTextNode('\n')));
+      parsed.querySelectorAll('p, div, li, h1, h2, h3, h4, h5, h6, blockquote, tr, td, th').forEach(element => {
+        element.append(parsed.createTextNode('\n'));
+      });
+
+      return (parsed.body.textContent || '')
+        .replace(/\u00a0/g, ' ')
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n[ \t]+/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
     },
 
     onUseSubject(subject) {
@@ -1389,7 +1429,7 @@ export default {
 
     onImproveText(improved) {
       if (!improved || !this.selectedBlock || this.selectedBlock.type !== 'text') return;
-      this.selectedBlock.content.text = improved;
+      this.selectedBlock.content.text = this.normalizeAiText(improved);
       this.commitChange();
     },
 
@@ -1491,24 +1531,38 @@ export default {
 .block-email-editor-enhanced {
   width: 100%;
   height: 100%;
-  background: #f6f7f9;
+  background: #f1f3f5;
   outline: none;
   position: relative;
 }
 
 /* === PANELE === */
 .left-panel {
-  width: 220px;
-  min-width: 200px;
-  border-right: 1px solid #e0e0e0;
-  background: #fafafa;
+  width: 228px;
+  min-width: 210px;
+  border-right: 1px solid #e1e5e9;
+  background: #ffffff;
 }
 
 .right-panel {
-  width: 280px;
-  min-width: 260px;
-  border-left: 1px solid #e0e0e0;
-  background: #fafafa;
+  width: 300px;
+  min-width: 280px;
+  border-left: 1px solid #e1e5e9;
+  background: #ffffff;
+}
+
+.editor-side-card {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: #ffffff !important;
+}
+
+.editor-workspace {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: #f1f3f5 !important;
 }
 
 .center-panel {
@@ -1518,8 +1572,29 @@ export default {
 /* === TOOLBAR === */
 .editor-toolbar {
   background: #fff;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e1e5e9;
+  min-height: 52px;
+}
+
+.editor-toolbar :deep(.v-btn) {
+  text-transform: none;
+  font-size: 0.82rem;
+}
+
+.editor-panel-tabs {
+  border-bottom: 1px solid #e8ebef;
+}
+
+.editor-panel-tabs :deep(.v-tab) {
+  min-width: 0;
   min-height: 36px;
+  padding-inline: 10px;
+  font-size: 0.78rem;
+  text-transform: none;
+}
+
+.left-panel-tabs :deep(.v-tab) {
+  justify-content: flex-start;
 }
 
 .mobile-properties-toggle,
@@ -1531,19 +1606,19 @@ export default {
 .block-item {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  margin: 2px 0;
+  padding: 9px 10px;
+  margin: 4px 0;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  transition: background 0.15s, border-color 0.15s;
   user-select: none;
-  border: 1px solid transparent;
+  border: 1px solid #e7eaee;
+  background: #ffffff;
 }
 
 .block-item:hover {
-  background: #e8eaf6;
-  border-color: #c5cae9;
-  transform: translateX(2px);
+  background: #f5f8ff;
+  border-color: #aab9e8;
 }
 
 /* === TEMPLATE MINI ITEM === */
@@ -1562,13 +1637,16 @@ export default {
 .canvas-wrapper {
   display: flex;
   justify-content: center;
-  background: #e8eaed;
+  background-color: #f1f3f5;
+  background-image: radial-gradient(#d8dde3 0.7px, transparent 0.7px);
+  background-size: 18px 18px;
 }
 
 .email-canvas {
   background: #fff;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(30, 41, 59, 0.08);
   min-height: 400px;
   transition: width 0.2s;
 }
@@ -1590,8 +1668,8 @@ export default {
   align-items: center;
   justify-content: center;
   height: 100%;
-  min-height: 350px;
-  padding: 40px;
+  min-height: 420px;
+  padding: 32px;
   text-align: center;
 }
 
@@ -1716,8 +1794,11 @@ export default {
 
 /* === LIVE PREVIEW === */
 .live-preview-panel {
-  border-left: 1px solid #e0e0e0;
-  background: #f0f0f0;
+  width: 320px;
+  min-width: 280px;
+  max-width: 34vw;
+  border-left: 1px solid #e1e5e9;
+  background: #ffffff;
 }
 
 .live-preview-iframe {
@@ -1740,19 +1821,19 @@ export default {
 /* === RESPONSYWNOŚĆ === */
 @media (max-width: 1200px) {
   .left-panel {
-    width: 170px;
-    min-width: 160px;
+    width: 200px;
+    min-width: 188px;
   }
   .right-panel {
-    width: 240px;
-    min-width: 220px;
+    width: 270px;
+    min-width: 250px;
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .left-panel {
-    width: 140px;
-    min-width: 130px;
+    width: 184px;
+    min-width: 172px;
   }
   .right-panel {
     display: none;
@@ -1777,6 +1858,11 @@ export default {
     top: 8px;
     right: 8px;
     z-index: 2;
+  }
+  .right-panel.mobile-properties-open .right-panel-tabs {
+    flex: 0 0 44px;
+    height: 44px;
+    margin-top: 36px;
   }
   .live-preview-panel {
     display: none;

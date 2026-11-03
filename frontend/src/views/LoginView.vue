@@ -59,7 +59,20 @@
             <svg class="input-icon" viewBox="0 0 24 24" width="20" height="20">
               <path fill="currentColor" d="M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"/>
             </svg>
-            <input type="password" v-model="password" :placeholder="$t('login.passwordPlaceholder')" class="login-input" required />
+            <input :type="showPassword ? 'text' : 'password'" v-model="password" :placeholder="$t('login.passwordPlaceholder')" class="login-input password-input" autocomplete="current-password" required />
+            <button
+              type="button"
+              class="password-toggle"
+              :aria-label="$t(showPassword ? 'login.hidePassword' : 'login.showPassword')"
+              :aria-pressed="showPassword"
+              :title="$t(showPassword ? 'login.hidePassword' : 'login.showPassword')"
+              @click="showPassword = !showPassword"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path fill="currentColor" d="M12 5c-5 0-9.27 3.11-11 7 1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7Zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+                <path v-if="!showPassword" d="m3 3 18 18" fill="none" stroke="currentColor" stroke-width="2" />
+              </svg>
+            </button>
           </div>
         </div>
         
@@ -119,6 +132,7 @@ import { useI18n } from 'vue-i18n'
 const router = useRouter();
 const email = ref('');
 const password = ref('');
+const showPassword = ref(false);
 const error = ref('');
 const { locale, t } = useI18n()
 const currentLocale = ref(locale.value)
@@ -358,6 +372,35 @@ function loginWithGitHub() {
   background: #f7fafc;
   outline: none;
   transition: all 0.3s ease;
+}
+
+.password-input {
+  padding-right: 50px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  color: #718096;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  color: #515bad;
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid #515bad;
+  outline-offset: 2px;
 }
 
 .login-input:focus {

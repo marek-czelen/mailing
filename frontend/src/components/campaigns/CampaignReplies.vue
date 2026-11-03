@@ -1,82 +1,74 @@
 <template>
   <div class="campaign-replies-container">
     <!-- Stats Summary -->
-    <v-row class="mb-4">
-      <v-col cols="12" md="3">
+    <div class="stats-summary">
         <v-card class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-icon size="40" color="primary" class="mr-3">mdi-email-multiple</v-icon>
+          <v-card-text class="d-flex align-center pa-2">
+            <v-icon size="26" color="primary" class="mr-2">mdi-email-multiple</v-icon>
             <div>
-              <div class="text-h6">{{ stats.totalReplies || 0 }}</div>
+              <div class="text-subtitle-1 font-weight-bold">{{ stats.totalReplies || 0 }}</div>
               <div class="text-caption text-medium-emphasis">{{ t('campaigns.allReplies') }}</div>
             </div>
           </v-card-text>
         </v-card>
-      </v-col>
-      <v-col cols="12" md="3">
         <v-card class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-icon size="40" color="success" class="mr-3">mdi-account-check</v-icon>
+          <v-card-text class="d-flex align-center pa-2">
+            <v-icon size="26" color="success" class="mr-2">mdi-account-check</v-icon>
             <div>
-              <div class="text-h6">{{ stats.identifiedReplies || 0 }}</div>
+              <div class="text-subtitle-1 font-weight-bold">{{ stats.identifiedReplies || 0 }}</div>
               <div class="text-caption text-medium-emphasis">{{ t('campaigns.identified') }}</div>
             </div>
           </v-card-text>
         </v-card>
-      </v-col>
-      <v-col cols="12" md="3">
         <v-card class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-icon size="40" color="warning" class="mr-3">mdi-account-question</v-icon>
+          <v-card-text class="d-flex align-center pa-2">
+            <v-icon size="26" color="warning" class="mr-2">mdi-account-question</v-icon>
             <div>
-              <div class="text-h6">{{ stats.unidentifiedReplies || 0 }}</div>
+              <div class="text-subtitle-1 font-weight-bold">{{ stats.unidentifiedReplies || 0 }}</div>
               <div class="text-caption text-medium-emphasis">{{ t('campaigns.unidentified') }}</div>
             </div>
           </v-card-text>
         </v-card>
-      </v-col>
-      <v-col cols="12" md="3">
         <v-card class="stat-card">
-          <v-card-text class="d-flex align-center">
-            <v-icon size="40" color="info" class="mr-3">mdi-percent</v-icon>
+          <v-card-text class="d-flex align-center pa-2">
+            <v-icon size="26" color="info" class="mr-2">mdi-percent</v-icon>
             <div>
-              <div class="text-h6">{{ replyRate }}%</div>
+              <div class="text-subtitle-1 font-weight-bold">{{ replyRate }}%</div>
               <div class="text-caption text-medium-emphasis">{{ t('campaigns.replyRate') }}</div>
             </div>
           </v-card-text>
         </v-card>
-      </v-col>
-    </v-row>
+    </div>
 
     <!-- Filters -->
-    <div class="filters-section mb-4">
+    <div class="filters-section replies-filters mb-3">
       <v-text-field
         v-model="searchQuery"
         :placeholder="t('campaigns.searchInReplies')"
         prepend-inner-icon="mdi-magnify"
         variant="outlined"
-        density="comfortable"
+        density="compact"
         hide-details
-        style="max-width: 400px;"
-        class="mr-2"
+        clearable
+        class="reply-search"
       />
       <v-select
         v-model="statusFilter"
         :items="statusOptions"
         :placeholder="t('campaigns.status')"
         variant="outlined"
-        density="comfortable"
+        density="compact"
         hide-details
-        style="max-width: 200px;"
+        class="reply-status-filter"
       />
       <v-select
         v-model="handledFilter"
         :items="handledOptions"
         :label="t('campaigns.reply.handlingFilter')"
         variant="outlined"
-        density="comfortable"
+        density="compact"
         hide-details
-        style="max-width: 220px;"
+        class="reply-handled-filter"
       />
     </div>
 
@@ -87,6 +79,7 @@
       :items-length="totalReplies"
       :loading="loading"
       item-value="id"
+      density="compact"
       class="replies-table"
       @update:options="onUpdateOptions"
       @click:row="onReplyRowClick"
@@ -96,7 +89,7 @@
         <div class="from-cell">
           <div class="email">{{ item.fromEmail }}</div>
           <div class="contact-info" v-if="item.hasContact && item.mailAddress">
-            <v-chip size="x-small" color="success" variant="tonal" class="mt-1">
+            <v-chip size="x-small" color="success" variant="tonal">
               <v-icon size="12" class="mr-1">mdi-account-check</v-icon>
               {{ t('campaigns.identified') }}
             </v-chip>
@@ -154,7 +147,7 @@
       <!-- No Data -->
       <template v-slot:no-data>
         <div class="no-data">
-          <v-icon size="48" color="grey-lighten-2">mdi-email-off</v-icon>
+          <v-icon size="36" color="grey-lighten-2">mdi-email-off</v-icon>
           <p>{{ t('campaigns.reply.noData') }}</p>
         </div>
       </template>
@@ -618,27 +611,55 @@ onMounted(() => {
   width: 100%;
 }
 
+.stats-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 .stat-card {
-  border-radius: 12px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  height: 100%;
+  border: 1px solid #e2e5e9 !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
 }
 
 .filters-section {
-  display: flex;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 140px) minmax(220px, 256px);
+  gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
+}
+
+.filters-section :deep(.v-input) {
+  min-width: 0;
 }
 
 .replies-table {
-  border-radius: 12px !important;
+  border: 1px solid #e2e5e9;
+  border-radius: 6px !important;
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: none !important;
+}
+
+.from-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .from-cell .email {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 600;
-  margin-bottom: 2px;
+}
+
+.contact-info {
+  flex: 0 0 auto;
 }
 
 .from-cell .name {
@@ -670,7 +691,7 @@ onMounted(() => {
 
 .no-data {
   text-align: center;
-  padding: 40px;
+  padding: 24px;
 }
 
 .no-data p {
@@ -781,12 +802,8 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .filters-section {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
   }
-  
-  .filters-section > * {
-    max-width: 100% !important;
-  }
+
 }
 </style>

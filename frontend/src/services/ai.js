@@ -191,7 +191,11 @@ export class AiService {
       fullPrompt += ' Dodaj jasne wezwanie do działania, zgodne z podaną ofertą.';
     }
 
-    fullPrompt += ' Zwróć czysty HTML odpowiedni do wiadomości email (używaj znaczników <p>, <h2>, <h3>, bez <html> i <body>). Zachowaj placeholdery personalizacyjne, takie jak {{first_name}}, jeśli występują w tekście źródłowym. Nie wymyślaj faktów, cen ani obietnic.';
+    if (options.outputFormat === 'text') {
+      fullPrompt += ' Zwróć wyłącznie zwykły tekst do pojedynczego bloku wiadomości e-mail, bez HTML, Markdown i bloków kodu. Krótki opis potraktuj jako temat i przygotuj neutralną treść na jego podstawie. Nie odmawiaj z powodu braku szczegółów; pomiń niepodane fakty, ceny, warunki i obietnice.';
+    } else {
+      fullPrompt += ' Zwróć czysty HTML odpowiedni do wiadomości email (używaj znaczników <p>, <h2>, <h3>, bez <html> i <body>). Zachowaj placeholdery personalizacyjne, takie jak {{first_name}}, jeśli występują w tekście źródłowym. Nie wymyślaj faktów, cen ani obietnic.';
+    }
 
     return fullPrompt;
   }
