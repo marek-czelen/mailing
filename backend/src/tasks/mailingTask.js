@@ -146,7 +146,8 @@ class MailingTask {
                     const result = await Mail.sendEmail({
                         smtp,
                         transporter: campaignTransporter,
-                        from: `${activeCampaign.senderName}<${activeCampaign.senderEmail}>`,
+                        from: `${activeCampaign.senderName || customer.name} <${customer.bounceEmail}>`,
+                        replyTo: activeCampaign.replyTo || undefined,
                         envelopeFrom: customer.bounceEmail,
                         to: address.mailAddress,
                             subject: activeCampaign.subject,

@@ -16,7 +16,7 @@ Kompleksowy system mailingowy z obsługą SMTP, wysyłaniem masowym, szablonami 
 - ✅ **Pooling połączeń** - Optymalizacja wydajności
 - ✅ **Obsługa błędów** - Szczegółowe komunikaty błędów
 - ✅ **RODO Compliance** - Obsługa wypisywania się z listy
-- ✅ **Odpowiedzi na adres From** - Odpowiedzi użytkowników trafiają na adres nadawcy kampanii
+- ✅ **Oddzielny Reply-To** - Odpowiedzi użytkowników mogą trafiać na inny adres i domenę niż nadawca
 - ✅ **Odbicia** - Stały adres MAIL FROM oraz wspólna skrzynka IMAP klienta
 - ✅ **Statystyka otwarć** - Unikalne otwarcia mierzone pikselem śledzącym
 
@@ -169,8 +169,9 @@ PORT=3000
 W Ustawieniach klienta skonfiguruj stały adres odbić oraz istniejącą skrzynkę IMAP,
 która tę pocztę odbiera. Serwer SMTP musi pozwalać na użycie tego adresu jako
 envelope sendera (`MAIL FROM`); jeśli dostawca go nadpisuje, skonfiguruj własny
-adres zwrotny po stronie dostawcy. Odpowiedzi użytkowników trafiają na adres
-nadawcy kampanii (`From`), a odbicia na stały adres techniczny.
+adres zwrotny po stronie dostawcy. Widoczny nadawca (`From`) i techniczny
+adres odbić (`MAIL FROM`) używają stałej skrzynki odbić; `Reply-To` może być
+innym adresem, także z innej domeny, i służy wyłącznie do zwykłych odpowiedzi.
 
 Śledzenie otwarć wymaga publicznego `BASE_URL`, z którego osiągalny jest endpoint
 `/mailing/open/:token`. Liczba otwarć oznacza unikalnych odbiorców, którzy

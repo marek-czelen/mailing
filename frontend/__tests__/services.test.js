@@ -116,12 +116,12 @@ describe('Campaigns Service', () => {
     const result = await Campaigns.create({
       name: 'New',
       subject: 'Test',
-      replyTo: 'legacy-reply@example.com',
+      replyTo: 'reply@kaufland.pl',
       trackOpens: false
     })
     expect(result).toEqual(mockCreated)
     expect(axios.post.mock.calls[0][1]).toEqual(expect.objectContaining({
-      replyTo: null,
+      replyTo: 'reply@kaufland.pl',
       trackOpens: false
     }))
   })

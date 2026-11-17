@@ -51,7 +51,12 @@ export async function sendEmail(req, res) {
         return res.status(400).send(new Response(null, false, 'Stały adres odbić nie jest skonfigurowany w Ustawieniach klienta.'));
       }
 
-      delete sendOptions.replyTo;
+      sendOptions.from = `${campaign.senderName || campaign.Customer.name} <${campaign.Customer.bounceEmail}>`;
+      if (campaign.replyTo) {
+        sendOptions.replyTo = campaign.replyTo;
+      } else {
+        delete sendOptions.replyTo;
+      }
       sendOptions.envelopeFrom = campaign.Customer.bounceEmail;
     }
 

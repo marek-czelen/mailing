@@ -86,6 +86,10 @@
             <span class="detail-label">Email:</span>
             <span class="detail-value">{{ campaign.senderEmail || 'Nie ustawiono' }}</span>
           </div>
+          <div class="detail-row">
+            <span class="detail-label">Odpowiedz do:</span>
+            <span class="detail-value">{{ campaign.replyTo || campaign.senderEmail || 'Nie ustawiono' }}</span>
+          </div>
         </v-card-text>
       </v-card>
 

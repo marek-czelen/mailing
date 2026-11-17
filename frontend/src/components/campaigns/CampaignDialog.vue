@@ -172,14 +172,36 @@
                 :rules="[rules.required]"
                 required
               />
-              <v-text-field
-                v-model="formData.senderEmail"
-                :label="t('campaigns.senderEmail')"
-                density="compact"
-                variant="outlined"
-                :rules="[rules.required, rules.email]"
-                required
-              />
+              <div class="sender-routing-fields">
+                <div class="routing-field">
+                  <v-text-field
+                    v-model="formData.senderEmail"
+                    :label="t('campaigns.senderEmail')"
+                    density="compact"
+                    variant="outlined"
+                    readonly
+                    hide-details
+                  />
+                  <div class="routing-note">
+                    <v-icon size="16">mdi-information-outline</v-icon>
+                    <span>Adres From jest ustawiany na stałą skrzynkę odbić z Ustawień klienta.</span>
+                  </div>
+                </div>
+                <div class="routing-field">
+                  <v-text-field
+                    v-model="formData.replyTo"
+                    label="Adres odpowiedzi (Reply-To)"
+                    density="compact"
+                    variant="outlined"
+                    :rules="[rules.email]"
+                    hide-details="auto"
+                  />
+                  <div class="routing-note">
+                    <v-icon size="16">mdi-reply-outline</v-icon>
+                    <span>Po kliknięciu Odpowiedz wiadomość trafi na ten adres; może być z innej domeny.</span>
+                  </div>
+                </div>
+              </div>
               <v-text-field
                 v-model="formData.senderPhone"
                 :label="t('campaigns.senderPhone')"
@@ -515,6 +537,7 @@ const formData = ref({
   htmlContent: '',
   senderName: customerSettings.value.smtpUser || '',
   senderEmail: customerSettings.value.smtpFrom || '',
+  replyTo: '',
   senderPhone: '',
   // SMTP Configuration
   smtpHost: customerSettings.value.smtpHost || '',
@@ -579,7 +602,7 @@ const canProceed = computed(() => {
       const hasValidSender = formData.value.senderName &&
         formData.value.senderEmail &&
         rules.email(formData.value.senderEmail) === true
-      return hasValidContent && hasValidSender
+      return hasValidContent && hasValidSender && rules.email(formData.value.replyTo) === true
     case 4:
       const hasSmtp = formData.value.smtpHost && 
                       formData.value.smtpPort && 
@@ -1055,7 +1078,8 @@ watch(() => props.campaign, (newCampaign) => {
       contentType: newCampaign.contentType || 'no-template',
       htmlContent: newCampaign.htmlContent || '',
       senderName: newCampaign.senderName || '',
-      senderEmail: newCampaign.senderEmail ||  '',
+      senderEmail: customerSettings.value.bounceEmail || newCampaign.senderEmail || '',
+      replyTo: newCampaign.replyTo || '',
       senderPhone: newCampaign.senderPhone || '',
       smtpHost: newCampaign.smtpHost || '',
       smtpPort: newCampaign.smtpPort || 587,
@@ -1098,7 +1122,8 @@ watch(() => props.campaign, (newCampaign) => {
       contentType: 'no-template',
       htmlContent: '',
       senderName:  customerSettings.value.smtpUser || '',
-      senderEmail:  customerSettings.value.smtpFrom || '',
+      senderEmail:  customerSettings.value.bounceEmail || customerSettings.value.smtpFrom || '',
+      replyTo: '',
       senderPhone: '',
       sendMode: 'scheduled',
       scheduledAt: null,
@@ -1132,9 +1157,9 @@ async function loadCustomerSettings() {
     customerSettings.value = settings
     
     // Initialize SMTP/IMAP defaults from customer settings
+    formData.value.senderEmail = settings.bounceEmail || settings.smtpFrom || ''
     if (!props.campaign) {
       formData.value.senderName = settings.smtpUser || ''
-      formData.value.senderEmail = settings.smtpFrom || ''
       formData.value.smtpHost = settings.smtpHost || ''
       formData.value.smtpPort = settings.smtpPort || 587
       formData.value.smtpUser = settings.smtpUser || ''
@@ -1315,6 +1340,34 @@ onMounted(() => {
   color: #333;
 }
 
+.sender-routing-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.routing-field {
+  min-width: 0;
+}
+
+.routing-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: -8px 4px 16px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  background: #f5f6fb;
+  color: #626678;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.routing-note :deep(.v-icon) {
+  flex: 0 0 auto;
+  color: #6572bd;
+}
+
 /* Tracking Options */
 .tracking-options h4 {
   margin: 0;
@@ -1403,6 +1456,11 @@ onMounted(() => {
   
   .step-label {
     font-size: 10px;
+  }
+
+  .sender-routing-fields {
+    grid-template-columns: 1fr;
+    gap: 0;
   }
   
   .step-circle {
