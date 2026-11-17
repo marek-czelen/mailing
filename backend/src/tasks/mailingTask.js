@@ -6,7 +6,7 @@ import Mail from '../include/mail.js';
 import { Op } from 'sequelize';
 import MarketingCampaniesMailingResult from '../models/marketingCampaniesMailing.model.js';
 import EnvironmentConfig from '../config/environment.config.js';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { buildCampaignRecipientWhere } from '../services/campaignRecipients.js';
 
 // Interwał na podstawie zmiennej środowiskowej
@@ -61,6 +61,22 @@ class MailingTask {
 
             if (!customer) {
                 console.warn(`Kampania ${activeCampaign.id} nie ma przypisanego klienta - pomijam`);
+                return;
+            }
+
+            if (!customer.bounceEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.bounceEmail) ||
+                !customer.replyMailboxHost || !customer.replyMailboxUser || !customer.replyMailboxPass) {
+                console.warn(`⚠️ Kampania ${activeCampaign.id} "${activeCampaign.name}": skonfiguruj stały adres odbić i skrzynkę IMAP klienta - pomijam wysyłkę`);
+                return;
+            }
+            if ((customer.replyMailboxProtocol || 'IMAP').toUpperCase() !== 'IMAP') {
+                console.warn(`⚠️ Kampania ${activeCampaign.id} "${activeCampaign.name}": odbicia wymagają protokołu IMAP - pomijam wysyłkę`);
+                return;
+            }
+
+            const trackingBaseUrl = EnvironmentConfig.get('BASE_URL');
+            if (activeCampaign.trackOpens && !trackingBaseUrl) {
+                console.warn(`⚠️ Kampania ${activeCampaign.id} "${activeCampaign.name}": brak BASE_URL wymaganego do śledzenia otwarć - pomijam wysyłkę`);
                 return;
             }
 
@@ -119,13 +135,25 @@ class MailingTask {
 
             for (const address of mailAddresses) {
                 try {
+                    const openTrackingToken = activeCampaign.trackOpens ? randomBytes(32).toString('hex') : null;
+                    if (openTrackingToken) {
+                        await MarketingCampaniesMailingResult.upsert({
+                            marketingCampaniesId: activeCampaign.id,
+                            mailAddressesId: address.id,
+                            openTrackingToken
+                        });
+                    }
                     const result = await Mail.sendEmail({
                         smtp,
                         transporter: campaignTransporter,
                         from: `${activeCampaign.senderName}<${activeCampaign.senderEmail}>`,
+                        envelopeFrom: customer.bounceEmail,
                         to: address.mailAddress,
                             subject: activeCampaign.subject,
                             html: activeCampaign.htmlContent,
+                            trackingPixelUrl: openTrackingToken
+                                ? `${String(trackingBaseUrl).replace(/\/+$/, '')}/mailing/open/${openTrackingToken}`
+                                : undefined,
                             campaignId: activeCampaign.id,
                             mailAddressId: address.id,
                             placeholders: {
@@ -152,6 +180,7 @@ class MailingTask {
                         await MarketingCampaniesMailingResult.upsert({
                             marketingCampaniesId: activeCampaign.id,
                             mailAddressesId: address.id,
+                            openTrackingToken,
                             error: true,
                             errorMessage: result.error
                         });
@@ -171,7 +200,8 @@ class MailingTask {
                             mailAddressesId: address.id,
                             isSend: true,
                             sendDate: new Date(),
-                            messageId: result.messageId || null
+                            messageId: result.messageId || null,
+                            openTrackingToken
                         }).catch(err => {
                             console.error(`Błąd zapisu statusu wysyłki dla ${address.mailAddress}:`, err && err.message ? err.message : err);
                         });

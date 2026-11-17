@@ -43,6 +43,8 @@
 - **Automated email dispatch** — background task sends emails for active campaigns via configurable SMTP
 - **IMAP reply monitoring** — automatically fetches and processes replies to sent campaigns
 - **Bounce detection** — hard bounce (permanent), soft bounce (temporary), and unknown bounce classification
+- **Independent bounce routing** — a fixed customer bounce address is separate from the campaign's visible sender
+- **Open tracking** — optional per-campaign unique-recipient open statistics
 - **Reply tracking** — full reply history with pagination, search, and filtering
 
 ### 🔐 Authentication & Authorization

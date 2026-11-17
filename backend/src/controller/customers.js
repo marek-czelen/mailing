@@ -241,6 +241,10 @@ class UsersController {
             .optional()
             .isEmail()
             .withMessage('Adres email nadawcy musi być prawidłowy'),
+          body('bounceEmail')
+            .optional({ nullable: true, checkFalsy: true })
+            .isEmail()
+            .withMessage('Adres odbić musi być prawidłowy'),
         
           
           body('active')

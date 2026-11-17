@@ -40,6 +40,16 @@ const MarketingCampaniesMailingResult = sequelize.define('marketing_campanies_ma
       allowNull: true,
       field: "message_id"
     },
+    openTrackingToken: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      field: 'open_tracking_token'
+    },
+    openedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'opened_at'
+    },
     error:{
       type: DataTypes.BOOLEAN,
       field: "error",

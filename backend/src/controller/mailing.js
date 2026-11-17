@@ -39,6 +39,41 @@ async function getLatestSendDates(campaignIds) {
     return new Map(results.map(result => [result.marketingCampaniesId, result.sentAt]));
 }
 
+async function getCampaignOpenStats(campaignIds) {
+    if (campaignIds.length === 0) return new Map();
+
+    const results = await MarketingCampaniesMailingResult.findAll({
+        attributes: [
+            'marketingCampaniesId',
+            [Sequelize.fn('SUM', Sequelize.literal('CASE WHEN is_send = 1 THEN 1 ELSE 0 END')), 'sentCount'],
+            [Sequelize.fn('SUM', Sequelize.literal('CASE WHEN is_send = 1 AND opened_at IS NOT NULL THEN 1 ELSE 0 END')), 'openCount']
+        ],
+        where: { marketingCampaniesId: { [Op.in]: campaignIds } },
+        group: ['marketingCampaniesId'],
+        raw: true
+    });
+
+    return new Map(results.map(result => {
+        const sentCount = Number(result.sentCount) || 0;
+        const openCount = Number(result.openCount) || 0;
+        return [result.marketingCampaniesId, {
+            sentCount,
+            openCount,
+            openRate: sentCount ? Math.round((openCount / sentCount) * 100) : 0
+        }];
+    }));
+}
+
+function isValidOptionalEmail(value) {
+    const email = value == null ? '' : String(value).trim();
+    return !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function toBoolean(value, defaultValue = false) {
+    if (value === undefined || value === null) return defaultValue;
+    return value === true || value === 'true' || value === 1 || value === '1';
+}
+
 // Pobierz wszystkie kampanie
 export async function getCampaignsList(req, res) {
     try {
@@ -52,6 +87,7 @@ export async function getCampaignsList(req, res) {
             attributes: { exclude: ['htmlContent', 'textContent', 'suggestions'] }
         });
         const latestSendDates = await getLatestSendDates(campaigns.map(campaign => campaign.id));
+        const openStats = await getCampaignOpenStats(campaigns.map(campaign => campaign.id));
         const recipientCountPromises = new Map();
         const audienceKeysByCampaignId = new Map();
         for (const campaign of campaigns) {
@@ -70,7 +106,8 @@ export async function getCampaignsList(req, res) {
         const campaignsWithSendDates = campaigns.map(campaign => ({
             ...campaign.toJSON(),
             recipientsCount: recipientCounts.get(audienceKeysByCampaignId.get(campaign.id)) || 0,
-            sentAt: latestSendDates.get(campaign.id) || null
+            sentAt: latestSendDates.get(campaign.id) || null,
+            ...(openStats.get(campaign.id) || { sentCount: 0, openCount: 0, openRate: 0 })
         }));
         res.status(200).send(new Response(campaignsWithSendDates, true, "Data received successfully."));
     } catch (error) {
@@ -94,12 +131,32 @@ export async function getCampaignById(req, res) {
             return res.status(403).send(new Response(null, false, "Campaign not found."));
         }
         const latestSendDates = await getLatestSendDates([campaign.id]);
+        const openStats = await getCampaignOpenStats([campaign.id]);
         res.status(200).send(new Response({
             ...campaign.toJSON(),
-            sentAt: latestSendDates.get(campaign.id) || null
+            sentAt: latestSendDates.get(campaign.id) || null,
+            ...(openStats.get(campaign.id) || { sentCount: 0, openCount: 0, openRate: 0 })
         }, true, "Data received successfully."));
     } catch (error) {
         res.status(500).send(new Response(null, false, `Failed to fetch campaign. ${error.message}`));
+    }
+}
+
+export async function trackCampaignOpen(req, res) {
+    try {
+        await MarketingCampaniesMailingResult.update(
+            { openedAt: new Date() },
+            { where: { openTrackingToken: req.params.token, openedAt: null } }
+        );
+        res.set({
+            'Content-Type': 'image/gif',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }).status(200).send(Buffer.from('R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', 'base64'));
+    } catch (error) {
+        console.error('Nie udało się zapisać otwarcia kampanii:', error?.message || error);
+        res.status(500).end();
     }
 }
 
@@ -108,10 +165,15 @@ export async function createCampaign(req, res) {
     try {
         let data = req.body;
         console.log(data);
+        if (!isValidOptionalEmail(data.replyTo)) {
+            return res.status(400).send(new Response(null, false, 'Nieprawidłowy adres Reply-To.'));
+        }
 
         // Normalizacja danych dla MySQL/MariaDB
         const normalized = {
             ...data,
+            replyTo: String(data.replyTo || '').trim() || null,
+            trackOpens: toBoolean(data.trackOpens, true),
             recipientTags: Array.isArray(data.recipientTags)
                 ? [...new Set(data.recipientTags.filter(tag => typeof tag === 'string' && tag.trim()).map(tag => tag.trim().slice(0, 255)))]
                 : [],
@@ -146,6 +208,9 @@ export async function createCampaign(req, res) {
 // Aktualizuj kampanię po ID
 export async function updateCampaign(req, res) {
     try {
+        if (req.body.replyTo !== undefined && !isValidOptionalEmail(req.body.replyTo)) {
+            return res.status(400).send(new Response(null, false, 'Nieprawidłowy adres Reply-To.'));
+        }
         // Normalizacja danych (jak w createCampaign)
         const updateData = {};
         if (req.body.name !== undefined) updateData.name = req.body.name;
@@ -153,6 +218,7 @@ export async function updateCampaign(req, res) {
         if (req.body.description !== undefined) updateData.description = req.body.description;
         if (req.body.senderName !== undefined) updateData.senderName = req.body.senderName;
         if (req.body.senderEmail !== undefined) updateData.senderEmail = req.body.senderEmail;
+        if (req.body.replyTo !== undefined) updateData.replyTo = String(req.body.replyTo || '').trim() || null;
         if (req.body.senderPhone !== undefined) updateData.senderPhone = req.body.senderPhone;
         if (req.body.textContent !== undefined) updateData.textContent = req.body.textContent;
         if (req.body.htmlContent !== undefined) updateData.htmlContent = req.body.htmlContent;
@@ -162,6 +228,7 @@ export async function updateCampaign(req, res) {
         if (req.body.progress !== undefined) updateData.progress = Number(req.body.progress);
         if (req.body.active !== undefined) updateData.active = (req.body.active === true || req.body.active === 'true' || req.body.active === 1 || req.body.active === '1');
         if (req.body.sent !== undefined) updateData.sent = (req.body.sent === true || req.body.sent === 'true' || req.body.sent === 1 || req.body.sent === '1');
+        if (req.body.trackOpens !== undefined) updateData.trackOpens = toBoolean(req.body.trackOpens);
         if (req.body.scoring !== undefined) updateData.scoring = req.body.scoring ? Number(req.body.scoring) : null;
         if (req.body.suggestions !== undefined) updateData.suggestions = req.body.suggestions; // JSON
         if (req.body.databaseId !== undefined) updateData.databaseId = Number(req.body.databaseId);

@@ -17,6 +17,7 @@ import { Templates } from '../src/services/templates'
 import { Databases } from '../src/services/databases'
 import { AiService } from '../src/services/ai'
 import { UsersService } from '../src/services/users'
+import { CustomerService } from '../src/services/customer'
 
 // ======================== ACCOUNT SERVICE ========================
 describe('Account Service', () => {
@@ -99,11 +100,12 @@ describe('Campaigns Service', () => {
   })
 
   test('getCampaignById powinien pobrać kampanię', async () => {
-    const mockCampaign = { id: 1, name: 'Test', subject: 'Hello' }
+    const mockCampaign = { id: 1, name: 'Test', subject: 'Hello', htmlContent: '<p>Campaign body</p>' }
     axios.get.mockResolvedValueOnce({ data: { data: mockCampaign, success: true } })
 
     const campaign = await Campaigns.getCampaignById(1)
     expect(campaign).toEqual(mockCampaign)
+    expect(campaign.htmlContent).toBe('<p>Campaign body</p>')
     expect(axios.get).toHaveBeenCalledWith('/mailing/getCampaignById/1')
   })
 
@@ -111,8 +113,22 @@ describe('Campaigns Service', () => {
     const mockCreated = { id: 2, name: 'New' }
     axios.post.mockResolvedValueOnce({ data: { data: mockCreated, success: true } })
 
-    const result = await Campaigns.create({ name: 'New', subject: 'Test' })
+    const result = await Campaigns.create({
+      name: 'New',
+      subject: 'Test',
+      replyTo: 'legacy-reply@example.com',
+      trackOpens: false
+    })
     expect(result).toEqual(mockCreated)
+    expect(axios.post.mock.calls[0][1]).toEqual(expect.objectContaining({
+      replyTo: null,
+      trackOpens: false
+    }))
+  })
+
+  test('ustawienia klienta zachowują adres odbić', () => {
+    expect(CustomerService.formatUserData({ bounce_email: 'bounces@example.com' }).bounceEmail)
+      .toBe('bounces@example.com')
   })
 
   test('delete powinien usunąć kampanię', async () => {

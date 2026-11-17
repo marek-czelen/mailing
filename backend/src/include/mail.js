@@ -233,6 +233,9 @@ export class Mail {
    * @param {string} options.subject - Temat wiadomości
    * @param {string} options.html - Treść HTML
    * @param {string} options.text - Treść tekstowa (opcjonalna)
+   * @param {string} options.replyTo - Opcjonalny adres nagłówka Reply-To
+   * @param {string} options.envelopeFrom - Opcjonalny techniczny adres MAIL FROM
+   * @param {string} options.trackingPixelUrl - Opcjonalny URL piksela otwarcia
    * @param {Object} options.placeholders - Placeholdery do przetworzenia
    * @param {Object} options.attachments - Załączniki (format nodemailer)
    * @param {Object} options.headers - Dodatkowe nagłówki
@@ -250,6 +253,9 @@ export class Mail {
         placeholders = {},
         attachments = [],
         headers = {},
+        replyTo,
+        envelopeFrom,
+        trackingPixelUrl,
         campaignId = null,
         mailAddressId = null,
         transporter: suppliedTransporter = null
@@ -266,6 +272,9 @@ export class Mail {
       const processedHtml = html ? Mail.processPlaceholders(html, placeholders) : undefined;
       const processedText = text ? Mail.processPlaceholders(text, placeholders) : undefined;
       const processedSubject = Mail.processPlaceholders(subject, placeholders);
+      const trackingPixel = trackingPixelUrl
+        ? `<img src="${String(trackingPixelUrl).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0" />`
+        : '';
 
       // Przygotuj opcje wiadomości
       // Wygeneruj Message-ID wcześniej aby móc go również zwrócić i zapisać do tabeli wyników
@@ -275,9 +284,16 @@ export class Mail {
         from,
         to: Array.isArray(to) ? to.join(', ') : to,
         subject: processedSubject,
-        html: processedHtml,
+        html: trackingPixel ? `${processedHtml || ''}${trackingPixel}` : processedHtml,
         text: processedText,
         attachments,
+        ...(replyTo ? { replyTo } : {}),
+        ...(envelopeFrom ? {
+          envelope: {
+            from: envelopeFrom,
+            to: Array.isArray(to) ? to : [to]
+          }
+        } : {}),
         headers: {
           'Message-ID': generatedMessageId,
           // Dodatkowe nagłówki do śledzenia kampanii i kontaktu (nie wszystkie serwery zawsze je zachowują)

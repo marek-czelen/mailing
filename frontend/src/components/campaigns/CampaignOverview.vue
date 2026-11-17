@@ -86,10 +86,6 @@
             <span class="detail-label">Email:</span>
             <span class="detail-value">{{ campaign.senderEmail || 'Nie ustawiono' }}</span>
           </div>
-          <div class="detail-row">
-            <span class="detail-label">Odpowiedz do:</span>
-            <span class="detail-value">{{ campaign.replyTo || 'Nie ustawiono' }}</span>
-          </div>
         </v-card-text>
       </v-card>
 
@@ -181,7 +177,7 @@
             
             <div class="performance-item">
               <div class="performance-value">
-                {{ Math.floor((campaign.sentCount * campaign.openRate / 100) || 0).toLocaleString('pl-PL') }}
+                {{ Number(campaign.openCount || 0).toLocaleString('pl-PL') }}
               </div>
               <div class="performance-label">Otwartych</div>
               <div class="performance-percentage success">{{ campaign.openRate || 0 }}%</div>

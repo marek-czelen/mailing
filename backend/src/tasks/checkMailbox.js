@@ -15,10 +15,7 @@ const DEBUG_MAILBOX = ['true', '1', 'yes', 'on'].includes(String(EnvironmentConf
 /**
  * CheckMailboxTask
  * -----------------
- * Cycliczne zadanie monitorujące skrzynki pocztowe kampanii marketingowych w celu
- * wykrycia odpowiedzi (replies) od odbiorców mailingu.
- * Konfiguracja skrzynki definiowana jest na poziomie kampanii (pola reply* w modelu MarketingCampanies).
- * Na razie przetwarzanie odpowiedzi jest mockowane.
+ * Monitors customer IMAP inboxes for bounce notifications and campaign replies.
  */
 class CheckMailboxTask {
     static interval = EnvironmentConfig.get('CHECK_MAILBOX_INTERVAL', 600000); // domyślnie 10 min
@@ -32,14 +29,10 @@ class CheckMailboxTask {
             console.log(`📥 [CheckMailboxTask] Start mailbox scan @ ${now.toISOString()} interval=${CheckMailboxTask.interval}`);
         }
         try {
-            // Pobierz kampanie, które mają aktywne sprawdzanie skrzynki i nie zostały zakończone (opcjonalnie: dateEnd > now)
+            // Odbicia korzystają ze wspólnej skrzynki klienta; odpowiedzi mogą nadal używać konfiguracji kampanii.
             const campaigns = await MarketingCampanies.findAll({
                 where: {
-                    replyCheckEnabled: true,
-                    active: true,
-                    sent: true, // sprawdzamy odpowiedzi tylko dla kampanii już wysłanych
-                    dateStart: { [Op.lte]: now },
-                    // Można dodać dodatkowy warunek: dateEnd: { [Op.gte]: now }
+                    sent: true
                 },
                 include: [{ model: Customers, as: 'Customer' }]
             });
@@ -49,7 +42,31 @@ class CheckMailboxTask {
                 return;
             }
 
+            const campaignsByCustomer = new Map();
             for (const campaign of campaigns) {
+                const customerId = campaign.customerId;
+                if (!campaignsByCustomer.has(customerId)) campaignsByCustomer.set(customerId, []);
+                campaignsByCustomer.get(customerId).push(campaign);
+            }
+
+            for (const customerCampaigns of campaignsByCustomer.values()) {
+                const customer = customerCampaigns[0].Customer;
+                const canCheckBounces = customer?.bounceEmail &&
+                    customer.replyMailboxHost && customer.replyMailboxUser && customer.replyMailboxPass;
+                if (canCheckBounces) {
+                    try {
+                        const result = await CheckMailboxTask.checkCustomerMailbox(customer, customerCampaigns);
+                        if (DEBUG_MAILBOX) {
+                            console.log(`🔧 [CheckMailboxTask] Klient ${customer.id} fetchedReplies.length=${result.fetchedCount}`);
+                        }
+                    } catch (innerErr) {
+                        console.error(`❌ [CheckMailboxTask] Błąd skrzynki odbić klienta ${customer.id}:`, innerErr?.message || innerErr);
+                        if (DEBUG_MAILBOX && innerErr?.stack) console.error(innerErr.stack);
+                    }
+                    continue;
+                }
+
+                for (const campaign of customerCampaigns.filter(item => item.replyCheckEnabled)) {
                 try {
                     const result = await CheckMailboxTask.checkCampaignMailbox(campaign);
                     if (DEBUG_MAILBOX) {
@@ -64,6 +81,7 @@ class CheckMailboxTask {
                     console.error(`❌ [CheckMailboxTask] Błąd podczas sprawdzania kampanii ${campaign.id}:`, innerErr?.message || innerErr);
                     if (DEBUG_MAILBOX && innerErr?.stack) console.error(innerErr.stack);
                 }
+                }
             }
         } catch (err) {
             console.error('❌ [CheckMailboxTask] Błąd główny zadania:', err?.message || err);
@@ -72,6 +90,22 @@ class CheckMailboxTask {
     }
 
     static async checkCampaignMailbox(campaign, { maxMessages = 10 } = {}) {
+        const customer = campaign.Customer || await Customers.findByPk(campaign.customerId);
+        if (customer?.bounceEmail && customer.replyMailboxHost && customer.replyMailboxUser && customer.replyMailboxPass) {
+            const campaigns = await MarketingCampanies.findAll({
+                where: { customerId: customer.id, sent: true }
+            });
+            return CheckMailboxTask.checkCustomerMailbox(customer, campaigns, { maxMessages });
+        }
+
+        return CheckMailboxTask.checkMailboxWithConfig(campaign, [campaign], { maxMessages });
+    }
+
+    static async checkCustomerMailbox(customer, campaigns, { maxMessages = 10 } = {}) {
+        return CheckMailboxTask.checkMailboxWithConfig(customer, campaigns, { maxMessages });
+    }
+
+    static async checkMailboxWithConfig(mailboxConfig, campaigns, { maxMessages = 10 } = {}) {
         const {
             replyMailboxHost: host,
             replyMailboxPort: port,
@@ -81,10 +115,13 @@ class CheckMailboxTask {
             replyMailboxFolder: folder,
             replyMailboxTls: tls,
             replyMailboxAllowSelfSigned: allowSelfSigned
-        } = campaign;
+        } = mailboxConfig;
 
         if (!host || !user || !pass) {
-            throw new Error('Kampania nie ma pełnej konfiguracji skrzynki IMAP (host/login/hasło).');
+            throw new Error('Brak pełnej konfiguracji skrzynki IMAP (host/login/hasło).');
+        }
+        if (!campaigns.length) {
+            return { mailboxMessageCount: 0, unseenMessageCount: 0, fetchedCount: 0, savedCount: 0, duplicateCount: 0, errorCount: 0 };
         }
 
         const proto = (protocol || 'IMAP').toUpperCase();
@@ -93,7 +130,7 @@ class CheckMailboxTask {
         }
 
         if (DEBUG_MAILBOX) {
-            console.log(`🔧 [CheckMailboxTask] Kampania ${campaign.id} proto=${proto} host=${host} port=${port} folder=${folder} tls=${tls} allowSelfSigned=${allowSelfSigned}`);
+            console.log(`🔧 [CheckMailboxTask] ${campaigns.length > 1 ? `Klient ${campaigns[0].customerId}` : `Kampania ${campaigns[0].id}`} proto=${proto} host=${host} port=${port} folder=${folder} tls=${tls} allowSelfSigned=${allowSelfSigned}`);
         }
 
         const fetchTimeout = EnvironmentConfig.get('CHECK_MAILBOX_FETCH_TIMEOUT', 120000);
@@ -101,7 +138,10 @@ class CheckMailboxTask {
             CheckMailboxTask.fetchImapMessages({ host, port, user, pass, folder, maxMessages, tls, allowSelfSigned }),
             new Promise((_, reject) => setTimeout(() => reject(new Error('IMAP fetch timeout')), fetchTimeout))
         ]);
-        const result = await CheckMailboxTask.processReplies(campaign, fetchedReplies);
+        const result = await CheckMailboxTask.processReplies(campaigns[0], fetchedReplies, {
+            campaigns,
+            mailboxConfig
+        });
 
         if (result.errorCount === 0 && fetchedReplies.length) {
             try {
@@ -130,12 +170,12 @@ class CheckMailboxTask {
      * - Zapis każdej odpowiedzi do tabeli campaign_replies.
      * - Obsługa wielu odpowiedzi z tego samego adresu (każda zapisywana osobno).
      */
-    static async processReplies(campaign, replies) {
+    static async processReplies(campaign, replies, { campaigns = [campaign], mailboxConfig = campaign } = {}) {
         if (!replies.length) {
-            return { savedCount: 0, duplicateCount: 0, errorCount: 0 };
+            return { savedCount: 0, duplicateCount: 0, unmatchedCount: 0, errorCount: 0 };
         }
 
-        let saved = 0, duplicates = 0, errors = 0;
+        let saved = 0, duplicates = 0, unmatched = 0, errors = 0;
 
     for (const reply of replies) {
             try {
@@ -169,8 +209,10 @@ class CheckMailboxTask {
                 cleanEmail = (cleanEmail || '').trim().toLowerCase();
 
                 // 1) Najpierw spróbuj jednoznacznego mapowania po In-Reply-To/References -> message_id z wyników wysyłki
-                let targetCampaignId = campaign.id;
+                let targetCampaign = campaigns.length === 1 ? campaigns[0] : null;
+                let targetCampaignId = targetCampaign?.id || null;
                 let mailAddressId = null;
+                const candidateCampaignIds = campaigns.map(item => item.id);
                 const refIds = [];
                 // Normalizuj Message-ID: zawsze z nawiasami <>
                 if (inReplyTo) {
@@ -190,7 +232,7 @@ class CheckMailboxTask {
                     
                     try {
                         const { replyMailboxHost, replyMailboxPort, replyMailboxUser, replyMailboxPass, 
-                                replyMailboxTls, replyMailboxAllowSelfSigned } = campaign;
+                                replyMailboxTls, replyMailboxAllowSelfSigned } = mailboxConfig;
                         
                         const client = new ImapFlow({
                             host: replyMailboxHost,
@@ -207,7 +249,7 @@ class CheckMailboxTask {
                         });
 
                         await client.connect();
-                        await client.mailboxOpen(campaign.replyMailboxFolder || 'INBOX');
+                        await client.mailboxOpen(mailboxConfig.replyMailboxFolder || 'INBOX');
                         
                         const originalMessageId = await CheckMailboxTask.extractOriginalMessageIdFromBounce(client, uid);
                         
@@ -224,91 +266,90 @@ class CheckMailboxTask {
                 
                 if (refIds.length) {
                     const sent = await MarketingCampaniesMailingResult.findOne({
-                        where: { messageId: { [Op.in]: refIds } },
+                        where: {
+                            marketingCampaniesId: { [Op.in]: candidateCampaignIds },
+                            messageId: { [Op.in]: refIds }
+                        },
                         order: [['sendDate', 'DESC']]
                     });
                     if (sent) {
                         targetCampaignId = sent.marketingCampaniesId || targetCampaignId;
+                        targetCampaign = campaigns.find(item => item.id === targetCampaignId) || targetCampaign;
                         mailAddressId = sent.mailAddressesId || mailAddressId;
                         if (DEBUG_MAILBOX) console.log(`🎯 [ProcessReply] Mapowanie po ${bounceInfo.isBounce ? 'oryginalnym' : ''} Message-ID => campaignId=${targetCampaignId}, mailAddressId=${mailAddressId}`);
                     }
                 }
 
-                // 2) Fallback: szukaj kontaktu po e-mailu w ramach databaseId kampanii z pętli
-                if (!mailAddressId && cleanEmail && campaign.databaseId) {
-                    const mailAddress = await MailAddress.findOne({
-                        where: {
-                            databaseId: campaign.databaseId,
-                            mail_address: cleanEmail
-                        }
-                    });
-                    if (mailAddress) {
-                        mailAddressId = mailAddress.id;
-                        if (DEBUG_MAILBOX) console.log(`🔗 [ProcessReply] Fallback kontakt mail_address_id=${mailAddressId} dla ${cleanEmail}`);
-                    } else if (DEBUG_MAILBOX) {
-                        console.log(`❓ [ProcessReply] Fallback: brak kontaktu dla ${cleanEmail} (databaseId=${campaign.databaseId})`);
+                let recipientEmail = bounceInfo.isBounce ? bounceInfo.recipientEmail : cleanEmail;
+                if (!recipientEmail && bounceInfo.isBounce && uid) {
+                    try {
+                        const client = new ImapFlow({
+                            host: mailboxConfig.replyMailboxHost,
+                            port: mailboxConfig.replyMailboxPort || 993,
+                            secure: mailboxConfig.replyMailboxTls !== false,
+                            auth: {
+                                user: mailboxConfig.replyMailboxUser,
+                                pass: mailboxConfig.replyMailboxPass
+                            },
+                            tls: {
+                                rejectUnauthorized: !mailboxConfig.replyMailboxAllowSelfSigned
+                            },
+                            logger: false
+                        });
+                        await client.connect();
+                        await client.mailboxOpen(mailboxConfig.replyMailboxFolder || 'INBOX');
+                        recipientEmail = await CheckMailboxTask.extractRecipientFromBounceContent(client, uid);
+                        await client.logout();
+                    } catch (error) {
+                        console.error(`❌ [ProcessReply] BOUNCE: błąd przy parsowaniu treści:`, error?.message || error);
                     }
                 }
 
-                // 3) Specjalne mapowanie dla bounce: użyj recipientEmail z bounce info
-                if (!mailAddressId && bounceInfo.isBounce && campaign.databaseId) {
-                    let bounceRecipientEmail = bounceInfo.recipientEmail;
-                    
-                    // Jeśli nie znaleziono w nagłówkach, spróbuj parsować treść i załączniki
-                    if (!bounceRecipientEmail && uid) {
-                        if (DEBUG_MAILBOX) console.log(`🔍 [ProcessReply] BOUNCE: szukam adresu odbiorcy w treści wiadomości...`);
-                        
-                        // Potrzebujemy połączenia IMAP - użyjemy tego samego co było w fetchImapMessages
-                        try {
-                            const { replyMailboxHost, replyMailboxPort, replyMailboxUser, replyMailboxPass, 
-                                    replyMailboxTls, replyMailboxAllowSelfSigned } = campaign;
-                            
-                            const client = new ImapFlow({
-                                host: replyMailboxHost,
-                                port: replyMailboxPort || 993,
-                                secure: replyMailboxTls !== false,
-                                auth: {
-                                    user: replyMailboxUser,
-                                    pass: replyMailboxPass
-                                },
-                                tls: {
-                                    rejectUnauthorized: !replyMailboxAllowSelfSigned
-                                },
-                                logger: false
-                            });
-
-                            await client.connect();
-                            await client.mailboxOpen(campaign.replyMailboxFolder || 'INBOX');
-                            
-                            bounceRecipientEmail = await CheckMailboxTask.extractRecipientFromBounceContent(client, uid);
-                            
-                            await client.logout();
-                            
-                            if (bounceRecipientEmail) {
-                                if (DEBUG_MAILBOX) console.log(`✅ [ProcessReply] BOUNCE: znaleziono adres w treści: ${bounceRecipientEmail}`);
-                            }
-                        } catch (error) {
-                            console.error(`❌ [ProcessReply] BOUNCE: błąd przy parsowaniu treści:`, error.message);
-                        }
-                    }
-                    
-                    if (bounceRecipientEmail) {
-                        bounceRecipientEmail = bounceRecipientEmail.toLowerCase();
-                        const mailAddress = await MailAddress.findOne({
+                if (!mailAddressId && recipientEmail) {
+                    const databaseIds = [...new Set(campaigns.map(item => item.databaseId).filter(Boolean))];
+                    const contacts = databaseIds.length
+                        ? await MailAddress.findAll({
                             where: {
-                                databaseId: campaign.databaseId,
-                                mail_address: bounceRecipientEmail
-                            }
+                                databaseId: { [Op.in]: databaseIds },
+                                mail_address: recipientEmail.toLowerCase()
+                            },
+                            attributes: ['id']
+                        })
+                        : [];
+                    const contactIds = contacts.map(item => item.id);
+                    if (contactIds.length) {
+                        const sent = await MarketingCampaniesMailingResult.findOne({
+                            where: {
+                                marketingCampaniesId: { [Op.in]: candidateCampaignIds },
+                                mailAddressesId: { [Op.in]: contactIds },
+                                isSend: true
+                            },
+                            order: [['sendDate', 'DESC']]
                         });
-                        if (mailAddress) {
-                            mailAddressId = mailAddress.id;
-                            if (DEBUG_MAILBOX) console.log(`🔴 [ProcessReply] BOUNCE mapping: mail_address_id=${mailAddressId} dla ${bounceRecipientEmail}`);
-                        } else if (DEBUG_MAILBOX) {
-                            console.log(`⚠️ [ProcessReply] BOUNCE: nie znaleziono kontaktu dla ${bounceRecipientEmail} (databaseId=${campaign.databaseId})`);
+                        if (sent) {
+                            targetCampaignId = sent.marketingCampaniesId;
+                            targetCampaign = campaigns.find(item => item.id === targetCampaignId) || targetCampaign;
+                            mailAddressId = sent.mailAddressesId;
+                        } else if (contacts.length === 1 && campaigns.length === 1) {
+                            mailAddressId = contacts[0].id;
                         }
-                    } else if (DEBUG_MAILBOX) {
-                        console.log(`❓ [ProcessReply] BOUNCE: nie udało się wyodrębnić adresu odbiorcy ani z nagłówków ani z treści`);
                     }
+                }
+
+                if (!targetCampaign && targetCampaignId) {
+                    targetCampaign = campaigns.find(item => item.id === targetCampaignId) || null;
+                }
+                if (!targetCampaignId && campaigns.length === 1) {
+                    targetCampaign = campaigns[0];
+                    targetCampaignId = targetCampaign.id;
+                }
+                if (!targetCampaignId) {
+                    unmatched++;
+                    console.warn(`⚠️ [ProcessReply] Nie można przypisać wiadomości z ${from || 'nieznanego nadawcy'} do kampanii; brak pasującego Message-ID lub wysłanego kontaktu.`);
+                    continue;
+                }
+                if (!bounceInfo.isBounce && !targetCampaign?.replyCheckEnabled && !mailboxConfig.replyCheckEnabled) {
+                    continue;
                 }
 
                 // Parsuj datę
@@ -358,7 +399,10 @@ class CheckMailboxTask {
                         }
                         if (refMatchIds.length) {
                             const orig = await MarketingCampaniesMailingResult.findOne({
-                                where: { messageId: { [Op.in]: refMatchIds } },
+                                where: {
+                                    marketingCampaniesId: { [Op.in]: candidateCampaignIds },
+                                    messageId: { [Op.in]: refMatchIds }
+                                },
                                 order: [['sendDate', 'DESC']]
                             });
                             if (orig) {
@@ -443,8 +487,8 @@ class CheckMailboxTask {
             }
         }
 
-        console.log(`📊 [ProcessReply] Kampania ${campaign.id}: zapisano=${saved}, duplikaty=${duplicates}, błędy=${errors}, łącznie=${replies.length}`);
-        return { savedCount: saved, duplicateCount: duplicates, errorCount: errors };
+        console.log(`📊 [ProcessReply] Skrzynka klienta ${campaign.customerId}: zapisano=${saved}, duplikaty=${duplicates}, niedopasowane=${unmatched}, błędy=${errors}, łącznie=${replies.length}`);
+        return { savedCount: saved, duplicateCount: duplicates, unmatchedCount: unmatched, errorCount: errors };
     }
 
     static async fetchImapMessages({ host, port, user, pass, folder = 'INBOX', maxMessages = 10, tls = null, allowSelfSigned = false }) {

@@ -193,7 +193,18 @@
           <!-- Step 4: Email Accounts -->
           <div v-if="step === 4">
             <h3>{{ t('campaigns.accountsTitle') }}</h3>
-        
+
+            <v-text-field
+              :model-value="customerSettings.bounceEmail || ''"
+              label="Stały adres odbić"
+              placeholder="Nie skonfigurowano w Ustawieniach klienta"
+              hint="Adres jest ustawiany w Ustawieniach klienta i nie może być zmieniony dla pojedynczej kampanii."
+              persistent-hint
+              variant="outlined"
+              density="compact"
+              readonly
+              class="mb-4"
+            />
 
             <!-- SMTP Configuration -->
             <div class="mail-config-section">
@@ -405,6 +416,14 @@
               <v-radio :label="t('campaigns.sendScheduled')" value="scheduled" />
             </v-radio-group>
 
+            <v-switch
+              v-model="formData.trackOpens"
+              label="Śledź otwarcia"
+              color="primary"
+              density="compact"
+              hide-details
+            />
+
             <v-text-field
               v-if="formData.sendMode === 'scheduled'"
               density="compact"
@@ -557,10 +576,11 @@ const canProceed = computed(() => {
         (contentMode.value === 'html' && formData.value.htmlContent) ||
         (contentMode.value === 'no-template')
       )
-      const hasValidSender = formData.value.senderName && formData.value.senderEmail
+      const hasValidSender = formData.value.senderName &&
+        formData.value.senderEmail &&
+        rules.email(formData.value.senderEmail) === true
       return hasValidContent && hasValidSender
     case 4:
-      // SMTP is required
       const hasSmtp = formData.value.smtpHost && 
                       formData.value.smtpPort && 
                       formData.value.smtpUser && 
@@ -697,6 +717,10 @@ async function save() {
 
   
   try {
+    if (props.campaign?.id && !Object.prototype.hasOwnProperty.call(props.campaign, 'htmlContent')) {
+      throw new Error('Nie można zapisać kampanii bez pobrania jej pełnej treści.')
+    }
+
     const campaignData = {
       ...formData.value,
       contentType: contentMode.value,
@@ -1056,7 +1080,7 @@ watch(() => props.campaign, (newCampaign) => {
               return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
             })()
           : null,
-      trackOpens: newCampaign.trackOpens !== false,
+      trackOpens: ![false, 0, '0', 'false'].includes(newCampaign.trackOpens),
       trackClicks: newCampaign.trackClicks !== false
     }
     contentMode.value = newCampaign.contentType || 'no-template'

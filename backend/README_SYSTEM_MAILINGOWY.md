@@ -16,6 +16,9 @@ Kompleksowy system mailingowy z obsługą SMTP, wysyłaniem masowym, szablonami 
 - ✅ **Pooling połączeń** - Optymalizacja wydajności
 - ✅ **Obsługa błędów** - Szczegółowe komunikaty błędów
 - ✅ **RODO Compliance** - Obsługa wypisywania się z listy
+- ✅ **Odpowiedzi na adres From** - Odpowiedzi użytkowników trafiają na adres nadawcy kampanii
+- ✅ **Odbicia** - Stały adres MAIL FROM oraz wspólna skrzynka IMAP klienta
+- ✅ **Statystyka otwarć** - Unikalne otwarcia mierzone pikselem śledzącym
 
 ### 🌍 System Zmiennych Środowiskowych
 - ✅ **Rozróżnienie Development/Production**
@@ -160,6 +163,20 @@ APP_NAME=Mailing System
 BASE_URL=http://localhost:3000
 PORT=3000
 ```
+
+### Odbicia i otwarcia kampanii
+
+W Ustawieniach klienta skonfiguruj stały adres odbić oraz istniejącą skrzynkę IMAP,
+która tę pocztę odbiera. Serwer SMTP musi pozwalać na użycie tego adresu jako
+envelope sendera (`MAIL FROM`); jeśli dostawca go nadpisuje, skonfiguruj własny
+adres zwrotny po stronie dostawcy. Odpowiedzi użytkowników trafiają na adres
+nadawcy kampanii (`From`), a odbicia na stały adres techniczny.
+
+Śledzenie otwarć wymaga publicznego `BASE_URL`, z którego osiągalny jest endpoint
+`/mailing/open/:token`. Liczba otwarć oznacza unikalnych odbiorców, którzy
+załadowali piksel; blokowanie obrazów i proxy pocztowe mogą wpływać na wynik.
+Zmiany schematu należy zastosować migracją
+`db/migrations/20261117_add_campaign_reply_bounce_open_tracking.sql`.
 
 ### SMTP
 

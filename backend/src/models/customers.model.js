@@ -38,6 +38,11 @@ const Customers = sequelize.define('customers', {
       field: "smtp_from",
       allowNull: true
     },
+    bounceEmail: {
+      type: DataTypes.STRING(320),
+      field: "bounce_email",
+      allowNull: true
+    },
     smtpSecure: {
       type: DataTypes.BOOLEAN,
       field: "smtp_secure",

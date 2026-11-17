@@ -77,7 +77,7 @@ app.use('/customers', requireAuth, customerRouter);
 app.use('/admin', requireAuth, adminRouter);
 // /mailing z wyjątkiem publicznych linków wypisania
 app.use('/mailing', (req, res, next) => {
-  if (req.path.startsWith('/unsubscribe/')) return next();
+  if (req.path.startsWith('/unsubscribe/') || req.path.startsWith('/open/')) return next();
   return requireAuth(req, res, next);
 }, mailinngRouter);
 app.use('/templates', requireAuth, templateRoutes);

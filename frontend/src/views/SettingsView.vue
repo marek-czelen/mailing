@@ -107,10 +107,19 @@
 
             <!-- Sekcja: IMAP -->
             <div v-show="activeSection === 'imap'" class="section">
-              <h3 class="section-title">Konfiguracja IMAP (sprawdzanie odpowiedzi)</h3>
+              <h3 class="section-title">Skrzynka odpowiedzi i odbić</h3>
+              <v-text-field
+                v-model="localCustomerSettings.bounceEmail"
+                label="Stały adres odbić (MAIL FROM)"
+                hint="Raporty o niedostarczeniu będą wysyłane na ten adres i odbierane przez skonfigurowaną skrzynkę IMAP. Serwer SMTP musi akceptować ten adres jako MAIL FROM."
+                persistent-hint
+                :rules="optionalEmailRules"
+                variant="outlined"
+                density="compact"
+              />
               <v-switch v-model="localCustomerSettings.replyCheckEnabled" label="Włącz sprawdzanie odpowiedzi"
                 color="primary" />
-              <template v-if="localCustomerSettings.replyCheckEnabled">
+              <template v-if="localCustomerSettings.replyCheckEnabled || localCustomerSettings.bounceEmail">
                 <v-row>
                   <v-col cols="12" md="6">
                     <v-text-field v-model="localCustomerSettings.replyMailboxHost" label="Host IMAP" variant="outlined"
@@ -238,6 +247,9 @@ const emailRules = [
   v => !!v || 'Email jest wymagany',
   v => /.+@.+\..+/.test(v) || 'Nieprawidłowy format email'
 ]
+const optionalEmailRules = [
+  v => !v || /.+@.+\..+/.test(v) || 'Nieprawidłowy format email'
+]
 const smtpHostRules = [v => !localCustomerSettings.value.internalMailServer ? (!!v || 'Host SMTP wymagany') : true]
 const smtpPortRules = [
   v => !localCustomerSettings.value.internalMailServer ? (!!v || 'Port SMTP wymagany') : true,
@@ -264,7 +276,7 @@ const canTestSmtp = computed(() => {
 })
 
 const canTestImap = computed(() => {
-  return !!(localCustomerSettings.value.replyCheckEnabled && localCustomerSettings.value.replyMailboxHost &&
+  return !!(localCustomerSettings.value.replyMailboxHost &&
     localCustomerSettings.value.replyMailboxPort && localCustomerSettings.value.replyMailboxUser &&
     localCustomerSettings.value.replyMailboxPass)
 })

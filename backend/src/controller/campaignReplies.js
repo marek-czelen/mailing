@@ -1,6 +1,7 @@
 import { Response } from '../include/response.js';
 import CampaignReply from '../models/campaignReply.model.js';
 import MarketingCampanies from '../models/marketingCampanies.model.js';
+import Customers from '../models/customers.model.js';
 import MailAddress from '../models/mailAddress.model.js';
 import MailAddressHistory from '../models/mailAddressHistory.model.js';
 import { Admin } from '../include/admin.js';
@@ -27,7 +28,16 @@ export async function receiveCampaignMailbox(req, res) {
             return res.status(400).send(new Response(null, false, 'Można sprawdzać skrzynkę tylko dla wysłanej kampanii.'));
         }
 
-        const result = await CheckMailboxTask.checkCampaignMailbox(campaign, { maxMessages: 100 });
+        const customer = await Customers.findByPk(userData.customerId);
+        if (!customer) {
+            return res.status(404).send(new Response(null, false, 'Customer not found.'));
+        }
+        const campaigns = await MarketingCampanies.findAll({
+            where: { customerId: userData.customerId, sent: true }
+        });
+        const result = customer.bounceEmail
+            ? await CheckMailboxTask.checkCustomerMailbox(customer, campaigns, { maxMessages: 100 })
+            : await CheckMailboxTask.checkCampaignMailbox(campaign, { maxMessages: 100 });
         return res.send(new Response(result, true, 'Campaign mailbox checked successfully.'));
     } catch (error) {
         console.error('[receiveCampaignMailbox] Error:', error);

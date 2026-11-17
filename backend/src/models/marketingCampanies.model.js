@@ -41,6 +41,11 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
     allowNull: true,
     field: "sender_email"
   },
+  replyTo: {
+    type: DataTypes.STRING(320),
+    allowNull: true,
+    field: "reply_to"
+  },
   senderPhone: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -136,6 +141,12 @@ const MarketingCampanies = sequelize.define('marketing_campanies', {
       defaultValue: false,
       field: "sent"
     },
+      trackOpens: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+        field: 'track_opens'
+      },
     sendingInProgress:{
       type: DataTypes.BOOLEAN,
       allowNull: false,

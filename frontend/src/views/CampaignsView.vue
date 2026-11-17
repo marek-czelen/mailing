@@ -93,14 +93,13 @@
                     </v-btn>
                   </template>
                   <v-list>
-                    <v-list-item v-if="!isCampaignSent(campaign)" @click="editCampaign(campaign)">
+                    <v-list-item v-if="!isCampaignSent(campaign)" :disabled="loadingCampaignForEdit" @click="editCampaign(campaign)">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-pencil</v-icon>
                         {{ t('campaigns.editCampaign') }}
                       </v-list-item-title>
                     </v-list-item>
-                    <v-list-item disabled
-                      @click="duplicateCampaign(campaign)">
+                    <v-list-item @click="duplicateCampaign(campaign)">
                       <v-list-item-title>
                         <v-icon left size="16">mdi-content-copy</v-icon>
                         {{ t('campaigns.duplicateCampaign') }}
@@ -522,6 +521,7 @@ const campaignRefreshToken = ref(0)
 const receivingMailbox = ref(false)
 const mailboxProgress = ref({ total: 0, processed: 0, remaining: 0 })
 const showCampaignDialog = ref(false)
+const loadingCampaignForEdit = ref(false)
 const scheduleDialog = ref(false)
 const deleteDialog = ref(false)
 const editingCampaign = ref(null)
@@ -683,10 +683,23 @@ function openCreateDialog() {
   showCampaignDialog.value = true
 }
 
-function editCampaign(campaign) {
-  if (isCampaignSent(campaign)) return
-  editingCampaign.value = { ...campaign }
-  showCampaignDialog.value = true
+async function editCampaign(campaign) {
+  if (isCampaignSent(campaign) || loadingCampaignForEdit.value) return
+
+  loadingCampaignForEdit.value = true
+  try {
+    const fullCampaign = await Campaigns.getCampaignById(campaign.id)
+    if (!fullCampaign || fullCampaign.htmlContent === undefined) {
+      throw new Error('Pełne dane kampanii nie zawierają treści wiadomości.')
+    }
+    editingCampaign.value = { ...campaign, ...fullCampaign }
+    showCampaignDialog.value = true
+  } catch (error) {
+    console.error('Nie udało się pobrać kampanii do edycji:', error)
+    showNotification('Nie udało się pobrać pełnych danych kampanii do edycji.', 'error')
+  } finally {
+    loadingCampaignForEdit.value = false
+  }
 }
 
 function isCampaignSent(campaign) {
@@ -735,6 +748,9 @@ function duplicateCampaign(campaign) {
     id: Date.now(),
     name: `${campaign.name} (kopia)`,
     status: 'draft',
+    sent: false,
+    sentAt: null,
+    sendingInProgress: false,
     createdAt: new Date(),
     sentCount: 0,
     openRate: 0,

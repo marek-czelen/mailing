@@ -93,6 +93,7 @@ CREATE TABLE `customers` (
   `company_address_city` varchar(255) DEFAULT NULL,
   `company_address_postal_code` varchar(255) DEFAULT NULL,
   `smtp_from` varchar(255) DEFAULT NULL,
+  `bounce_email` varchar(320) DEFAULT NULL,
   `rodo_footer` text DEFAULT NULL,
   `use_internal_mail_server` int(11) DEFAULT NULL,
   `active` tinyint(1) DEFAULT 1,
@@ -271,6 +272,7 @@ CREATE TABLE `marketing_campanies` (
   `subject` varchar(255) DEFAULT NULL,
   `sender_name` varchar(255) DEFAULT NULL,
   `sender_email` varchar(255) DEFAULT NULL,
+  `reply_to` varchar(320) DEFAULT NULL,
   `html_content` mediumtext DEFAULT NULL,
   `text_content` text DEFAULT NULL,
   `date_start` timestamp NULL DEFAULT NULL,
@@ -297,7 +299,8 @@ CREATE TABLE `marketing_campanies` (
   `smtp_pass` varchar(255) DEFAULT NULL COMMENT 'Hasło SMTP dla wysyłki kampanii (należy zaszyfrować)',
   `smtp_secure` tinyint(1) DEFAULT 1 COMMENT 'Czy używać TLS/SSL (1=tak, 0=nie)',
   `smtp_allow_self_signed` tinyint(1) DEFAULT 0 COMMENT 'Czy zezwalać na self-signed certificates (1=tak, 0=nie)',
-  `sending_in_progress` tinyint(4) NOT NULL DEFAULT 0
+  `sending_in_progress` tinyint(4) NOT NULL DEFAULT 0,
+  `track_opens` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Kampanie marketingowe z własną konfiguracją SMTP do wysyłki i IMAP/POP3 do odbioru odpowiedzi';
 
 --
@@ -324,6 +327,8 @@ CREATE TABLE `marketing_campanies_mailing_result` (
   `is_send` tinyint(1) DEFAULT NULL,
   `send_date` date DEFAULT NULL,
   `message_id` varchar(255) DEFAULT NULL,
+  `open_tracking_token` char(64) DEFAULT NULL,
+  `opened_at` datetime DEFAULT NULL,
   `error` int(11) DEFAULT NULL,
   `error_message` text DEFAULT NULL,
   `error_count` int(11) DEFAULT NULL,

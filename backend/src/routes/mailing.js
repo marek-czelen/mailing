@@ -6,6 +6,7 @@ import {
     updateCampaign,
     deleteCampaign,
     setCampaignArchived,
+    trackCampaignOpen,
     generateMailContent,
     computeSpamRating,
     listModels,
@@ -33,6 +34,8 @@ import { getCampaignReplies, getCampaignBounces, getCampaignBounceContacts, upda
 import { testSmtpConnection, testImapConnection } from '../controller/connectionTest.js';
 
 const router = express.Router();
+
+router.get('/open/:token', trackCampaignOpen);
 
 // Pobierz wszystkie kampanie
 router.get('/getCampaignsList', getCampaignsList);

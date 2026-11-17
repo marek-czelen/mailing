@@ -29,25 +29,35 @@ export async function sendEmail(req, res) {
   try {
     const { campaignId, mailAddressId } = req.body;
     const sendOptions = { ...req.body };
+    let campaign = null;
     const hasUnsubscribePlaceholder = /\{\{UNSUBSCRIBE_(?:LINK|URL)\}\}/i.test(
       `${req.body.html || ''}\n${req.body.text || ''}`
     );
 
-    if (hasUnsubscribePlaceholder) {
-      if (!campaignId) {
-        return res.status(400).send(new Response(null, false, 'Campaign ID is required to resolve the unsubscribe link.'));
-      }
-
+    if (campaignId) {
       const userData = await Admin.getCurrentUserData(req.headers.authorization);
       if (!userData) {
         return res.status(403).send(new Response(null, false, 'User not found.'));
       }
 
-      const campaign = await MarketingCampanies.findOne({
-        where: { id: campaignId, customerId: userData.customerId }
+      campaign = await MarketingCampanies.findOne({
+        where: { id: campaignId, customerId: userData.customerId },
+        include: [{ model: Customers, as: 'Customer' }]
       });
       if (!campaign) {
         return res.status(404).send(new Response(null, false, 'Campaign not found.'));
+      }
+      if (!campaign.Customer?.bounceEmail) {
+        return res.status(400).send(new Response(null, false, 'Stały adres odbić nie jest skonfigurowany w Ustawieniach klienta.'));
+      }
+
+      delete sendOptions.replyTo;
+      sendOptions.envelopeFrom = campaign.Customer.bounceEmail;
+    }
+
+    if (hasUnsubscribePlaceholder) {
+      if (!campaignId) {
+        return res.status(400).send(new Response(null, false, 'Campaign ID is required to resolve the unsubscribe link.'));
       }
 
       const recipient = Array.isArray(req.body.to) ? req.body.to[0] : req.body.to;
